@@ -186,7 +186,6 @@ pub(super) fn native_mods(game: &mut Game<'_>, mods: &mut Vec<NativeMod>) {
                 ["reload".into(), "Reload animations".into(), "key.keyboard.f7".into()],
             ],
         });
-        super::umbx_skins3d_glue::listed(&mut *mods);
     }
 }
 
@@ -205,7 +204,6 @@ pub(super) fn native_settings(game: &mut Game<'_>, mod_id: &str, buttons: &mut V
         if mod_id == super::punchy::ID {
             super::punchy::settings(&*game, &mut *buttons);
         }
-        super::umbx_skins3d_glue::page(&*game, mod_id, &mut *buttons);
     }
 }
 
@@ -224,7 +222,6 @@ pub(super) fn native_settings_click(game: &mut Game<'_>, mod_id: &str, button: u
         if mod_id == super::punchy::ID {
             super::punchy::click(&*game, button);
         }
-        super::umbx_skins3d_glue::click(&mut *game, mod_id, button);
     }
 }
 
@@ -255,7 +252,6 @@ pub(super) fn native_frame(game: &mut Game<'_>, elapsed: Duration) {
         accurate_block_placement_frame::run(&mut *game);
         connected_textures_frame::run(&mut *game);
         super::mod_inventory_profiles_glue::on_frame(&mut *game, elapsed);
-        super::umbx_skins3d_glue::frame(&mut *game);
     }
 }
 

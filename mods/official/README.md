@@ -7,7 +7,7 @@ This tree contains three native source layouts:
 - `accurate-block-placement/` and `connected-textures/` are Android-native
   source ports adapted to the current game and renderer APIs. They are statically
   linked into the Android game and registered separately in Options > Mods.
-- The eight folders listed below are complete, source-preserving imports of the
+- The seven folders listed below are complete, source-preserving imports of the
   supplied `.hnmod` bundles. Each keeps its original `horizon-native.json`,
   `mixins/<id>/horizon-mixin.toml`, Rust helpers, crate sources, and bundled data.
 
@@ -20,11 +20,10 @@ This tree contains three native source layouts:
 | `inventory-profiles/` | `inventory_profiles` | 1.0.0 |
 | `motion-blur/` | `motion_blur` | 0.1.0 |
 | `punchy/` | `punchy` | 0.1.2 |
-| `skins-3d/` | `skins_3d` | 1.0.1 |
 | `sodium-horizon/` | `sodium_horizon` | 0.3.1 |
 | `voicechat/` | `voicechat` | 1.0.0 |
 
-These eight folders are **source-only imports**, not Android runtime integrations.
+These seven folders are **source-only imports**, not Android runtime integrations.
 Their original manifests pin different Horizon revisions (and, for some bundles,
 additional hook-point API requirements). This Android source statically links a
 fixed set of modules; placing an HNMOD folder under `mods/official/` does not by

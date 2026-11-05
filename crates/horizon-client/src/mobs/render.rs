@@ -11,13 +11,6 @@ use crate::mesher::Vertex;
 use horizon_core::geometry::trig::Mth;
 use std::f32::consts::PI;
 
-#[cfg(target_os = "android")]
-#[path = "../../../../mods/official/skins-3d/mixins/skins_3d/voxels.rs"]
-mod umbx_skins3d_build;
-#[cfg(target_os = "android")]
-#[path = "../../../../mods/official/skins-3d/mixins/skins_3d/cache.rs"]
-pub mod umbx_skins3d_cache;
-
 /// A texture lookup into the shared atlas (name without namespace -> uv rect).
 pub type Atlas<'a> = &'a dyn Fn(&str) -> Option<[f32; 4]>;
 
@@ -1386,8 +1379,6 @@ pub fn render_with(
         true,
         out,
     );
-    #[cfg(target_os = "android")]
-    umbx_skins3d_cache::draw(m, alpha, camera, atlas, light, data, out);
 }
 /// `CapeLayer.submit` with `PlayerCapeModel`: the player model's body posed
 /// as the player's, its cape turned by `ModelPart.rotateBy` with the cape's

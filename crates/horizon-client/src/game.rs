@@ -78,11 +78,6 @@ pub(super) mod punchy;
 #[cfg(target_os = "android")]
 #[path = "../../../mods/official/punchy/mixins/punchy/geometry.rs"]
 pub(super) mod punchy_geometry;
-
-#[cfg(target_os = "android")]
-#[path = "../../../mods/official/skins-3d/mixins/skins_3d/glue.rs"]
-pub(super) mod umbx_skins3d_glue;
-
 #[cfg(target_os = "android")]
 mod android_input;
 mod armor_stands;
