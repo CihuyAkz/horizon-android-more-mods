@@ -1,0 +1,41 @@
+diff --git a/crates/horizon-client/src/mobs/render.rs b/crates/horizon-client/src/mobs/render.rs
+--- a/crates/horizon-client/src/mobs/render.rs
++++ b/crates/horizon-client/src/mobs/render.rs
+@@
+-#[cfg(target_os = "android")]
+-#[path = "../../../../mods/official/skins-3d/mixins/skins_3d/voxels.rs"]
+-mod umbx_skins3d_build;
+-#[cfg(target_os = "android")]
+-#[path = "../../../../mods/official/skins-3d/mixins/skins_3d/cache.rs"]
+-pub mod umbx_skins3d_cache;
+-
+@@
+-    #[cfg(target_os = "android")]
+-    umbx_skins3d_cache::draw(m, alpha, camera, atlas, light, data, out);
+ diff --git a/crates/horizon-client/src/game.rs b/crates/horizon-client/src/game.rs
+--- a/crates/horizon-client/src/game.rs
++++ b/crates/horizon-client/src/game.rs
+@@
+-#[cfg(target_os = "android")]
+-#[path = "../../../mods/official/skins-3d/mixins/skins_3d/glue.rs"]
+-pub(super) mod umbx_skins3d_glue;
+-
+ diff --git a/crates/horizon-client-render/src/skins.rs b/crates/horizon-client-render/src/skins.rs
+--- a/crates/horizon-client-render/src/skins.rs
++++ b/crates/horizon-client-render/src/skins.rs
+@@
+-#[cfg(target_os = "android")]
+-#[path = "../../../mods/official/skins-3d/mixins/skins_3d/images.rs"]
+-pub mod umbx_skins3d_images;
+-
+ diff --git a/crates/horizon-client/src/game/android_bundled.rs b/crates/horizon-client/src/game/android_bundled.rs
+--- a/crates/horizon-client/src/game/android_bundled.rs
++++ b/crates/horizon-client/src/game/android_bundled.rs
+@@
+-        super::umbx_skins3d_glue::listed(&mut *mods);
+@@
+-        super::umbx_skins3d_glue::page(&*game, mod_id, &mut *buttons);
+@@
+-        super::umbx_skins3d_glue::click(&mut *game, mod_id, button);
+@@
+-        super::umbx_skins3d_glue::frame(&mut *game);
