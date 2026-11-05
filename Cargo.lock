@@ -1638,6 +1638,7 @@ dependencies = [
  "naga",
  "png",
  "pollster",
+ "punchy-engine",
  "regex",
  "rustix 1.1.5",
  "serde",
