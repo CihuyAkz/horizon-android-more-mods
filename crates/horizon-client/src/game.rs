@@ -55,6 +55,34 @@ mod agent;
 mod agent_settings;
 mod allays;
 mod android_bundled;
+
+// HNMOD runtimes compiled into the Android client. Their hooks are wired in
+// android_bundled.rs; they are not discovered from a runtime mods directory.
+#[cfg(target_os = "android")]
+#[path = "../../../mods/official/appleskin-horizon/mixins/appleskin_horizon/runtime.rs"]
+pub(super) mod mod_appleskin;
+#[cfg(target_os = "android")]
+#[path = "../../../mods/official/appleskin-horizon/mixins/appleskin_horizon/glue.rs"]
+pub(super) mod mod_appleskin_glue;
+
+#[cfg(target_os = "android")]
+#[path = "../../../mods/official/inventory-profiles/mixins/inventory_profiles/runtime.rs"]
+pub(super) mod mod_inventory_profiles;
+#[cfg(target_os = "android")]
+#[path = "../../../mods/official/inventory-profiles/mixins/inventory_profiles/glue.rs"]
+pub(super) mod mod_inventory_profiles_glue;
+
+#[cfg(target_os = "android")]
+#[path = "../../../mods/official/punchy/mixins/punchy/runtime.rs"]
+pub(super) mod punchy;
+#[cfg(target_os = "android")]
+#[path = "../../../mods/official/punchy/mixins/punchy/geometry.rs"]
+pub(super) mod punchy_geometry;
+
+#[cfg(target_os = "android")]
+#[path = "../../../mods/official/skins-3d/mixins/skins_3d/glue.rs"]
+pub(super) mod umbx_skins3d_glue;
+
 #[cfg(target_os = "android")]
 mod android_input;
 mod armor_stands;
@@ -13224,6 +13252,18 @@ impl Game<'_> {
     /// FirstPersonHandsAndItemsRenderer: the right arm or the held items of
     /// both hands in view space, converted to camera-relative world space.
     fn hand_geometry(&mut self, alpha: f64) -> Vec<Vertex> {
+        #[cfg(target_os = "android")]
+        {
+            punchy::begin(self, alpha);
+            if punchy::ready(self) {
+                let mut out = punchy_geometry::render(self, alpha);
+                punchy::arms(self, alpha, &mut out);
+                for vertex in &mut out {
+                    vertex.layer &= !horizon_client::gfx::OIT_ENTITY;
+                }
+                return out;
+            }
+        }
         let mut out = Vec::new();
         // GameRenderer.renderItemInHand: F1 hides the hand with the HUD.
         if self.spectator()

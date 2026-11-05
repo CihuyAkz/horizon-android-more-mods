@@ -1,9 +1,9 @@
 id = "skins_3d"
 name = "3D Skins"
 version = "1.0.1"
-kind = "hnmod_source_only"
+kind = "android_bundled_native"
 source_archive = "skins_3d-1.0.1.hnmod"
 horizon_revision = "294448014fba585f8d5d09dd8886f482493b6417"
 mixins_revision = "ddd9700b21997c95d95ac6ee5ecafe3830cf622a"
 required_hooks = 1
-android_status = "source_only_not_wired"
+android_status = "integrated"

@@ -3,6 +3,10 @@
 //! `SkinManager` lookup (which texture a player shows, and when the default
 //! one) and `SkinTextureDownloader.processLegacySkin`.
 
+#[cfg(target_os = "android")]
+#[path = "../../../mods/official/skins-3d/mixins/skins_3d/images.rs"]
+pub mod umbx_skins3d_images;
+
 pub mod appearance;
 pub use horizon_core::player_texture::{process_cape, process_legacy_skin};
 

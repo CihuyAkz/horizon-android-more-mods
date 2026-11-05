@@ -99,8 +99,8 @@ pub(super) fn frame(game: &mut Game<'_>) {
     }
 }
 
-pub(super) fn listed(mods: &mut Vec<horizon_client::mod_api::NativeMod>) {
-    mods.push(horizon_client::mod_api::NativeMod {
+pub(super) fn listed(mods: &mut Vec<crate::game::native_hooks::NativeMod>) {
+    mods.push(crate::game::native_hooks::NativeMod {
         id: ID.into(),
         title: format!("3D Skins {VERSION}"),
         description: DESCRIPTION.into(),

@@ -3,6 +3,7 @@
 use super::*;
 
 use super::native_hooks::*;
+use core::ops::ControlFlow;
 
 #[cfg(target_os = "android")]
 #[path = "../../../../mods/official/accurate-block-placement/src/runtime.rs"]
@@ -143,6 +144,8 @@ pub(super) fn native_key(game: &mut Game<'_>, key: &str, pressed: bool) {
     {
         zoom_key::run(&mut *game, key, pressed);
         accurate_block_placement_key::run(&mut *game, key, pressed);
+        super::mod_inventory_profiles_glue::on_key(&mut *game, key, pressed);
+        super::punchy::key(&mut *game, key, pressed);
     }
 }
 
@@ -172,6 +175,18 @@ pub(super) fn native_mods(game: &mut Game<'_>, mods: &mut Vec<NativeMod>) {
         smartf3_list::run(&mut *mods);
         accurate_block_placement_list::run(&mut *mods);
         connected_textures_list::run(&mut *mods);
+        super::mod_appleskin_glue::on_list(&mut *mods);
+        super::mod_inventory_profiles_glue::on_list(&mut *mods);
+        mods.push(NativeMod {
+            id: super::punchy::ID.into(),
+            title: super::punchy::TITLE.into(),
+            description: "First-person skeletal animation preview with bundled clips.".into(),
+            keys: vec![
+                ["inspect".into(), "Inspect item".into(), "key.keyboard.f6".into()],
+                ["reload".into(), "Reload animations".into(), "key.keyboard.f7".into()],
+            ],
+        });
+        super::umbx_skins3d_glue::listed(&mut *mods);
     }
 }
 
@@ -185,6 +200,12 @@ pub(super) fn native_settings(game: &mut Game<'_>, mod_id: &str, buttons: &mut V
         smartf3_settings::run(&mut *game, mod_id, &mut *buttons);
         accurate_block_placement_settings::run(&mut *game, mod_id, &mut *buttons);
         connected_textures_settings::run(mod_id, &mut *buttons);
+        super::mod_appleskin_glue::on_settings(&mut *game, mod_id, &mut *buttons);
+        super::mod_inventory_profiles_glue::on_settings(&mut *game, mod_id, &mut *buttons);
+        if mod_id == super::punchy::ID {
+            super::punchy::settings(&*game, &mut *buttons);
+        }
+        super::umbx_skins3d_glue::page(&*game, mod_id, &mut *buttons);
     }
 }
 
@@ -198,6 +219,12 @@ pub(super) fn native_settings_click(game: &mut Game<'_>, mod_id: &str, button: u
         smartf3_click::run(&mut *game, mod_id, button);
         accurate_block_placement_click::run(&mut *game, mod_id, button);
         connected_textures_click::run(mod_id, button);
+        super::mod_appleskin_glue::on_click(&mut *game, mod_id, button);
+        super::mod_inventory_profiles_glue::on_click(&mut *game, mod_id, button);
+        if mod_id == super::punchy::ID {
+            super::punchy::click(&*game, button);
+        }
+        super::umbx_skins3d_glue::click(&mut *game, mod_id, button);
     }
 }
 
@@ -215,6 +242,7 @@ pub(super) fn native_tick(game: &mut Game<'_>) {
     {
         if game.native_window() {
             game.android_accurate_block_placement_tick();
+            super::punchy::tick(&mut *game);
         }
     }
 }
@@ -226,6 +254,36 @@ pub(super) fn native_frame(game: &mut Game<'_>, elapsed: Duration) {
         recipes_frame::run(&mut *game);
         accurate_block_placement_frame::run(&mut *game);
         connected_textures_frame::run(&mut *game);
+        super::mod_inventory_profiles_glue::on_frame(&mut *game, elapsed);
+        super::umbx_skins3d_glue::frame(&mut *game);
+    }
+}
+
+pub(super) fn native_hud(
+    game: &mut Game<'_>,
+    batch: &mut HudBatch,
+    corners: &mut horizon_client::extras_hud::Corners,
+) {
+    let _ = (&game, &batch, &corners);
+    #[cfg(target_os = "android")]
+    {
+        super::mod_appleskin_glue::on_hud(&*game, &mut *batch);
+        super::mod_inventory_profiles_glue::on_hud(&mut *game, &mut *batch, &mut *corners);
+    }
+}
+
+pub(super) fn inventory_profiles_sort_slots(
+    game: &mut Game<'_>,
+    slots: &[usize],
+) -> ControlFlow<()> {
+    #[cfg(target_os = "android")]
+    {
+        return super::mod_inventory_profiles_glue::on_sort_slots(game, slots);
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = (game, slots);
+        ControlFlow::Continue(())
     }
 }
 

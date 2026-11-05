@@ -9,6 +9,6 @@
 
 ## Port status
 
-The complete supplied HNMOD source bundle is preserved in this folder. Its original `horizon-native.json`, `horizon-mixin.toml`, Rust helper files, crate sources, and bundled data were copied without source rewrites. This is a source import only: it is not yet statically wired into this Android build, and it is not a dynamically loadable Android mod. Copying it into `mods/official/` does not activate it.
+Integrated into the Android client as a statically bundled native mod. Its Mods entry, settings, key handling, per-frame behaviours, HUD notifications, and inventory sorting are wired through `android_bundled.rs` and `tweaks.rs`. It is not dynamically loaded from a runtime mods directory.
 
-A functional Android port still needs its hooks adapted to this source tree revision, registered with the current Android Mods UI, and validated by compiling and testing the Android build.
+Auto-refill, tool-break protection, quick-stack, sort modes, and notifications are implemented by the imported runtime glue. Multiplayer/server acceptance still follows the game's normal inventory click rules.

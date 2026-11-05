@@ -9,6 +9,6 @@
 
 ## Port status
 
-The complete supplied HNMOD source bundle is preserved in this folder. Its original `horizon-native.json`, `horizon-mixin.toml`, Rust helper files, crate sources, and bundled data were copied without source rewrites. This is a source import only: it is not yet statically wired into this Android build, and it is not a dynamically loadable Android mod. Copying it into `mods/official/` does not activate it.
+Integrated into the Android client as a statically bundled native mod. Its Mods entry, settings toggle, and saturation/held-food HUD overlay are wired through `android_bundled.rs` and `native_hud`. It is not dynamically loaded from a runtime mods directory.
 
-A functional Android port still needs its hooks adapted to this source tree revision, registered with the current Android Mods UI, and validated by compiling and testing the Android build.
+The Android HUD port draws the saturation overlay and held-food saturation preview. Exhaustion indicator parity is not included in this port.

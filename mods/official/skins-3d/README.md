@@ -9,6 +9,6 @@
 
 ## Port status
 
-The complete supplied HNMOD source bundle is preserved in this folder. Its original `horizon-native.json`, `horizon-mixin.toml`, Rust helper files, crate sources, and bundled data were copied without source rewrites. This is a source import only: it is not yet statically wired into this Android build, and it is not a dynamically loadable Android mod. Copying it into `mods/official/` does not activate it.
+Integrated into the Android client as a statically bundled native mod. Its Mods entry, reach setting, skin image lookup, frame-time cache population, and player render-layer geometry are wired into the Android renderer. It is not dynamically loaded from a runtime mods directory.
 
-A functional Android port still needs its hooks adapted to this source tree revision, registered with the current Android Mods UI, and validated by compiling and testing the Android build.
+The port builds voxel geometry for the six outer skin layers (hat, jacket, sleeves and pants) when a skin texture is available. Skins outside the configured reach or without available pixels retain their normal flat outer layer.

@@ -6652,6 +6652,10 @@ impl Game<'_> {
 
     /// MultiPlayerGameMode.startDestroyBlock / continueDestroyBlock.
     fn remote_mining(&mut self, start: bool) {
+        #[cfg(target_os = "android")]
+        if start {
+            super::punchy::mining_attempt(self);
+        }
         let debug_stick = self
             .held()
             .is_some_and(|stack| &*stack.item == "minecraft:debug_stick");
@@ -6979,6 +6983,8 @@ impl Game<'_> {
         let before = self.with_hand(hand, |g| g.held().map(|s| s.count));
         let swings = self.swings_started;
         let done = self.remote_use_item_on(hand);
+        #[cfg(target_os = "android")]
+        super::punchy::used(self, hand, done);
         if done
             && self.swings_started != swings
             && let Some(after) = self.with_hand(hand, |g| g.held().map(|s| s.count))
@@ -7788,25 +7794,36 @@ impl Game<'_> {
                 Hand::Main
             };
             if self.remote_use_item(hand) {
+                #[cfg(target_os = "android")]
+                super::punchy::used(self, hand, true);
                 self.heights.item_used(hand);
             }
             return;
         }
         // A successful Item.use always drops the hand (LocalPlayer.itemUsed).
         if self.remote_use_item(Hand::Main) {
+            #[cfg(target_os = "android")]
+            super::punchy::used(self, Hand::Main, true);
             self.heights.item_used(Hand::Main);
             return;
         }
         // The off hand's turn: the entity again, or the block.
-        let off_target = if self.entity_targeted() {
+        let off_entity = self.entity_targeted();
+        let off_target = if off_entity {
             self.remote_use_entity(Hand::Off)
         } else {
             self.remote_use_block(Hand::Off)
         };
         if off_target {
+            #[cfg(target_os = "android")]
+            if off_entity {
+                super::punchy::used(self, Hand::Off, true);
+            }
             return;
         }
         if self.remote_use_item(Hand::Off) {
+            #[cfg(target_os = "android")]
+            super::punchy::used(self, Hand::Off, true);
             self.heights.item_used(Hand::Off);
         }
     }
@@ -9562,7 +9579,10 @@ impl horizon_client::interaction_input::TargetUseWorld for RemoteUseWorld<'_, '_
         if self.0.pad.touch_shield {
             return false;
         }
-        self.0.remote_use_entity(Hand::Main)
+        let used = self.0.remote_use_entity(Hand::Main);
+        #[cfg(target_os = "android")]
+        super::punchy::used(self.0, Hand::Main, used);
+        used
     }
     fn use_block(&mut self) -> bool {
         #[cfg(target_os = "android")]

@@ -48,6 +48,7 @@ members = [
     "mods/official/zoom",
     "xtask",
     "mods/official/recipes",
+    "mods/official/punchy/mixins/punchy/engine",
 ]
 resolver = "2"
 

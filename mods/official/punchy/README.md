@@ -9,6 +9,6 @@
 
 ## Port status
 
-The complete supplied HNMOD source bundle is preserved in this folder. Its original `horizon-native.json`, `horizon-mixin.toml`, Rust helper files, crate sources, and bundled data were copied without source rewrites. This is a source import only: it is not yet statically wired into this Android build, and it is not a dynamically loadable Android mod. Copying it into `mods/official/` does not activate it.
+Integrated into the Android client as a statically bundled **preview**. The Punchy engine and animation data are compiled into the Android client; the port wires the first-person hand/item geometry, animation tick, keybinds, settings, and successful-use/mining triggers. It is not dynamically loaded from a runtime mods directory.
 
-A functional Android port still needs its hooks adapted to this source tree revision, registered with the current Android Mods UI, and validated by compiling and testing the Android build.
+This is not complete Punchy renderer parity. Armour/body animation, every custom animation condition, and full Java/Fabric behaviour are not claimed as implemented. The Mods title and settings explicitly identify the preview.
