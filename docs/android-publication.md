@@ -4,8 +4,9 @@ Horizon Android preserves the upstream Git history, MIT copyright and license,
 third-party notices and dependency licenses. See [upstream integration](android-upstream.json).
 The `android` branch is maintained separately from upstream deployment workflows.
 
-For automatic, separately installed development APKs for testers, see
-[development builds in GitHub Actions](android-dev-builds.md).
+For separately installed development APKs and version-bumped public APKs, see
+[development builds](android-dev-builds.md) and [public builds](android-public-builds.md).
+Both variants are produced by the single manual [Build Android APK workflow](../.github/workflows/android-build.yml).
 
 ## Build distribution APKs
 
@@ -59,19 +60,17 @@ Microsoft/Mojang registration; do not describe it as an approved integration.
 
 ## Versions and release branches
 
-Development is now on the `0.7.5` release candidate. See the
-[change list and validation scope](android-0.7.5.md). A Git push does not itself
-publish an APK; release attachments must come from the exact tagged source.
-
-Use `0.7.5-dev.<build>` for intermediate development APKs and `0.7.5-rc.<build>`
-for explicitly prepared release candidates. Debug builds use a separate `.dev`
-application ID by default, keeping their data separate from the release app.
-Never replace an existing release asset with a different binary of the same name.
+The active Android app version is the `versionName` in
+`packaging/android/build.gradle`. Public Builds increment its patch component and
+`versionCode` automatically; Dev Builds use a separate `.dev` application ID and
+a run-specific version label, keeping their data separate from the public app.
+Never distribute a rebuilt APK with the same version and signing identity as an
+existing public release.
 
 Maintain changes as focused commits on working branches, integrate reviewed
 upstream history into `android`, and record changes relative to the last public
 release. Build and test the exact commit to be tagged. Only then create an Android
-release tag such as `v0.7.5` and attach the audited APKs and checksums.
+release tag such as `v0.7.7` and attach the audited APKs and checksums.
 Increment `versionCode` for every public Android update and preserve its signing
 certificate. A source commit or development version is not a compatibility or
 performance guarantee; list the architectures and device checks actually completed.
@@ -98,7 +97,10 @@ inputs, caches, saves, build products and signing material. Upstream workflows
 remain under `.github/upstream-workflows/*.disabled`; the Android source workflow
 runs source checks on pushes and pull requests to `android`, with read-only
 permissions. A manual run with `native_checks` enabled also type-checks all four
-Android ABIs. It does not build APKs, use signing keys or publish releases.
+Android ABIs. The single manual Android build workflow exposes Dev Builds and Public Builds
+from the same `workflow_dispatch` interface. Source checks run separately on
+pushes and pull requests; the Android debug signing key is generated locally by the build helper and
+reused from the Actions cache; no repository Secrets are required.
 
 ## Upstream maintenance
 

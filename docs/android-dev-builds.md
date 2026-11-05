@@ -1,50 +1,13 @@
 # Development APKs
 
-The **Android dev APKs** Actions workflow builds ARM64 on code pushes to `android`.
-Documentation-only pushes are skipped. Older in-progress builds are cancelled
-when a newer commit arrives. **Run workflow → all_abis** builds all four ABIs.
-Pull requests never receive the signing key or trigger this workflow.
+Development APKs are built manually by the unified **Build Android APK** workflow. Open Actions → Build Android APK → Run workflow, choose `Dev Builds`, and select one ABI. The workflow uses the optimized Rust `release` profile and the public payload audit.
 
-These APKs use the optimized Rust `release` profile (including ThinLTO), public
-payload checks and official resource downloads. The package is
-`dev.horizon.android.dev`, separate from the normal release, and the visible
-version contains the run number and source commit. Test data is separate;
-worlds and accounts are not automatically copied from the release app.
-The workflow does not publish GitHub Releases or send Discord messages.
+The package is `dev.horizon.android.dev`, separate from the normal release, and the visible version contains the GitHub Actions run number. Test data is separate; worlds and accounts are not automatically copied from the release app. Dev builds do not modify or commit the checked-in application version.
 
-## One-time maintainer setup
+## Signing and installation
 
-Create a **new, dedicated dev key**, not the release signing key. In PowerShell:
-
-```powershell
-keytool -genkeypair -keystore "$env:TEMP/horizon-ci-dev.keystore" -storepass android -keypass android -alias androiddebugkey -keyalg RSA -validity 10000 -dname "CN=Horizon Android Dev CI"
-[Convert]::ToBase64String([IO.File]::ReadAllBytes("$env:TEMP/horizon-ci-dev.keystore")) | Set-Clipboard
-```
-
-In repository Settings → Secrets and variables → Actions, add
-`ANDROID_DEV_KEYSTORE_BASE64` with the clipboard contents. Keep a private backup
-of this key outside the repository. The password/alias above match the existing
-build configuration. Clear the clipboard afterwards. Never attach the key to an
-issue, artifact, release or message.
-
-The workflow fails early if the secret is absent. Keeping the same key permits
-in-place updates between CI dev builds; replacing it requires reinstalling the
-dev app. Existing locally signed debug APKs may use a different key as well.
-Back up their test data before uninstalling. Normal release installations are
-unaffected. Do not reset this workflow's run counter: its increasing value is
-used as Android's dev-channel version code.
+The build script creates the standard Android debug keystore at `.local/android/debug.keystore` when missing. GitHub Actions caches this generated file between runs, allowing subsequent CI builds to update an existing installation while the cache remains available. No repository Actions Secrets are required. If the cache is cleared and a new key is generated, Android may require uninstalling the previous app before installing the new one; back up test data first.
 
 ## Sharing with testers
 
-Open Actions → Android dev APKs → the successful run → Artifacts. Share the run
-URL in Discord and specify its commit and architecture. Download and unpack the
-artifact ZIP, then install its APK. GitHub requires sign-in to download workflow
-artifacts; artifacts expire after 14 days. Each contains the APK, checksums,
-license notices and `BUILD.json` identifying the exact source and build profile.
-Experimental builds have not automatically passed gameplay or performance tests.
-
-Private signing keys, raw Minecraft inputs, prepared resource directories,
-player data and local diagnostics are not uploaded as downloadable artifacts.
-Only Cargo/Gradle build caches are retained separately for subsequent CI builds.
-Cold builds also prepare the generated engine tables, so they may take
-substantially longer than an incremental local build.
+Open Actions → Build Android APK → the successful run → Artifacts. The artifact contains the selected ABI's APK. GitHub requires sign-in to download workflow artifacts; the configured retention period is 14 or 30 days, depending on build type. Experimental builds have not automatically passed gameplay, GPU, or device compatibility tests.

@@ -51,16 +51,24 @@ class SourceExportTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             self.source(root)
-            template = root / 'packaging/android/dev-builds.yml'
-            template.parent.mkdir(parents=True)
-            template.write_text('name: Android dev APKs\n', encoding='utf-8')
+            template_dir = root / 'packaging/android'
+            template_dir.mkdir(parents=True)
+            templates = {
+                'android-build.yml': 'name: Build Android APK\n',
+                'source-checks.yml': 'name: Android source checks\n',
+            }
+            for name, data in templates.items():
+                (template_dir / name).write_text(data, encoding='utf-8')
             unrelated = root / '.github/workflows/release.yml'
             unrelated.parent.mkdir(parents=True)
             unrelated.write_text('name: Upstream release\n', encoding='utf-8')
             output = root / '.local/source.zip'
             export.export(root, output)
             with zipfile.ZipFile(output) as archive:
-                self.assertEqual(archive.read('.github/workflows/android-dev.yml'), template.read_bytes())
+                self.assertEqual(archive.read('.github/workflows/android-build.yml'),
+                                 (template_dir / 'android-build.yml').read_bytes())
+                self.assertEqual(archive.read('.github/workflows/android-source.yml'),
+                                 (template_dir / 'source-checks.yml').read_bytes())
                 self.assertNotIn('.github/workflows/release.yml', archive.namelist())
 
     def test_public_tree_guard_rejects_android_private_paths(self):

@@ -52,6 +52,9 @@ pub mod lod;
 pub mod logging;
 pub mod menu_blur;
 pub mod mesher;
+#[cfg(target_os = "android")]
+#[path = "../../../mods/official/connected-textures/src/native_connected_textures.rs"]
+pub mod native_connected_textures;
 pub mod minimap;
 pub mod mipmap;
 pub mod mod_list;

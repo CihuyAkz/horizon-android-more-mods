@@ -13,6 +13,8 @@ android {
     }
     signingConfigs {
         development {
+            // tools/android_build.py creates this standard Android debug keystore automatically.
+            // GitHub Actions may cache it between runs; no repository Secrets are required.
             storeFile file('../../.local/android/debug.keystore')
             storePassword 'android'
             keyAlias 'androiddebugkey'

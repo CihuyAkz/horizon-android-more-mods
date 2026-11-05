@@ -7298,6 +7298,49 @@ impl Game<'_> {
         }
     }
 
+    /// Android static Accurate Block Placement adapter. Kept in this module so it can reuse
+    /// the game's private prediction and block-interaction routines without widening their API.
+    #[cfg(target_os = "android")]
+    pub(super) fn android_accurate_block_placement_tick(&mut self) {
+        use super::android_bundled::accurate_block_placement as abp;
+        let Some(player) = self
+            .player
+            .as_ref()
+            .map(|p| [p.position.x, p.position.y, p.position.z])
+        else {
+            abp::reset();
+            return;
+        };
+        let held = self.held().cloned();
+        if abp::holding()
+            && let Some(hit) = self.pick()
+            && !self.remote_block_reacts(&hit, held.as_ref()).0.consumes_action()
+        {
+            self.use_delay = self.use_delay.max(1);
+        }
+        for target in abp::due((self.yaw, self.pitch)) {
+            if !abp::still_fresh(&target, player) {
+                continue;
+            }
+            let hit = super::Hit {
+                pos: target.pos,
+                face: target.face,
+                point: target.point,
+            };
+            if self.remote_block_reacts(&hit, held.as_ref()).0.consumes_action() {
+                continue;
+            }
+            let at = target.placement();
+            let before = self.world.block(at[0], at[1], at[2]);
+            let kept = self.tick_hit.replace(Some(hit));
+            self.remote_use();
+            self.tick_hit = kept;
+            if self.world.block(at[0], at[1], at[2]) != before {
+                abp::placed(&target, at, player);
+            }
+        }
+    }
+
     /// Whether the block hit takes a main-hand right click with `held`
     /// (`BlockState.useItemOn`, then `useWithoutItem`): a door, a button, a
     /// container, and the blocks it changed. Vanilla's client runs it on its

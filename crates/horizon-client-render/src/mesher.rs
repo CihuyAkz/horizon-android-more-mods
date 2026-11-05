@@ -1208,6 +1208,67 @@ impl Mesher<'_> {
             }
         }
         out.finish_sprite_layers();
+        #[cfg(target_os = "android")]
+        {
+            use crate::native_connected_textures as ct;
+            if ct::enabled() {
+                let registry = self.assets.registry;
+                let layers = &self.render.sprite_layers;
+                let key = [
+                    registry as *const _ as usize,
+                    self.render as *const _ as usize,
+                    layers.len(),
+                ];
+                let rules = ct::rules(
+                    key,
+                    registry.len(),
+                    &|id| registry.state(BlockStateId(id)).map(|state| state.name.clone()),
+                    &|name| layers.get(name).map(|&layer| layer as u16),
+                );
+                if !rules.is_empty() {
+                    let pad = &scratch.padded;
+                    let at = |x: i32, y: i32, z: i32| -> u32 {
+                        if (-2..18).contains(&x)
+                            && (-2..18).contains(&y)
+                            && (-2..18).contains(&z)
+                        {
+                            pad.blocks[pi(x, y, z)]
+                        } else {
+                            0
+                        }
+                    };
+                    for vertices in [&mut out.solid, &mut out.translucent] {
+                        if vertices.len() % 4 != 0
+                            || !vertices.iter().any(|vertex| rules.has_tile(vertex.layer))
+                        {
+                            continue;
+                        }
+                        let source: Vec<ct::V> = vertices
+                            .iter()
+                            .map(|vertex| ct::V {
+                                pos: vertex.pos,
+                                uv: vertex.uv,
+                                layer: vertex.layer,
+                                light: vertex.light,
+                                color: vertex.color,
+                            })
+                            .collect();
+                        if let Some(updated) = ct::process(&rules, &source, &at) {
+                            *vertices = updated
+                                .into_iter()
+                                .map(|vertex| TerrainVertex {
+                                    pos: vertex.pos,
+                                    uv: vertex.uv,
+                                    layer: vertex.layer,
+                                    light: vertex.light,
+                                    color: vertex.color,
+                                })
+                                .collect();
+                        }
+                    }
+                }
+            }
+        }
         out
     }
     /// `BlockColors` tint source `index`, or `None` for an untinted (-1) layer.

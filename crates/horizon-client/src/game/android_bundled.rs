@@ -1,8 +1,41 @@
-//! Fixed MIT-licensed Android mod bundle. No downloaded code or phone compiler.
+//! Fixed Android mod bundle. No phone-side native-mod loader or compiler.
 
 use super::*;
 
 use super::native_hooks::*;
+
+#[cfg(target_os = "android")]
+#[path = "../../../../mods/official/accurate-block-placement/src/runtime.rs"]
+pub(super) mod accurate_block_placement;
+
+#[cfg(target_os = "android")]
+#[path = "../../../../mods/official/accurate-block-placement/src/key.rs"]
+mod accurate_block_placement_key;
+#[cfg(target_os = "android")]
+#[path = "../../../../mods/official/accurate-block-placement/src/list.rs"]
+mod accurate_block_placement_list;
+#[cfg(target_os = "android")]
+#[path = "../../../../mods/official/accurate-block-placement/src/settings.rs"]
+mod accurate_block_placement_settings;
+#[cfg(target_os = "android")]
+#[path = "../../../../mods/official/accurate-block-placement/src/click.rs"]
+mod accurate_block_placement_click;
+#[cfg(target_os = "android")]
+#[path = "../../../../mods/official/accurate-block-placement/src/frame.rs"]
+mod accurate_block_placement_frame;
+
+#[cfg(target_os = "android")]
+#[path = "../../../../mods/official/connected-textures/src/frame.rs"]
+mod connected_textures_frame;
+#[cfg(target_os = "android")]
+#[path = "../../../../mods/official/connected-textures/src/list.rs"]
+mod connected_textures_list;
+#[cfg(target_os = "android")]
+#[path = "../../../../mods/official/connected-textures/src/settings.rs"]
+mod connected_textures_settings;
+#[cfg(target_os = "android")]
+#[path = "../../../../mods/official/connected-textures/src/click.rs"]
+mod connected_textures_click;
 
 #[cfg(target_os = "android")]
 #[path = "android_bundled/zoom/runtime.rs"]
@@ -109,6 +142,7 @@ pub(super) fn native_key(game: &mut Game<'_>, key: &str, pressed: bool) {
     #[cfg(target_os = "android")]
     {
         zoom_key::run(&mut *game, key, pressed);
+        accurate_block_placement_key::run(&mut *game, key, pressed);
     }
 }
 
@@ -136,6 +170,8 @@ pub(super) fn native_mods(game: &mut Game<'_>, mods: &mut Vec<NativeMod>) {
         minimap_list::run(&mut *mods);
         recipes_list::run(&mut *mods);
         smartf3_list::run(&mut *mods);
+        accurate_block_placement_list::run(&mut *mods);
+        connected_textures_list::run(&mut *mods);
     }
 }
 
@@ -147,6 +183,8 @@ pub(super) fn native_settings(game: &mut Game<'_>, mod_id: &str, buttons: &mut V
         minimap_settings::run(&mut *game, mod_id, &mut *buttons);
         recipes_settings::run(&mut *game, mod_id, &mut *buttons);
         smartf3_settings::run(&mut *game, mod_id, &mut *buttons);
+        accurate_block_placement_settings::run(&mut *game, mod_id, &mut *buttons);
+        connected_textures_settings::run(mod_id, &mut *buttons);
     }
 }
 
@@ -158,6 +196,8 @@ pub(super) fn native_settings_click(game: &mut Game<'_>, mod_id: &str, button: u
         minimap_click::run(&mut *game, mod_id, button);
         recipes_click::run(&mut *game, mod_id, button);
         smartf3_click::run(&mut *game, mod_id, button);
+        accurate_block_placement_click::run(&mut *game, mod_id, button);
+        connected_textures_click::run(mod_id, button);
     }
 }
 
@@ -169,11 +209,23 @@ pub(super) fn native_minimap(game: &Game<'_>, minimap: &mut Option<NativeMinimap
     }
 }
 
+pub(super) fn native_tick(game: &mut Game<'_>) {
+    let _ = &game;
+    #[cfg(target_os = "android")]
+    {
+        if game.native_window() {
+            game.android_accurate_block_placement_tick();
+        }
+    }
+}
+
 pub(super) fn native_frame(game: &mut Game<'_>, elapsed: Duration) {
     let _ = (&game, &elapsed);
     #[cfg(target_os = "android")]
     {
         recipes_frame::run(&mut *game);
+        accurate_block_placement_frame::run(&mut *game);
+        connected_textures_frame::run(&mut *game);
     }
 }
 
@@ -197,6 +249,8 @@ pub(super) fn native_command(game: &mut Game<'_>, command: &str, ran: &mut bool)
 pub(super) fn reset() {
     official_zoom::reset();
     official_minimap::reset();
+    accurate_block_placement::forget();
+    horizon_client_render::native_connected_textures::reset();
     official_recipes::set_viewer(None);
     smartf3_native::reset();
 }
