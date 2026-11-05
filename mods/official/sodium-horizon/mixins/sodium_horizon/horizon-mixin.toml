@@ -1,0 +1,291 @@
+[mod]
+id = "sodium_horizon"
+version = "0.3.1"
+priority = 100
+
+[compatibility]
+horizon_revision = "c9d474dd9116e84c243f8992d75c11314df56f06"
+
+[[module]]
+id = "visibility_runtime"
+file = "crates/horizon-client-render/src/lib.rs"
+name = "sodium_horizon_visibility"
+source = "runtime.rs"
+
+[[injection]]
+id = "section_visibility"
+kind = "OVERWRITE"
+target = "horizon_client_render::mesher::visibility_reusing"
+helper = "visibility.rs"
+bindings = [
+  { name = "pad", ty = "&Padded", value = "pad" },
+  { name = "info", ty = "&[Info]", value = "info" },
+  { name = "stack", ty = "&mut Vec<usize>", value = "&mut *stack" },
+]
+
+
+# UI BEGIN
+
+[[module]]
+id = "ui_model"
+file = "crates/horizon-client/src/game.rs"
+name = "sodium_horizon_model"
+source = "ui_model.rs"
+
+[[module]]
+id = "ui"
+file = "crates/horizon-client/src/game.rs"
+name = "sodium_horizon_ui"
+source = "ui.rs"
+
+[[injection]]
+id = "ui_draw"
+kind = "HEAD"
+target = "horizon_client::game::options::Game<'_>::draw_options"
+helper = "ui_draw.rs"
+cancellable = true
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "batch", ty = "&mut horizon_client::hud::HudBatch", value = "&mut *batch" },
+]
+
+[[injection]]
+id = "ui_mouse"
+kind = "HEAD"
+target = "horizon_client::game::options::Game<'_>::options_mouse"
+helper = "ui_mouse.rs"
+cancellable = true
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "pressed", ty = "bool", value = "pressed" },
+  { name = "right", ty = "bool", value = "right" },
+]
+
+[[injection]]
+id = "ui_drag"
+kind = "HEAD"
+target = "horizon_client::game::options::Game<'_>::options_drag"
+helper = "ui_drag.rs"
+cancellable = true
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+]
+
+[[injection]]
+id = "ui_key"
+kind = "HEAD"
+target = "horizon_client::game::options::Game<'_>::options_key"
+helper = "ui_key.rs"
+cancellable = true
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "key", ty = "winit::keyboard::KeyCode", value = "key" },
+  { name = "text", ty = "Option<&str>", value = "text" },
+]
+
+[[injection]]
+id = "ui_scroll"
+kind = "HEAD"
+target = "horizon_client::game::options::Game<'_>::options_scroll"
+helper = "ui_scroll.rs"
+cancellable = true
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "amount", ty = "f32", value = "amount" },
+]
+
+[[injection]]
+id = "ui_frame"
+kind = "HEAD"
+target = "horizon_client::game::native_hooks::Game<'_>::native_frame"
+helper = "ui_frame.rs"
+bindings = [{ name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" }]
+
+[[injection]]
+id = "ui_list"
+kind = "HEAD"
+target = "horizon_client::game::native_hooks::Game<'_>::native_mods"
+helper = "ui_list.rs"
+bindings = [{ name = "mods", ty = "&mut Vec<crate::game::native_hooks::NativeMod>", value = "&mut *mods" }]
+
+
+
+
+# EXTRA BEGIN
+
+[[injection]]
+id = "ui_text"
+kind = "HEAD"
+target = "horizon_client::game::control::Game<'_>::type_chars_into_screen"
+helper = "ui_text.rs"
+cancellable = true
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "text", ty = "&str", value = "text" },
+]
+
+[[module]]
+id = "extra_filters"
+file = "crates/horizon-client-render/src/lib.rs"
+name = "sodium_extra_filters"
+source = "extra_runtime.rs"
+visibility = "pub"
+
+[[injection]]
+id = "extra_particles"
+kind = "HEAD"
+target = "horizon_client_render::particles::ParticleEngine::create"
+helper = "extra_particles.rs"
+cancellable = true
+bindings = [
+  { name = "options", ty = "&ParticleOptions", value = "options" },
+]
+
+[[injection]]
+id = "extra_sprite"
+kind = "HEAD"
+target = "horizon_client_render::sprites::Sprites::register"
+helper = "extra_sprite.rs"
+bindings = [
+  { name = "sprites", ty = "&Sprites", value = "&*self" },
+  { name = "name", ty = "&str", value = "name" },
+]
+
+[[injection]]
+id = "extra_animations"
+kind = "HEAD"
+target = "horizon_client_render::gfx::animate::SpriteAnimator::collect"
+helper = "extra_animations.rs"
+cancellable = true
+bindings = [
+  { name = "animator", ty = "&mut SpriteAnimator", value = "&mut *self" },
+  { name = "tick", ty = "u64", value = "tick" },
+  { name = "active", ty = "Option<&[u64]>", value = "active" },
+]
+
+[[injection]]
+id = "extra_frames"
+kind = "HEAD"
+target = "horizon_client::game::frames::Game<'_>::frame_geometry"
+helper = "extra_frames.rs"
+cancellable = true
+bindings = [
+]
+
+[[injection]]
+id = "extra_stands"
+kind = "HEAD"
+target = "horizon_client::game::armor_stands::Game<'_>::armor_stand_geometry"
+helper = "extra_stands.rs"
+cancellable = true
+bindings = [
+]
+
+[[injection]]
+id = "extra_paintings"
+kind = "HEAD"
+target = "horizon_client::game::paintings::Game<'_>::painting_geometry"
+helper = "extra_paintings.rs"
+cancellable = true
+bindings = [
+]
+
+[[injection]]
+id = "extra_stars"
+kind = "HEAD"
+target = "horizon_client_render::gfx::stars::Stars::draw"
+helper = "extra_stars.rs"
+cancellable = true
+bindings = [
+]
+
+[[injection]]
+id = "extra_toasts"
+kind = "HEAD"
+target = "horizon_client::game::advancements::Game<'_>::draw_toasts"
+helper = "extra_toasts.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+]
+
+[[injection]]
+id = "extra_tutorial"
+kind = "HEAD"
+target = "horizon_client::game::tutorial::super::Game<'_>::draw_tutorial_toasts"
+helper = "extra_tutorial.rs"
+cancellable = true
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+]
+
+[[injection]]
+id = "extra_coordinates"
+kind = "HEAD"
+target = "horizon_client::game::native_hooks::Game<'_>::native_hud"
+helper = "extra_coordinates.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "batch", ty = "&mut HudBatch", value = "&mut *batch" },
+  { name = "corners", ty = "&mut Corners", value = "&mut *corners" },
+]
+
+
+# EXACT UI BEGIN
+
+[[module]]
+id = "exact_model"
+file = "crates/horizon-client/src/game.rs"
+name = "sodium_horizon_exact_model"
+source = "exact_model.rs"
+
+[[module]]
+id = "exact"
+file = "crates/horizon-client/src/game.rs"
+name = "sodium_horizon_exact"
+source = "exact_ui.rs"
+
+[[module]]
+id = "icons"
+file = "crates/horizon-client/src/game.rs"
+name = "sodium_horizon_icons"
+source = "icons.rs"
+
+[[injection]]
+id = "distance_random_bounds"
+kind = "HEAD"
+cancellable = true
+target = "horizon_client::ticket_levels::random_bounds"
+helper = "distance_random_bounds.rs"
+bindings = [{ name = "s", ty = "&Sources", value = "s" }]
+
+[[injection]]
+id = "distance_reach"
+kind = "HEAD"
+cancellable = true
+target = "horizon_client::ticket_levels::reach"
+helper = "distance_reach.rs"
+bindings = [{ name = "s", ty = "&Sources", value = "s" }]
+
+[[injection]]
+id = "distance_compute"
+kind = "HEAD"
+cancellable = true
+target = "horizon_client::ticket_levels::compute"
+helper = "distance_compute.rs"
+bindings = [{ name = "s", ty = "&Sources", value = "s" }]
+
+[[injection]]
+id = "distance_compute_sparse"
+kind = "HEAD"
+cancellable = true
+target = "horizon_client::ticket_levels::compute_sparse"
+helper = "distance_compute_sparse.rs"
+bindings = [{ name = "s", ty = "&Sources", value = "s" }]
+
+[[injection]]
+id = "distance_sync"
+kind = "HEAD"
+cancellable = true
+target = "horizon_client::game::Game<'_>::update_chunk_tickets"
+helper = "distance_sync.rs"
+bindings = [{ name = "game", ty = "&mut Game<'_>", value = "&mut *self" }]

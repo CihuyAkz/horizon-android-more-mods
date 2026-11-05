@@ -1,0 +1,9 @@
+id = "inventory_profiles"
+name = "Inventory Profiles"
+version = "1.0.0"
+kind = "hnmod_source_only"
+source_archive = "inventory_profiles.hnmod"
+horizon_revision = "ba6344a59cb9e755b730dcf02285fc0d33b97d3c"
+mixins_revision = "3f99a5c60dfa311cc365524c44ae2fd799bfa1de"
+required_hooks = 1
+android_status = "source_only_not_wired"
