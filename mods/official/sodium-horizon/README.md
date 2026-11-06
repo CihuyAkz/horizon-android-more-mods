@@ -7,8 +7,8 @@
 - Pinned horizon-mixins revision: `4342a0bfbe71d4d14185528d64e496d6022f16a1`
 - Required hook API: `1`
 
-## Port status
+## Android port status
 
-The complete supplied HNMOD source bundle is preserved in this folder. Its original `horizon-native.json`, `horizon-mixin.toml`, Rust helper files, crate sources, and bundled data were copied without source rewrites. This is a source import only: it is not yet statically wired into this Android build, and it is not a dynamically loadable Android mod. Copying it into `mods/official/` does not activate it.
+A partial Android runtime port is connected to the terrain mesher. When enabled in Options > Mods, it switches section face-visibility resolution to the included row/bitset resolver. The resolver is disabled by default and the original Horizon visibility path remains active until the player enables the mod.
 
-A functional Android port still needs its hooks adapted to this source tree revision, registered with the current Android Mods UI, and validated by compiling and testing the Android build.
+This is not a complete Sodium Horizon port. The supplied settings screen, render-distance controls, extra particles/animations/sprites/frames/paintings/stands/stars/toasts/tutorials, and related UI helpers are not wired into Android. The optimized visibility path has source-level parity checks against the existing mesher reference, but Android compilation, device performance, and visual regression testing have not yet been run in this environment.

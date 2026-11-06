@@ -11,7 +11,7 @@ use std::{
 
 pub const FILE: &str = "horizon-mods.txt";
 /// Fixed native modules compiled into Android APKs, all opt-in.
-pub const ANDROID_BUNDLED: [(&str, &str, &str); 4] = [
+pub const ANDROID_BUNDLED: [(&str, &str, &str); 9] = [
     (
         "zoom",
         "Zoom",
@@ -31,6 +31,31 @@ pub const ANDROID_BUNDLED: [(&str, &str, &str); 4] = [
         "smartf3",
         "SmartF3",
         "Configurable modules for the F3 debug screen",
+    ),
+    (
+        "appleskin_horizon",
+        "AppleSkin",
+        "Shows saturation and food restoration on the hunger HUD",
+    ),
+    (
+        "sodium_horizon",
+        "Sodium Horizon",
+        "Optional optimized section-visibility calculation",
+    ),
+    (
+        "freecam",
+        "Freecam",
+        "Move the camera independently from the player",
+    ),
+    (
+        "accurate_block_placement",
+        "Accurate Block Placement",
+        "Adjust block placement to the targeted face",
+    ),
+    (
+        "connected_textures",
+        "Connected Textures",
+        "Connect matching block texture edges",
     ),
 ];
 
@@ -193,6 +218,16 @@ mod tests {
         assert_eq!(list.enabled.iter().collect::<Vec<_>>(), ["coords_hud"]);
         assert_eq!(ModList::parse(&list.serialize()), list);
         assert_eq!(ModList::default().serialize(), "");
+    }
+
+    #[cfg(target_os = "android")]
+    #[test]
+    fn every_bundled_native_mod_starts_disabled() {
+        let list = ModList::parse("");
+        assert!(list.enabled.is_empty());
+        for (id, _, _) in ANDROID_BUNDLED {
+            assert!(list.disabled.contains(id), "{id} should start disabled");
+        }
     }
 
     #[test]

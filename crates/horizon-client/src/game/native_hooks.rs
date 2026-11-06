@@ -1235,7 +1235,8 @@ impl Game<'_> {
     /// `native_fill` and `native_text`. Skip a corner `native_corner_shown`
     /// says is taken.
     pub(super) fn native_hud(&mut self, batch: &mut HudBatch, corners: &mut Corners) {
-        super::android_bundled::native_hud(self, batch, corners);
+        super::android_bundled::native_hud(self, batch);
+        let _ = corners;
     }
     /// A player right-clicks the entity `entity` (`Entity.getId`) of type
     /// `kind` (`minecraft:cow`) with `self.hand`, holding `stack` (none in an
@@ -2895,7 +2896,15 @@ impl Game<'_> {
     /// turned off does nothing (check this first in each hook) until the
     /// launcher's next build leaves it out.
     pub(super) fn native_on(&self, mod_id: &str) -> bool {
-        !self.settings.mods.disabled.contains(mod_id)
+        #[cfg(target_os = "android")]
+        {
+            self.settings.mods.enabled.contains(mod_id)
+                && !self.settings.mods.disabled.contains(mod_id)
+        }
+        #[cfg(not(target_os = "android"))]
+        {
+            !self.settings.mods.disabled.contains(mod_id)
+        }
     }
     /// Sets a block in the current authoritative level through `Level.setBlock`.
     /// Returns false for another dimension, an invalid state, or no change.
@@ -4272,6 +4281,18 @@ impl Game<'_> {
     pub(super) fn list_native_mods(&mut self) {
         let mut mods = Vec::new();
         self.native_mods(&mut mods);
+        #[cfg(target_os = "android")]
+        {
+            let mut changed = false;
+            for native in &mods {
+                if !self.settings.mods.enabled.contains(&native.id) {
+                    changed |= self.settings.mods.disabled.insert(native.id.clone());
+                }
+            }
+            if changed {
+                self.settings.mods.save(&Self::options_path().with_file_name(mod_list::DIR));
+            }
+        }
         // A WebAssembly mod of the same id doesn't run (`start_mods`): the
         // native row stands for it, and alone toggles its `mod.<id>` line.
         self.settings

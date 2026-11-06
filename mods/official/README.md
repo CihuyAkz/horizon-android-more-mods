@@ -1,37 +1,24 @@
 # Official mod sources
 
-This tree contains three native source layouts:
+This tree contains the Android-native ports and source-preserving imports used by Horizon.
 
-- Existing folders with `Cargo.toml` and `horizon-mod.toml` are sandboxed
-  `horizon-mod-sdk` components, built for Horizon's WASM mod runtime.
-- `accurate-block-placement/` and `connected-textures/` are Android-native
-  source ports adapted to the current game and renderer APIs. They are statically
-  linked into the Android game and registered separately in Options > Mods.
-- The seven folders listed below are complete, source-preserving imports of the
-  supplied `.hnmod` bundles. Each keeps its original `horizon-native.json`,
-  `mixins/<id>/horizon-mixin.toml`, Rust helpers, crate sources, and bundled data.
+## Android static native modules
 
-## Imported HNMOD source bundles
+- `accurate-block-placement/` and `connected-textures/` are Android-native source ports.
+- `appleskin-horizon/` is wired into the Android HUD and Options > Mods.
+- `freecam/` is partially wired into camera, input, player simulation and Options > Mods.
+- `sodium-horizon/` is partially wired into terrain section visibility.
+- Every bundled native module starts disabled; enable it explicitly in Options > Mods.
 
-| Folder | Native mod ID | Version |
-|---|---|---:|
-| `appleskin-horizon/` | `appleskin_horizon` | 1.0.0 |
-| `freecam/` | `freecam` | 0.1.0 |
-| `inventory-profiles/` | `inventory_profiles` | 1.0.0 |
-| `motion-blur/` | `motion_blur` | 0.1.0 |
-| `punchy/` | `punchy` | 0.1.2 |
-| `sodium-horizon/` | `sodium_horizon` | 0.3.1 |
-| `voicechat/` | `voicechat` | 1.0.0 |
+## Imported HNMOD sources
 
-These seven folders are **source-only imports**, not Android runtime integrations.
-Their original manifests pin different Horizon revisions (and, for some bundles,
-additional hook-point API requirements). This Android source statically links a
-fixed set of modules; placing an HNMOD folder under `mods/official/` does not by
-itself build it, add its hooks, or register it in Options > Mods. Each package's
-`PORT.toml` and `README.md` records this status. The original bundle files are
-preserved without rewriting their Rust code or manifests.
+| Folder | Native mod ID | Version | Android status |
+|---|---|---:|---|
+| `freecam/` | `freecam` | 0.1.0 | partial Android runtime port; core camera/input hooks wired |
+| `motion-blur/` | `motion_blur` | 0.1.0 | source-only, not wired |
+| `punchy/` | `punchy` | 0.1.2 | source-only preview; renderer parity incomplete |
+| `sodium-horizon/` | `sodium_horizon` | 0.3.1 | partial Android runtime port; section visibility only |
 
-Some supplied bundles contain no license declaration for the mod source. The
-files are retained in this user-requested local source tree; check with each
-upstream author before redistributing those ports publicly. Punchy's supplied
-bundle includes its own license files, which are retained in its package.
+The imported HNMOD sources above are not Android runtime integrations: keeping an HNMOD folder under `mods/official/` does not by itself compile its modules or install its hooks. Their original manifests and Rust source are retained.
+
+Voice Chat and Inventory Profiles were removed from this tree at the user's request. The 3D Skins mod remains removed.

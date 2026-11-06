@@ -7,8 +7,8 @@
 - Pinned horizon-mixins revision: `4342a0bfbe71d4d14185528d64e496d6022f16a1`
 - Required hook API: `1`
 
-## Port status
+## Android port status
 
-The complete supplied HNMOD source bundle is preserved in this folder. Its original `horizon-native.json`, `horizon-mixin.toml`, Rust helper files, crate sources, and bundled data were copied without source rewrites. This is a source import only: it is not yet statically wired into this Android build, and it is not a dynamically loadable Android mod. Copying it into `mods/official/` does not activate it.
+Freecam is statically wired into the Android game build and appears in Options > Mods. Its toggle/reset keys, movement input, detached camera, camera turning, player visibility, optional player-freeze gate, settings, toast HUD, and clean disable/reset path are connected to the Android game hooks. It starts disabled; enable it explicitly in Options > Mods. The default toggle binding remains F4 and can be changed in the mod's key settings.
 
-A functional Android port still needs its hooks adapted to this source tree revision, registered with the current Android Mods UI, and validated by compiling and testing the Android build.
+This is a partial port, not feature-complete parity with the original mod. The helper runtime documents remaining gaps: collision modes beyond `ignoreAll`, hand rendering, submersion fog, outline, control-player mode, full brightness, and server restrictions are not ported. Touch-only activation has not been verified; an external keyboard or remapped key may be needed on devices without a usable F4 binding. Android compilation and in-game camera movement have not yet been verified in this environment.

@@ -43,6 +43,10 @@ use std::{
     sync::Arc,
 };
 
+#[cfg(target_os = "android")]
+#[path = "../../../mods/official/freecam/mixins/freecam/gate.rs"]
+pub mod freecam_gate;
+
 pub(crate) mod environment;
 mod fluids;
 pub use fluids::{
@@ -1167,6 +1171,10 @@ impl MotionWorld<'_, '_, '_> {
         keys: crate::sprint::Keys,
         sprint_window: i32,
     ) -> Result<()> {
+        #[cfg(target_os = "android")]
+        if let core::ops::ControlFlow::Break(result) = crate::game::freecam_hooks::freeze() {
+            return result;
+        }
         self.local_tick(keys, |player, keys| {
             player.sprint_input_tick_with_window(keys, sprint_window)
         })

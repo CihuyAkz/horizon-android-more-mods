@@ -1,0 +1,6 @@
+DELETE these directories from the project (including all nested files):
+mods/official/voicechat/
+mods/official/inventory-profiles/
+mods/official/skins-3d/
+
+Do not restore these mod folders.

@@ -7,8 +7,8 @@
 - Pinned horizon-mixins revision: `3f99a5c60dfa311cc365524c44ae2fd799bfa1de`
 - Required hook API: `1`
 
-## Port status
+## Android port status
 
-Integrated into the Android client as a statically bundled native mod. Its Mods entry, settings toggle, and saturation/held-food HUD overlay are wired through `android_bundled.rs` and `native_hud`. It is not dynamically loaded from a runtime mods directory.
+AppleSkin's saturation overlay and held-food saturation preview are wired into the Android HUD and Options > Mods. The overlay is drawn in full-screen HUD coordinates after the vanilla hunger bar, rather than inside the inset title overlay, so its pixels line up with the food icons. The mod is disabled by default and must be enabled explicitly.
 
-The Android HUD port draws the saturation overlay and held-food saturation preview. Exhaustion indicator parity is not included in this port.
+The Android visual result has not yet been verified in a running game in this environment.

@@ -55,29 +55,18 @@ mod agent;
 mod agent_settings;
 mod allays;
 mod android_bundled;
-
-// HNMOD runtimes compiled into the Android client. Their hooks are wired in
-// android_bundled.rs; they are not discovered from a runtime mods directory.
 #[cfg(target_os = "android")]
 #[path = "../../../mods/official/appleskin-horizon/mixins/appleskin_horizon/runtime.rs"]
-pub(super) mod mod_appleskin;
+mod mod_appleskin;
 #[cfg(target_os = "android")]
 #[path = "../../../mods/official/appleskin-horizon/mixins/appleskin_horizon/glue.rs"]
-pub(super) mod mod_appleskin_glue;
-
+mod mod_appleskin_glue;
 #[cfg(target_os = "android")]
-#[path = "../../../mods/official/inventory-profiles/mixins/inventory_profiles/runtime.rs"]
-pub(super) mod mod_inventory_profiles;
+#[path = "../../../mods/official/freecam/mixins/freecam/runtime.rs"]
+mod freecam;
 #[cfg(target_os = "android")]
-#[path = "../../../mods/official/inventory-profiles/mixins/inventory_profiles/glue.rs"]
-pub(super) mod mod_inventory_profiles_glue;
-
-#[cfg(target_os = "android")]
-#[path = "../../../mods/official/punchy/mixins/punchy/runtime.rs"]
-pub(super) mod punchy;
-#[cfg(target_os = "android")]
-#[path = "../../../mods/official/punchy/mixins/punchy/geometry.rs"]
-pub(super) mod punchy_geometry;
+#[path = "../../../mods/official/freecam/android.rs"]
+pub(crate) mod freecam_hooks;
 #[cfg(target_os = "android")]
 mod android_input;
 mod armor_stands;
@@ -3024,6 +3013,10 @@ impl Game<'_> {
     /// crosshair target (blocks, fluids, entities, mod raycasts) is found
     /// along this ray, so a tracked controller can stand in for it.
     fn aim(&self) -> Option<([f64; 3], [f64; 3])> {
+        #[cfg(target_os = "android")]
+        if let core::ops::ControlFlow::Break(aim) = freecam_hooks::aim(self) {
+            return aim;
+        }
         // Minecraft.pick: from the camera entity's eyes along its view
         // (LivingEntity.getViewYRot: the head's yaw).
         if let Some(m) = self.camera_mob() {
@@ -7453,6 +7446,12 @@ impl Game<'_> {
     /// keyboard and controllers both end here).
     fn mapped_key(&mut self, key: KeyCode, pressed: bool, repeat: bool) -> Result<()> {
         #[cfg(target_os = "android")]
+        if let core::ops::ControlFlow::Break(result) =
+            freecam_hooks::mapped(self, key, pressed, repeat)
+        {
+            return result;
+        }
+        #[cfg(target_os = "android")]
         if !pressed && self.android_custom_key_held(key) {
             return Ok(());
         }
@@ -8267,6 +8266,10 @@ impl Game<'_> {
             if !spectator {
                 self.draw_selected_name(&mut batch, bar_height, !self.creative);
             }
+            // AppleSkin's saturation pixels must use the same full-screen
+            // coordinates as the vanilla hunger sprites, outside inset_overlay.
+            #[cfg(target_os = "android")]
+            mod_appleskin_glue::on_hud(self, &mut batch);
         }
         // Hud.extractSleepOverlay: over all health/food bars, under titles and chat.
         let draws = hud_overlays::sleep_overlay(wi, hi, self.sleep_timer as i32);
@@ -13247,18 +13250,6 @@ impl Game<'_> {
     /// FirstPersonHandsAndItemsRenderer: the right arm or the held items of
     /// both hands in view space, converted to camera-relative world space.
     fn hand_geometry(&mut self, alpha: f64) -> Vec<Vertex> {
-        #[cfg(target_os = "android")]
-        {
-            punchy::begin(self, alpha);
-            if punchy::ready(self) {
-                let mut out = punchy_geometry::render(self, alpha);
-                punchy::arms(self, alpha, &mut out);
-                for vertex in &mut out {
-                    vertex.layer &= !horizon_client::gfx::OIT_ENTITY;
-                }
-                return out;
-            }
-        }
         let mut out = Vec::new();
         // GameRenderer.renderItemInHand: F1 hides the hand with the HUD.
         if self.spectator()
@@ -15629,6 +15620,10 @@ impl Game<'_> {
     }
     /// A mouse button while playing (window or control socket).
     fn play_mouse(&mut self, button: MouseButton, pressed: bool) -> Result<()> {
+        #[cfg(target_os = "android")]
+        if let core::ops::ControlFlow::Break(result) = freecam_hooks::mouse(self, button) {
+            return result;
+        }
         #[cfg(target_os = "android")]
         if !pressed && self.android_custom_mouse_held(button) {
             return Ok(());
