@@ -1,9 +1,0 @@
-id = "sodium_horizon"
-name = "Sodium Horizon"
-version = "0.3.1"
-kind = "android_static_native"
-source_archive = "sodium_horizon-0.3.1.hnmod"
-horizon_revision = "c9d474dd9116e84c243f8992d75c11314df56f06"
-mixins_revision = "4342a0bfbe71d4d14185528d64e496d6022f16a1"
-required_hooks = 1
-android_status = "partial_android_runtime_wired"
