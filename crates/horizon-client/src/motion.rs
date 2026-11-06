@@ -1172,8 +1172,8 @@ impl MotionWorld<'_, '_, '_> {
         sprint_window: i32,
     ) -> Result<()> {
         #[cfg(target_os = "android")]
-        if let core::ops::ControlFlow::Break(result) = crate::game::freecam_hooks::freeze() {
-            return result;
+        if freecam_gate::frozen() {
+            return Ok(());
         }
         self.local_tick(keys, |player, keys| {
             player.sprint_input_tick_with_window(keys, sprint_window)
