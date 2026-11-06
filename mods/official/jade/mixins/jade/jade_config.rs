@@ -25,6 +25,30 @@ use horizon_client::text::Text;
 use horizon_client::ui;
 use std::cell::RefCell;
 
+
+/// Draw a label inside a fixed width. The Android client revision has no
+/// scrolling_text UI helper, so long strings are shortened with an ellipsis.
+fn draw_fitted_text(game: &Game<'_>, batch: &mut HudBatch, text: &Text, left: f32, right: f32, y: f32, color: u32) {
+    let original = text.plain();
+    let width = (right - left).max(0.0);
+    let shown = if game.native_text_width(&original) <= width {
+        original
+    } else {
+        let mut prefix = String::new();
+        for ch in original.chars() {
+            let mut candidate = prefix.clone();
+            candidate.push(ch);
+            candidate.push_str("...");
+            if game.native_text_width(&candidate) > width {
+                break;
+            }
+            prefix.push(ch);
+        }
+        if prefix.is_empty() { String::new() } else { format!("{prefix}...") }
+    };
+    game.native_text(batch, &shown, [left, y], color, true);
+}
+
 /// BaseOptionsScreen: the navigation column's width, and what's left under the list.
 const NAV_W: f32 = 120.0;
 const FOOTER: f32 = 32.0;
@@ -276,8 +300,6 @@ enum Page {
 
 #[derive(Clone, Copy, PartialEq)]
 enum Host {
-    /// The mod's own screen over the world.
-    Mod,
     /// Drawn over the Options screen, its input taken.
     Options,
 }
@@ -532,15 +554,10 @@ fn new_ui(host: Host) -> Ui {
 }
 
 /// `/jadec config` and Jade's menu key: HomeConfigScreen over the world. False where the game won't have it.
-pub fn open_in_world(game: &mut Game<'_>) -> bool {
-    if !game.native_mod_screen_open(ID) {
-        return false;
-    }
-    jade::ensure_lang();
-    let mut ui = new_ui(Host::Mod);
-    ui.preview = game.native_setting(ID, "preview_overlay").is_none_or(|v| v != "false");
-    UI.with_borrow_mut(|u| *u = Some(ui));
-    true
+pub fn open_in_world(_game: &mut Game<'_>) -> bool {
+    // This Android revision has no native in-world mod-screen API. The key
+    // handler falls back to Options > Mods, where Jade's settings page opens.
+    false
 }
 
 /// The Jade page's button in Options > Mods: HomeConfigScreen over that screen.
@@ -557,10 +574,7 @@ pub fn frame(game: &mut Game<'_>) {
     let Some(host) = UI.with_borrow(|u| u.as_ref().map(|ui| ui.host)) else {
         return;
     };
-    let up = match host {
-        Host::Mod => game.native_mod_screen() == Some(ID),
-        Host::Options => game.screen == crate::game::Screen::Options,
-    };
+    let up = game.screen == crate::game::Screen::Options;
     if !up {
         finish(game);
         return;
@@ -570,14 +584,9 @@ pub fn frame(game: &mut Game<'_>) {
         match action {
             Action::Close => {
                 finish(game);
-                match host {
-                    Host::Mod => game.native_mod_screen_close(ID),
-                    // The page under it says what the options are now.
-                    Host::Options => {
-                        if let Some(i) = game.settings.mods.installed.iter().position(|m| m.id == ID) {
-                            game.native_settings_refresh(i);
-                        }
-                    }
+                // The page under it says what the options are now.
+                if let Some(i) = game.settings.mods.installed.iter().position(|m| m.id == ID) {
+                    game.native_settings_refresh(i);
                 }
                 return;
             }
@@ -620,10 +629,7 @@ fn with_ui<R>(game: &Game<'_>, screen_id: &str, f: impl FnOnce(&mut Ui) -> R) ->
     }
     UI.with_borrow_mut(|u| {
         let ui = u.as_mut()?;
-        let up = match ui.host {
-            Host::Mod => screen_id == "mod" && game.native_mod_screen() == Some(ID),
-            Host::Options => screen_id == "options",
-        };
+        let up = ui.host == Host::Options && screen_id == "options";
         up.then(|| f(ui))
     })
 }
@@ -1615,11 +1621,7 @@ impl Ui {
         let atlas = &game.gui.atlas;
         // Screen.renderBackground: the world dimmed; over Options, that screen hidden.
         let [w, h] = self.size;
-        if self.host == Host::Mod {
-            batch.fill_gradient(atlas, (0.0, 0.0, w, h), rgba(16, 16, 16, 0xC0), rgba(16, 16, 16, 0xD0));
-        } else {
-            batch.fill(atlas, 0.0, 0.0, w, h, rgba(16, 16, 16, 0xF8));
-        }
+        batch.fill(atlas, 0.0, 0.0, w, h, rgba(16, 16, 16, 0xF8));
         // What's under a modal layer doesn't hover (`extractRenderState` with the mouse at MAX_VALUE).
         let m = if self.adjusting || self.confirm.is_some() { [-1.0e6, -1.0e6] } else { mouse };
         if self.page == Page::Home {
@@ -1871,7 +1873,7 @@ impl Ui {
             } else {
                 game.native_text(batch, &lines[0], [text_x, mid - 9.0], 0xFFFFFF, true);
                 let rest = Text::literal(lines[1..].join(" "));
-                ui::scrolling_text(batch, atlas, &rest, text_x, text_x + most, mid, mid + 9.0, mid + 1.0, white);
+                draw_fitted_text(game, batch, &rest, text_x, text_x + most, mid + 1.0, white);
             }
             let state = if self.pressed == Some(row_index) {
                 ToggleState::Pressed
@@ -1885,7 +1887,7 @@ impl Ui {
             draw_toggle(game, batch, toggle, jade::on(game, row.key), state);
         } else {
             let label = Text::literal(row.label.as_str());
-            ui::scrolling_text(batch, atlas, &label, text_x, cx + cw - 8.0, cy + 2.0, cy + 15.0, cy + 4.0, white);
+            draw_fitted_text(game, batch, &label, text_x, cx + cw - 8.0, cy + 4.0, white);
             let value = [cx + 4.0, cy + ch - 2.0 - 20.0, cw - 8.0, 20.0];
             let hover = if self.keyboard { self.focused_row() == Some(row_index) } else { hit(value, m) };
             self.draw_value(game, batch, row, row_index, value, hover, self.row_enabled(game, row));
@@ -1894,7 +1896,7 @@ impl Ui {
         if let Some(icon) = row.icon {
             let at = [cx + 4.0, if row.kind == Kind::Toggle { cy + (ch / 2.0).floor() - 8.0 } else { cy + 1.0 }];
             if row.key == "potion_effects" {
-                game.native_item_stack(batch, &horizon_client::items::ItemStack::new(icon, 1).with_potion("minecraft:healing"), at, 16.0);
+                game.native_item(batch, icon, at, 16.0);
             } else {
                 game.native_item(batch, icon, at, 16.0);
             }
@@ -1928,7 +1930,7 @@ impl Ui {
             let label_x = px + 2.0 + 10.0;
             let enabled = self.row_enabled(game, row);
             let label = if enabled { Text::literal(row.label.as_str()) } else { Text::colored(row.label.as_str(), 0xAAAAAA) };
-            ui::scrolling_text(batch, atlas, &label, label_x, value[0] - 4.0, y, y + ROW, y + 9.0, rgba(255, 255, 255, 255));
+            draw_fitted_text(game, batch, &label, label_x, value[0] - 4.0, y + 9.0, rgba(255, 255, 255, 255));
             let hover = if self.keyboard { self.focused_row() == Some(*row_index) } else { hit(value, m) };
             self.draw_value(game, batch, row, *row_index, value, hover, enabled);
             if !self.keyboard && hit([px, y, pw, ROW], m) && m[0] < value[0] {
@@ -2084,7 +2086,7 @@ impl Ui {
         } else {
             Text::colored(row.label.as_str(), 0xAAAAAA)
         };
-        ui::scrolling_text(batch, atlas, &label, label_x, rects.value[0] - 4.0, y, y + ROW, y + 9.0, white);
+        draw_fitted_text(game, batch, &label, label_x, rects.value[0] - 4.0, y + 9.0, white);
         let hover = hit(rects.value, m) || (self.keyboard && self.focused_row() == Some(row_index));
         self.draw_value(game, batch, row, row_index, rects.value, hover, enabled);
         if row.ignore {
