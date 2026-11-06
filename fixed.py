@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 # Apply the Android build fixes to the checked-out `android` branch.
 
@@ -210,21 +211,24 @@ compatibility gaps, so device testing is still required.''',
     )
     updates[path] = content
 
-    # Validate the expected package before changing anything.
+    # Validate the Inventory Profiles package before changing anything.
     removed_dir = "mods/official/inventory-profiles"
     tracked = run_git("ls-files", "--", removed_dir, cwd=root).splitlines()
-    if len(tracked) != 13:
+
+    if len(tracked) not in (0, 13):
         raise RuntimeError(
-            f"Expected 13 tracked Inventory Profiles files, found {len(tracked)}. "
+            f"Expected 0 or 13 tracked Inventory Profiles files, found {len(tracked)}. "
             "No edited files have been written."
         )
 
     # All text replacements are validated before any modifications are made.
-    subprocess.run(
-        ["git", "rm", "-r", "--", removed_dir],
-        cwd=root,
-        check=True,
-    )
+    if tracked:
+        subprocess.run(
+            ["git", "rm", "-r", "--", removed_dir],
+            cwd=root,
+            check=True,
+        )
+
     for relative_path, updated_content in updates.items():
         (root / relative_path).write_text(updated_content, encoding="utf-8")
 
@@ -234,7 +238,12 @@ compatibility gaps, so device testing is still required.''',
     print("\nUpdated files:")
     for relative_path in updates:
         print(f"  M {relative_path}")
-    print(f"\nDeleted Inventory Profiles package: {len(tracked)} tracked files")
+
+    if tracked:
+        print(f"\nDeleted Inventory Profiles package: {len(tracked)} tracked files")
+    else:
+        print("\nInventory Profiles package was already removed; skipped deletion.")
+
     print("\nReview the changes with: git diff")
     print("No commit was created.")
     return 0
