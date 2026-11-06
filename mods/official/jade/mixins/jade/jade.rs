@@ -938,6 +938,29 @@ pub fn seconds(ticks: i64) -> String {
     trf("jade.seconds", "{0}s", &[&s.to_string()])
 }
 
+/// The first block on a ray, its distance, position, name and hit point.
+/// The Android client uses Horizon's own ray clipper rather than a loader view-hit API.
+fn ray_block_hit(
+    game: &Game<'_>,
+    origin: [f64; 3],
+    direction: [f64; 3],
+    reach: f64,
+) -> Option<(f64, [i32; 3], String, [f64; 3])> {
+    let hit = game.clip_ray(origin, direction, reach)?;
+    let id = game.world.block(hit.pos[0], hit.pos[1], hit.pos[2]);
+    let name = game
+        .pack
+        .assets
+        .registry
+        .state(id)
+        .map_or_else(|| game.res.facts().get(id).name.to_string(), |state| state.name.to_string());
+    let distance = (0..3)
+        .map(|axis| (hit.point[axis] - origin[axis]).powi(2))
+        .sum::<f64>()
+        .sqrt();
+    Some((distance, hit.pos, name, hit.point))
+}
+
 /// What the player looks at: the nearer of the block and the mob under the crosshair (fluids only with Toggle
 /// Fluid on).
 fn target(game: &Game<'_>) -> Option<Target> {
@@ -948,30 +971,26 @@ fn target(game: &Game<'_>) -> Option<Target> {
     let extra = num(game, "reach_distance");
     let block_reach = game.block_reach + extra; // RayTracing.fire: the player's own range, Extended Reach on top.
     let camera_ray = opt(game, "perspective_mode") == "camera" && !game.camera_type.first_person();
-    let mut block = game.native_view_hit().filter(|(d, _)| f64::from(*d) <= block_reach);
+    let mut block = game
+        .aim()
+        .and_then(|(eye, direction)| ray_block_hit(game, eye, direction, block_reach));
     if camera_ray
-        && let Some((eye, dir)) = game.aim()
+        && let Some((eye, direction)) = game.aim()
     {
         let (origin, look) = match game.camera_type {
-            crate::game::perspective::CameraType::ThirdPersonFront => ([eye[0] + dir[0] * 4.0, eye[1] + dir[1] * 4.0, eye[2] + dir[2] * 4.0], [-dir[0], -dir[1], -dir[2]]),
-            _ => ([eye[0] - dir[0] * 4.0, eye[1] - dir[1] * 4.0, eye[2] - dir[2] * 4.0], dir),
+            crate::game::perspective::CameraType::ThirdPersonFront => (
+                [eye[0] + direction[0] * 4.0, eye[1] + direction[1] * 4.0, eye[2] + direction[2] * 4.0],
+                [-direction[0], -direction[1], -direction[2]],
+            ),
+            _ => (
+                [eye[0] - direction[0] * 4.0, eye[1] - direction[1] * 4.0, eye[2] - direction[2] * 4.0],
+                direction,
+            ),
         };
-        if let (Some(hit), Some((d, mut base))) = (game.clip_ray(origin, look, block_reach + 4.0), game.native_view_hit()) {
-            base.block_x = hit.pos[0];
-            base.block_y = hit.pos[1];
-            base.block_z = hit.pos[2];
-            base.x = hit.point[0];
-            base.y = hit.point[1];
-            base.z = hit.point[2];
-            let id = game.world.block(hit.pos[0], hit.pos[1], hit.pos[2]);
-            if let Some(state) = game.pack.assets.registry.state(id) {
-                base.block = state.name.to_string();
-            }
-            block = Some((d, base));
-        }
+        block = ray_block_hit(game, origin, look, block_reach + 4.0);
     }
-    if let Some((_, hit)) = &block {
-        CLIENT.with_borrow_mut(|c| c.hit_point = [hit.x, hit.y, hit.z]);
+    if let Some((_, _, _, point)) = &block {
+        CLIENT.with_borrow_mut(|c| c.hit_point = *point);
     }
     // The nearest entity Jade can show: mobs, frames, paintings, armour stands, dropped items.
     let mut entity: Option<(f64, Target)> = None;
@@ -1032,7 +1051,7 @@ fn target(game: &Game<'_>) -> Option<Target> {
         }
     }
     let cfg = config(game);
-    let block = block.filter(|(_, hit)| cfg.blocks && !ignored(game, Some(&hit.block), None));
+    let block = block.filter(|(_, _, name, _)| cfg.blocks && !ignored(game, Some(name), None));
     let entity = entity.filter(|_| cfg.entities);
     let entity = entity.filter(|(_, t)| {
         let id = match t {
@@ -1052,7 +1071,7 @@ fn target(game: &Game<'_>) -> Option<Target> {
     // block is there.
     let fluids_mode = opt(game, "display_fluids");
     let any_fluid = fluids_mode == "any" || CLIENT.with_borrow(|c| c.liquids);
-    let block = block.filter(|(_, hit)| !hit.block.ends_with(":air"));
+    let block = block.filter(|(_, _, name, _)| !name.ends_with(":air"));
     let fluid = if cfg.blocks && (any_fluid || (fluids_mode == "fallback" && block.is_none())) {
         fluid_hit(game, block_reach, any_fluid)
     } else {
@@ -1064,11 +1083,11 @@ fn target(game: &Game<'_>) -> Option<Target> {
         }
     };
     let looked_at = match (block, fluid) {
-        (Some((bd, _)), Some((fd, pos, name))) if fd < f64::from(bd) => {
+        (Some((bd, _, _, _)), Some((fd, pos, name))) if fd < bd => {
             on_fluid(fd);
             Some((fd, Target::Block { pos, block: name }))
         }
-        (Some((bd, hit)), _) => Some((f64::from(bd), Target::Block { pos: [hit.block_x, hit.block_y, hit.block_z], block: hit.block })),
+        (Some((bd, pos, name, _)), _) => Some((bd, Target::Block { pos, block: name })),
         (None, Some((fd, pos, name))) => {
             on_fluid(fd);
             Some((fd, Target::Block { pos, block: name }))
@@ -1486,7 +1505,7 @@ fn vanilla(game: &Game<'_>, t: &Target, details: bool, lines: &mut Vec<Line>) {
             if !matches!(kind, "minecraft:armor_stand" | "minecraft:creaking") && on(game, "entity_health") {
                 // The mob's own max_health attribute (a horse rolls its own).
                 let max = m.attrs.max_health.max(1.0);
-                lines.push(Line::new().with(El::Hearts { health: m.health.max(0.0), max, absorb: m.absorption.max(0.0) }));
+                lines.push(Line::new().with(El::Hearts { health: m.health.max(0.0), max, absorb: 0.0 }));
             }
             if m.kind.armor > 0.0 && on(game, "entity_armor") {
                 lines.push(Line::new().with(El::Armor(m.kind.armor)));
@@ -1562,7 +1581,7 @@ fn vanilla(game: &Game<'_>, t: &Target, details: bool, lines: &mut Vec<Line>) {
                 && matches!(kind, "minecraft:wolf" | "minecraft:cat" | "minecraft:parrot" | "minecraft:horse" | "minecraft:donkey" | "minecraft:mule"
                     | "minecraft:skeleton_horse" | "minecraft:zombie_horse" | "minecraft:llama" | "minecraft:trader_llama" | "minecraft:camel"
                     | "minecraft:camel_husk" | "minecraft:nautilus" | "minecraft:zombie_nautilus" | "minecraft:happy_ghast")
-                && let Some(armor) = m.extra.body.as_deref()
+                && let Some(armor) = m.extra.head.as_deref()
                 && (opt(game, "pet_armor_mode") != "damageable" || game.res.items().get(armor).is_some_and(|i| i.max_damage > 0))
             {
                 lines.push(Line::new().with(Line::small(armor)).with(El::Text(format!("§f{}", item_name(game, armor)))));
@@ -2045,16 +2064,9 @@ fn human(number: i64, unit: &str) -> String {
 
 /// EnergyStorageProvider's line in Energy Storage's Display Style (`CommonProxy.wrapEnergyStorage` through any side).
 fn energy_lines(game: &Game<'_>, pos: [i32; 3], lines: &mut Vec<String>) {
-    let dim = game.dim.id();
-    let found = horizon_core::geometry::Direction::ALL.into_iter().find_map(|face| game.native_energy(dim, pos, face));
-    let Some(energy) = found.filter(|e| e.capacity > 0) else { return };
-    let (current, max) = (human(i64::from(energy.amount), "FE"), human(i64::from(energy.capacity), "FE"));
-    lines.push(match opt(game, "energy_style").as_str() {
-        "plain" => trf("jade.energy.text", "Energy: %s", &[&trf("jade.fe", "%s / %s", &[&current, &max])]),
-        // Jade's energy sprite isn't in Horizon's atlas: redstone, the provider's config icon's dust.
-        "icon" => encode(&Line::new().with(Line::small("minecraft:redstone")).with(El::Text(trf("jade.fe", "%s / %s", &[&current, &max])))),
-        _ => encode(&Line::new().with(El::Bar { frac: (energy.amount as f32 / energy.capacity as f32).clamp(0.0, 1.0), color: 0xB01010, text: trf("jade.fe", "%s / %s", &[&format!("§f{current}§r"), &max]) })),
-    });
+    // This Horizon Android revision does not expose the native energy-storage hook.
+    // Keep the provider entry point so the rest of Jade's block details remain intact.
+    let _ = (game, pos, lines);
 }
 
 /// The stacks of a slot that holds what the player pointed at, if a shelf (ShelfProvider): its icon, name and the book's
@@ -2131,9 +2143,7 @@ fn vanilla_server(game: &mut Game<'_>, player: u128, pos: [i32; 3], block: &str,
     }
     // The ender chest's contents are the asking player's own (ItemStorageProvider.Extension.getGroups).
     if block == "minecraft:ender_chest" {
-        if let Ok(inv) = game.native_inventory(player, crate::game::native_inventories::NativeInventoryKind::Ender) {
-            storage(game, details, lines, inv.slots.iter().flatten());
-        }
+        storage(game, details, lines, game.ender_items.iter().flatten());
         return;
     }
     // Progress on what a mod says (`register_progress`).
@@ -3401,7 +3411,7 @@ pub fn hud(game: &mut Game<'_>, batch: &mut HudBatch) {
             game.screen = crate::game::Screen::Inventory;
             game.capture(false);
         } else {
-            let _ = game.key_pressed(winit::keyboard::KeyCode::KeyE, winit::keyboard::KeyCode::KeyE);
+            let _ = game.key_pressed(winit::keyboard::KeyCode::KeyE);
         }
     }
     let title = if on(game, "accessibility_plugin") { access_title(game, &t, title) } else { title };
@@ -3687,7 +3697,7 @@ pub fn draw_box(game: &Game<'_>, batch: &mut HudBatch, b: &BuiltBox, adjusting: 
                 None => ([x, iy], 16.0),
             }
         };
-        let drawn = b.icon_stack.as_ref().is_some_and(|stack| game.native_item_stack(batch, stack, at, size));
+        let drawn = b.icon_stack.as_ref().is_some_and(|stack| game.native_item(batch, &stack.item, at, size));
         if !drawn {
             game.native_item(batch, icon, at, size);
         }
@@ -3927,7 +3937,7 @@ fn mob_server_lines(game: &Game<'_>, m: &horizon_client::mobs::Mob, player: u128
     let kind = m.kind.id.as_ref();
     // EntityHealthAndArmorProvider.
     if !matches!(kind, "minecraft:armor_stand" | "minecraft:creaking") {
-        lines.push(encode(&Line::new().with(El::Stats { absorb: m.absorption.max(0.0), armor: horizon_client::mobs::armor::values(m).0 })));
+        lines.push(encode(&Line::new().with(El::Stats { absorb: 0.0, armor: m.kind.armor })));
     }
     // WaxedProvider.EntityData (CopperGolem.nextWeatheringTick == -2).
     if kind == "minecraft:copper_golem" && on(game, "waxed") && m.extra.vector[0] == -2.0 {
@@ -3945,10 +3955,8 @@ fn mob_server_lines(game: &Game<'_>, m: &horizon_client::mobs::Mob, player: u128
     }
     // EntityLootTableProvider: for game masters.
     if on(game, "loot_table") && game.native_server_players().into_iter().find(|p| p.uuid == player).is_some_and(|p| p.permission >= 2) {
-        let table = m.extra.death_loot_table.clone().unwrap_or_else(|| {
-            let (ns, path) = kind.split_once(':').unwrap_or(("minecraft", kind));
-            format!("{ns}:entities/{path}")
-        });
+        let (ns, path) = kind.split_once(':').unwrap_or(("minecraft", kind));
+        let table = format!("{ns}:entities/{path}");
         lines.push(trf("jade.lootTable", "Loot Table: %s", &[&table]));
     }
 }
