@@ -2130,8 +2130,9 @@ impl Game<'_> {
                 host.hub.send_to(
                     conn,
                     &C::GameRuleValues(play::GameRuleValues {
-                        entries: horizon_client::gamerules::RULES
-                            .iter()
+                        entries: self.ui.rules
+                            .available_rules()
+                            .into_iter()
                             .map(|r| play::GameRuleEntry {
                                 name: format!("minecraft:{}", r.name),
                                 value: self.ui.rules.get(r.name).unwrap_or(r.default).to_string(),

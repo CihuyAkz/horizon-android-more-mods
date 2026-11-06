@@ -9,6 +9,10 @@
 //! own random drives positions, sounds and jumps. `RunOne` shuffles with a
 //! random of its own, seeded with the brain's `shuffle_seed` when it is
 //! built.
+
+#[cfg(target_os = "android")]
+#[path = "../../../../mods/official/jade/mixins/jade/brain_ttl.rs"]
+mod hz_jade_brain;
 use super::{
     Mob, MobEvent, MobWorld, Species, Who,
     brain::{Timed, living_near},

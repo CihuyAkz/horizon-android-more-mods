@@ -2472,6 +2472,10 @@ impl Game<'_> {
     /// `BossHealthOverlay.extractRenderState`: whatever `publish_boss_bars`
     /// (or a server's packets) put on this client's overlay.
     pub(super) fn draw_boss_bars(&self, batch: &mut HudBatch) {
+        #[cfg(target_os = "android")]
+        if super::jade::hide_boss_bars(self) {
+            return;
+        }
         let bars = self
             .boss_overlay
             .bars(horizon_client::boss_overlay::now_millis());

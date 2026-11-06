@@ -1,4 +1,8 @@
 //! Server text displays: metadata, interpolation, billboard transforms and world text.
+
+#[cfg(target_os = "android")]
+#[path = "../../../../mods/official/jade/mixins/jade/display_access.rs"]
+mod hz_jade_displays;
 use super::Game;
 use horizon_assets::item_model::DisplayContext;
 use horizon_client::{

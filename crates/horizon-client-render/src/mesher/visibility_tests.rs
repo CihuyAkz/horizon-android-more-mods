@@ -294,27 +294,3 @@ fn visibility_benchmark() {
     }
 }
 
-#[cfg(target_os = "android")]
-#[test]
-fn sodium_horizon_visibility_matches_the_mesher_reference() {
-    let info = [info(false), info(true), info(false), info(true)];
-    let mut stack = Vec::new();
-    for (name, pad) in cases() {
-        assert_eq!(
-            super::section_visibility(&pad, &info, &mut stack),
-            reference(&pad, &info),
-            "Sodium Horizon: {name}"
-        );
-    }
-    let mut seed = 0x3141_5926_5358_9793;
-    for percent in [1, 10, 25, 50, 75, 90, 99] {
-        for _ in 0..32 {
-            let pad = fixture(|_, _, _| random(&mut seed) % 100 < percent);
-            assert_eq!(
-                super::section_visibility(&pad, &info, &mut stack),
-                reference(&pad, &info),
-                "Sodium Horizon randomized density {percent}%"
-            );
-        }
-    }
-}

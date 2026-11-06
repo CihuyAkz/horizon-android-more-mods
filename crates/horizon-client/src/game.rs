@@ -74,6 +74,24 @@ mod punchy;
 #[path = "../../../mods/official/punchy/mixins/punchy/geometry.rs"]
 mod punchy_geometry;
 #[cfg(target_os = "android")]
+#[path = "../../../mods/official/armorhud/mixins/armorhud/runtime.rs"]
+mod armorhud;
+#[cfg(target_os = "android")]
+#[path = "../../../mods/official/jade/mixins/jade/jade.rs"]
+mod jade;
+#[cfg(target_os = "android")]
+#[path = "../../../mods/official/jade/mixins/jade/jade_theme.rs"]
+mod jade_theme;
+#[cfg(target_os = "android")]
+#[path = "../../../mods/official/jade/mixins/jade/jade_config.rs"]
+mod jade_config;
+#[cfg(target_os = "android")]
+#[path = "../../../mods/official/resourcify/mixins/resourcify/runtime.rs"]
+mod native_resourcify;
+#[cfg(target_os = "android")]
+#[path = "../../../mods/official/resourcify/mixins/resourcify/ui.rs"]
+mod native_resourcify_ui;
+#[cfg(target_os = "android")]
 mod android_input;
 mod armor_stands;
 mod atlas_slots;

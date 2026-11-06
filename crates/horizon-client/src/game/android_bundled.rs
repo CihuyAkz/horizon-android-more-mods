@@ -5,6 +5,59 @@ use super::*;
 use super::native_hooks::*;
 
 #[cfg(target_os = "android")]
+include!("../../../../mods/official/armorhud/mixins/armorhud/list.rs");
+#[cfg(target_os = "android")]
+include!("../../../../mods/official/armorhud/mixins/armorhud/settings.rs");
+#[cfg(target_os = "android")]
+include!("../../../../mods/official/armorhud/mixins/armorhud/click.rs");
+#[cfg(target_os = "android")]
+include!("../../../../mods/official/armorhud/mixins/armorhud/key.rs");
+#[cfg(target_os = "android")]
+include!("../../../../mods/official/armorhud/mixins/armorhud/hud.rs");
+
+#[cfg(target_os = "android")]
+include!("../../../../mods/official/jade/mixins/jade/frame.rs");
+#[cfg(target_os = "android")]
+include!("../../../../mods/official/jade/mixins/jade/hud.rs");
+#[cfg(target_os = "android")]
+include!("../../../../mods/official/jade/mixins/jade/list.rs");
+#[cfg(target_os = "android")]
+include!("../../../../mods/official/jade/mixins/jade/settings.rs");
+#[cfg(target_os = "android")]
+include!("../../../../mods/official/jade/mixins/jade/settings_click.rs");
+#[cfg(target_os = "android")]
+include!("../../../../mods/official/jade/mixins/jade/net_from_client.rs");
+#[cfg(target_os = "android")]
+include!("../../../../mods/official/jade/mixins/jade/net_from_server.rs");
+#[cfg(target_os = "android")]
+include!("../../../../mods/official/jade/mixins/jade/jade_command.rs");
+#[cfg(target_os = "android")]
+include!("../../../../mods/official/jade/mixins/jade/jade_perform_command.rs");
+#[cfg(target_os = "android")]
+include!("../../../../mods/official/jade/mixins/jade/jade_perform_console.rs");
+#[cfg(target_os = "android")]
+include!("../../../../mods/official/jade/mixins/jade/jade_register_commands.rs");
+#[cfg(target_os = "android")]
+include!("../../../../mods/official/jade/mixins/jade/screen_render_post.rs");
+#[cfg(target_os = "android")]
+include!("../../../../mods/official/jade/mixins/jade/screen_pressed.rs");
+#[cfg(target_os = "android")]
+include!("../../../../mods/official/jade/mixins/jade/screen_released.rs");
+#[cfg(target_os = "android")]
+include!("../../../../mods/official/jade/mixins/jade/screen_scrolled.rs");
+#[cfg(target_os = "android")]
+include!("../../../../mods/official/jade/mixins/jade/screen_key.rs");
+#[cfg(target_os = "android")]
+include!("../../../../mods/official/jade/mixins/jade/screen_typed.rs");
+#[cfg(target_os = "android")]
+include!("../../../../mods/official/jade/mixins/jade/resources_reloaded.rs");
+
+#[cfg(target_os = "android")]
+include!("../../../../mods/official/resourcify/mixins/resourcify/listed.rs");
+#[cfg(target_os = "android")]
+include!("../../../../mods/official/resourcify/mixins/resourcify/frame.rs");
+
+#[cfg(target_os = "android")]
 #[path = "../../../../mods/official/accurate-block-placement/src/runtime.rs"]
 pub(super) mod accurate_block_placement;
 
@@ -145,6 +198,7 @@ pub(super) fn native_key(game: &mut Game<'_>, key: &str, pressed: bool) {
         accurate_block_placement_key::run(&mut *game, key, pressed);
         super::freecam_hooks::key(&mut *game, key, pressed);
         super::punchy::key(&mut *game, key, pressed);
+        armorhud_key(&mut *game, key, pressed);
     }
 }
 
@@ -175,6 +229,9 @@ pub(super) fn native_mods(game: &mut Game<'_>, mods: &mut Vec<NativeMod>) {
         accurate_block_placement_list::run(&mut *mods);
         connected_textures_list::run(&mut *mods);
         super::mod_appleskin_glue::on_list(&mut *mods);
+        armorhud_listed(&mut *mods);
+        jade_listed(&mut *mods);
+        resourcify_listed(&mut *mods);
         super::freecam_hooks::list(&mut *mods);
         mods.push(NativeMod {
             id: super::punchy::ID.into(),
@@ -184,12 +241,6 @@ pub(super) fn native_mods(game: &mut Game<'_>, mods: &mut Vec<NativeMod>) {
                 ["inspect".into(), "Inspect item".into(), "key.keyboard.f6".into()],
                 ["reload".into(), "Reload animations".into(), "key.keyboard.f7".into()],
             ],
-        });
-        mods.push(NativeMod {
-            id: "sodium_horizon".into(),
-            title: "Sodium Horizon 0.3.1".into(),
-            description: "Optional optimized section-visibility calculation".into(),
-            keys: Vec::new(),
         });
     }
 }
@@ -209,6 +260,8 @@ pub(super) fn native_settings(game: &mut Game<'_>, mod_id: &str, buttons: &mut V
         if mod_id == super::punchy::ID {
             super::punchy::settings(&*game, &mut *buttons);
         }
+        armorhud_page(&mut *game, mod_id, &mut *buttons);
+        jade_settings(&mut *game, mod_id, &mut *buttons);
     }
 }
 
@@ -227,6 +280,8 @@ pub(super) fn native_settings_click(game: &mut Game<'_>, mod_id: &str, button: u
         if mod_id == super::punchy::ID {
             super::punchy::click(&*game, button);
         }
+        armorhud_click(&mut *game, mod_id, button);
+        jade_settings_click(&mut *game, mod_id, button);
     }
 }
 
@@ -244,9 +299,6 @@ pub(super) fn native_tick(game: &mut Game<'_>) {
     {
         super::freecam_hooks::tick(&mut *game);
         super::punchy::tick(&mut *game);
-        horizon_client_render::native_sodium_horizon::set_enabled(
-            game.native_on("sodium_horizon"),
-        );
         if game.native_window() {
             game.android_accurate_block_placement_tick();
         }
@@ -275,13 +327,23 @@ pub(super) fn native_frame(game: &mut Game<'_>, elapsed: Duration) {
         recipes_frame::run(&mut *game);
         accurate_block_placement_frame::run(&mut *game);
         connected_textures_frame::run(&mut *game);
+        jade_frame(&mut *game);
+        resourcify_frame(&mut *game);
     }
 }
 
-pub(super) fn native_hud(game: &Game<'_>, batch: &mut horizon_client::hud::HudBatch) {
+pub(super) fn native_hud(
+    game: &mut Game<'_>,
+    batch: &mut horizon_client::hud::HudBatch,
+    corners: &mut horizon_client::extras_hud::Corners,
+) {
     #[cfg(target_os = "android")]
-    super::freecam_hooks::hud(game, batch);
-    let _ = (game, batch);
+    {
+        super::freecam_hooks::hud(game, batch);
+        armorhud_hud(game, batch, corners);
+        jade_hud(game, batch);
+    }
+    let _ = (game, batch, corners);
 }
 
 pub(super) fn native_panel_event(game: &mut Game<'_>, mod_id: &str, event: &NativePanelEvent) {
@@ -297,7 +359,96 @@ pub(super) fn native_command(game: &mut Game<'_>, command: &str, ran: &mut bool)
     #[cfg(target_os = "android")]
     {
         smartf3_command::run(&mut *game, command, &mut *ran);
+        jade_command(&mut *game, command, &mut *ran);
     }
+}
+
+#[cfg(target_os = "android")]
+pub(super) fn native_client_resources_reloaded(game: &mut Game<'_>) {
+    jade_resources_reloaded(game);
+}
+
+#[cfg(target_os = "android")]
+pub(super) fn native_screen_render_post(
+    game: &Game<'_>,
+    batch: &mut horizon_client::hud::HudBatch,
+    screen: &NativeScreenView<'_>,
+) {
+    jade_screen_render_post(game, batch, screen);
+}
+
+#[cfg(target_os = "android")]
+pub(super) fn native_screen_mouse_button_pressed_pre(
+    game: &Game<'_>, screen: &NativeScreenView<'_>, button: i32,
+    modifiers: u32, canceled: &mut bool,
+) {
+    jade_screen_pressed(game, screen, button, modifiers, canceled);
+}
+
+#[cfg(target_os = "android")]
+pub(super) fn native_screen_mouse_button_released_pre(
+    game: &Game<'_>, screen: &NativeScreenView<'_>, canceled: &mut bool,
+) {
+    jade_screen_released(game, screen, canceled);
+}
+
+#[cfg(target_os = "android")]
+pub(super) fn native_screen_mouse_scrolled_pre(
+    game: &Game<'_>, screen: &NativeScreenView<'_>, scroll: [f64; 2],
+    modifiers: u32, canceled: &mut bool,
+) {
+    jade_screen_scrolled(game, screen, scroll, modifiers, canceled);
+}
+
+#[cfg(target_os = "android")]
+pub(super) fn native_screen_key_pressed_pre(
+    game: &Game<'_>, screen: &NativeScreenView<'_>, key: &str, repeat: bool,
+    modifiers: u32, canceled: &mut bool,
+) {
+    jade_screen_key(game, screen, key, repeat, modifiers, canceled);
+}
+
+#[cfg(target_os = "android")]
+pub(super) fn native_screen_char_typed_pre(
+    game: &Game<'_>, screen: &NativeScreenView<'_>, c: char, canceled: &mut bool,
+) {
+    jade_screen_typed(game, screen, c, canceled);
+}
+
+#[cfg(target_os = "android")]
+pub(super) fn native_register_commands(commands: &mut Vec<super::native_server::NativeCommand>) {
+    jade_register_commands(commands);
+}
+
+#[cfg(target_os = "android")]
+pub(super) fn native_perform_command(
+    game: &mut Game<'_>, player: &super::native_server::NativeServerPlayer,
+    command: &str, ran: &mut bool,
+) {
+    jade_perform_command(game, player, command, ran);
+}
+
+#[cfg(target_os = "android")]
+pub(super) fn native_perform_console_command(game: &mut Game<'_>, command: &str, ran: &mut bool) {
+    jade_perform_console(game, command, ran);
+}
+
+#[cfg(target_os = "android")]
+pub(super) fn native_net_from_client(game: &mut Game<'_>, player: u128, channel: &str, data: &[u8]) {
+    jade_net_from_client(game, player, channel, data);
+}
+
+#[cfg(target_os = "android")]
+pub(super) fn native_net_from_server(channel: &str, data: &[u8]) {
+    jade_net_from_server(channel, data);
+}
+
+#[cfg(target_os = "android")]
+pub(super) fn native_tooltip(
+    game: &Game<'_>, stack: &horizon_client::items::ItemStack,
+    lines: Vec<(horizon_client::text::Text, u32)>,
+) -> Vec<(horizon_client::text::Text, u32)> {
+    super::jade::item_tooltip(game, stack, lines)
 }
 
 #[cfg(target_os = "android")]
@@ -308,7 +459,6 @@ pub(super) fn reset() {
     horizon_client_render::native_connected_textures::reset();
     official_recipes::set_viewer(None);
     smartf3_native::reset();
-    horizon_client_render::native_sodium_horizon::set_enabled(false);
     let _ = super::freecam::disable();
     horizon_client::motion::freecam_gate::set_freeze(false);
 }

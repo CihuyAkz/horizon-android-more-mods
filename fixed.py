@@ -123,15 +123,6 @@ mod android_input;''',
     )
     content = replace_once(
         content,
-        '''        super::freecam_hooks::tick(&mut *game);
-        horizon_client_render::native_sodium_horizon::set_enabled(''',
-        '''        super::freecam_hooks::tick(&mut *game);
-        super::punchy::tick(&mut *game);
-        horizon_client_render::native_sodium_horizon::set_enabled(''',
-        "Punchy tick hook",
-    )
-    content = replace_once(
-        content,
         '''pub(super) fn native_frame(game: &mut Game<'_>, elapsed: Duration) {''',
         '''#[cfg(target_os = "android")]
 pub(super) fn punchy_hand_geometry(game: &mut Game<'_>, alpha: f64) -> Option<Vec<Vertex>> {

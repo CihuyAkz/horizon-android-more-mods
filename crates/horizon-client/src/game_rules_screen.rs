@@ -55,6 +55,10 @@ pub struct RulesScreen {
 }
 
 fn name_key(r: &Rule) -> String {
+    #[cfg(target_os = "android")]
+    if r.name == gamerules::hz_jade_rule::NAME {
+        return "gamerule.jade.max_position_deviation".to_owned();
+    }
     format!("gamerule.minecraft.{}", r.name)
 }
 fn category_key(category: &str) -> String {
@@ -153,8 +157,9 @@ impl RulesScreen {
     fn build(rules: &GameRules, in_world: bool) -> Self {
         // setInitialFocus: the search box.
         let search = EditBox::new(0.0, 0.0, SEARCH_WIDTH, 15.0);
-        let numbers = RULES
-            .iter()
+        let numbers = rules
+            .available_rules()
+            .into_iter()
             .filter(|r| matches!(r.default, Value::Int(_)))
             .map(|r| {
                 let mut b = EditBox::new(0.0, 0.0, 44.0, 20.0);
@@ -181,7 +186,7 @@ impl RulesScreen {
         let filter = self.search.value.to_lowercase();
         let has = |s: &str| s.to_lowercase().contains(&filter);
         let mut categories: Vec<(&'static str, Vec<&'static Rule>)> = Vec::new();
-        for r in RULES {
+        for r in self.values.available_rules() {
             let key = name_key(r);
             let description = format!("{key}.description");
             let matches = has(r.name)
@@ -238,8 +243,9 @@ impl RulesScreen {
             .any(|(name, b)| gamerules::rule(name).is_none_or(|r| parse(r, &b.value).is_none()))
     }
     fn changes(&self) -> Vec<(&'static str, Value)> {
-        RULES
-            .iter()
+        self.values
+            .available_rules()
+            .into_iter()
             .filter_map(|r| {
                 let value = self.values.get(r.name)?;
                 (Some(value) != self.initial.get(r.name)).then_some((r.name, value))

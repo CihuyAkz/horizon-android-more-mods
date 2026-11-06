@@ -45,3 +45,5 @@ packages under `mods/official/accurate-block-placement/` and
 hook bridge; `android_bundled.rs` imports the implementations directly from those
 packages, and the normal native-mod menu registration keeps each as a separate row.
 They are static native modules, not independently downloadable WASM `.hmod` files.
+
+Additional static Android ports: Jade 26.3.6, ArmorHUD 1.0.0 and Resourcify 0.1.1.

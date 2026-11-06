@@ -48,6 +48,9 @@ use std::{
     },
 };
 
+#[cfg(target_os = "android")]
+include!("../../../mods/official/jade/mixins/jade/rule_save.rs");
+
 pub const VERSION_NAME: &str = horizon_core::VANILLA_VERSION;
 
 mod gateway;
@@ -4249,6 +4252,8 @@ impl Level {
             }
             write_saved_data(dir, "game_rules", rules)?;
         }
+        #[cfg(target_os = "android")]
+        jade_rule_save(self, dir);
         if write_player {
             self.write_player(dir)?;
         }

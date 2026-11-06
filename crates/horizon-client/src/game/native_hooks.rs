@@ -1143,7 +1143,10 @@ impl Game<'_> {
     /// Selection/F3+T and server-pack reloads share this point; initial startup does not.
     pub(super) fn native_client_resources_reloaded(&mut self) {
         #[cfg(target_os = "android")]
-        horizon_client_render::native_connected_textures::invalidate_rules();
+        {
+            horizon_client_render::native_connected_textures::invalidate_rules();
+            super::android_bundled::native_client_resources_reloaded(self);
+        }
     }
     /// Once a tick, in every `Game`: the window's (in single player, on LAN
     /// and on servers), and the server's own (`native_window` is false
@@ -1235,8 +1238,7 @@ impl Game<'_> {
     /// `native_fill` and `native_text`. Skip a corner `native_corner_shown`
     /// says is taken.
     pub(super) fn native_hud(&mut self, batch: &mut HudBatch, corners: &mut Corners) {
-        super::android_bundled::native_hud(self, batch);
-        let _ = corners;
+        super::android_bundled::native_hud(self, batch, corners);
     }
     /// A player right-clicks the entity `entity` (`Entity.getId`) of type
     /// `kind` (`minecraft:cow`) with `self.hand`, holding `stack` (none in an
@@ -1577,6 +1579,8 @@ impl Game<'_> {
         batch: &mut HudBatch,
         screen: &NativeScreenView<'_>,
     ) {
+        #[cfg(target_os = "android")]
+        super::android_bundled::native_screen_render_post(self, batch, screen);
         let _ = (batch, screen);
     }
     /// A mouse button went down over the open screen
@@ -1606,6 +1610,8 @@ impl Game<'_> {
         modifiers: u32,
         canceled: &mut bool,
     ) {
+        #[cfg(target_os = "android")]
+        super::android_bundled::native_screen_mouse_button_pressed_pre(self, screen, button, modifiers, canceled);
         let _ = (screen, button, modifiers, canceled);
     }
     /// A mouse button went up over the open screen
@@ -1628,6 +1634,8 @@ impl Game<'_> {
         modifiers: u32,
         canceled: &mut bool,
     ) {
+        #[cfg(target_os = "android")]
+        super::android_bundled::native_screen_mouse_button_released_pre(self, screen, canceled);
         let _ = (screen, button, modifiers, canceled);
     }
     /// The wheel turned over the open screen (`ScreenEvent.MouseScrolled.Pre`,
@@ -1661,6 +1669,8 @@ impl Game<'_> {
         modifiers: u32,
         canceled: &mut bool,
     ) {
+        #[cfg(target_os = "android")]
+        super::android_bundled::native_screen_mouse_scrolled_pre(self, screen, scroll, modifiers, canceled);
         let _ = (screen, scroll, modifiers, canceled);
     }
     /// A key went down over the open screen (`ScreenEvent.KeyPressed.Pre`,
@@ -1695,6 +1705,8 @@ impl Game<'_> {
         modifiers: u32,
         canceled: &mut bool,
     ) {
+        #[cfg(target_os = "android")]
+        super::android_bundled::native_screen_key_pressed_pre(self, screen, key, repeat, modifiers, canceled);
         let _ = (screen, key, repeat, modifiers, canceled);
     }
     /// A character was typed at the open screen
@@ -1727,6 +1739,8 @@ impl Game<'_> {
         modifiers: u32,
         canceled: &mut bool,
     ) {
+        #[cfg(target_os = "android")]
+        super::android_bundled::native_screen_char_typed_pre(self, screen, c, canceled);
         let _ = (screen, c, modifiers, canceled);
     }
     /// The open screen as a native mod sees it (`NativeScreenView`): its id,
@@ -1914,6 +1928,8 @@ impl Game<'_> {
     /// chat box then completes them as vanilla's, within their level. A
     /// name vanilla has is left out. API 8.
     pub(super) fn native_register_commands(&mut self, commands: &mut Vec<NativeCommand>) {
+        #[cfg(target_os = "android")]
+        super::android_bundled::native_register_commands(commands);
         let _ = commands;
     }
     /// A player's command on the server (`Commands.performCommand`),
@@ -1927,6 +1943,8 @@ impl Game<'_> {
         command: &str,
         ran: &mut bool,
     ) {
+        #[cfg(target_os = "android")]
+        super::android_bundled::native_perform_command(self, player, command, ran);
         let _ = (player, command, ran);
     }
     /// A command a player typed (NeoForge's `CommandEvent`, before
@@ -1960,6 +1978,8 @@ impl Game<'_> {
     /// console. A name no mod registered goes to vanilla's dispatcher as
     /// before. @API:native_perform_console_command@.
     pub(super) fn native_perform_console_command(&mut self, command: &str, ran: &mut bool) {
+        #[cfg(target_os = "android")]
+        super::android_bundled::native_perform_console_command(self, command, ran);
         let _ = (command, ran);
     }
     /// A click in a menu a mod opened (`native_open_menu`), which moved
@@ -1991,6 +2011,11 @@ impl Game<'_> {
     /// codes. Asked each frame the tooltip shows, never for one the stack
     /// hides. API 12.
     pub(super) fn native_tooltip(&self, stack: &ItemStack, lines: &mut Vec<(Text, u32)>) {
+        #[cfg(target_os = "android")]
+        {
+            let old = std::mem::take(lines);
+            *lines = super::android_bundled::native_tooltip(self, stack, old);
+        }
         let _ = (stack, lines);
     }
     /// Client-side image component for this stack's tooltip. Answer its width/height
@@ -2237,11 +2262,15 @@ impl Game<'_> {
     /// player's own bytes, checked by nothing. Runs in the tick after it
     /// arrives, with no player's state swapped in. Server-side. API 40.
     pub(super) fn native_net_from_client(&mut self, player: u128, channel: &str, data: &[u8]) {
+        #[cfg(target_os = "android")]
+        super::android_bundled::native_net_from_client(self, player, channel, data);
         let _ = (player, channel, data);
     }
     /// A message from the server on `channel` (`mod_id:name`), whose `data`
     /// is the sender's own bytes. The window's game only. API 40.
     pub(super) fn native_net_from_server(&mut self, channel: &str, data: &[u8]) {
+        #[cfg(target_os = "android")]
+        super::android_bundled::native_net_from_server(channel, data);
         let _ = (channel, data);
     }
     /// Chunk `chunk` (`[x, z]`, in chunks) of `dimension` came into the world

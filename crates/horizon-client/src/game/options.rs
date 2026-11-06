@@ -163,11 +163,18 @@ impl Game<'_> {
         }
     }
     pub(super) fn draw_options(&mut self, batch: &mut HudBatch) {
+        #[cfg(target_os = "android")]
+        if super::native_resourcify::is_open() {
+            super::native_resourcify_ui::draw(self, batch);
+            return;
+        }
         self.watch_pack_folder();
         let mut ui = std::mem::take(&mut self.ui.options);
         ui.draw(&self.settings, batch, &self.gui.atlas, self.cursor);
         self.ui.options = ui;
         self.show_calibration(batch.height);
+        #[cfg(target_os = "android")]
+        super::native_resourcify_ui::draw_plus(self, batch);
     }
     /// HDR calibration's test picture to the renderer, full screen while it runs: the
     /// window goes fullscreen for it and back after, if it wasn't already.
@@ -205,6 +212,15 @@ impl Game<'_> {
         }
     }
     pub(super) fn options_mouse(&mut self, pressed: bool, right: bool) -> Result<()> {
+        #[cfg(target_os = "android")]
+        {
+            if super::native_resourcify::is_open() {
+                return super::native_resourcify_ui::mouse(self, pressed, right);
+            }
+            if pressed && !right && super::native_resourcify_ui::press_plus(self) {
+                return self.handle_option_events(vec![Event::ButtonClick]);
+            }
+        }
         if !pressed {
             if right {
                 return Ok(());
@@ -236,6 +252,11 @@ impl Game<'_> {
         self.handle_option_events(events)
     }
     pub(super) fn options_drag(&mut self) -> Result<()> {
+        #[cfg(target_os = "android")]
+        if super::native_resourcify::is_open() {
+            self.dragging = false;
+            return Ok(());
+        }
         let size = self.gui_size();
         let framebuffer = self.renderer.as_ref().map_or([1280, 720], |r| {
             [r.config.width as i32, r.config.height as i32]
@@ -255,6 +276,10 @@ impl Game<'_> {
         self.handle_option_events(events)
     }
     pub(super) fn options_key(&mut self, key: KeyCode, text: Option<&str>) -> Result<()> {
+        #[cfg(target_os = "android")]
+        if super::native_resourcify::is_open() {
+            return super::native_resourcify_ui::key(self, key, text);
+        }
         let size = self.gui_size();
         let shift = self.has_shift_down();
         let framebuffer = self.renderer.as_ref().map_or([1280, 720], |r| {
@@ -272,11 +297,19 @@ impl Game<'_> {
         &mut self,
         shortcut: horizon_client::clipboard::EditShortcut,
     ) -> bool {
+        #[cfg(target_os = "android")]
+        if super::native_resourcify::is_open() {
+            return super::native_resourcify_ui::shortcut(self, shortcut);
+        }
         self.ui
             .options
             .shortcut(&self.gui.atlas, shortcut, &mut self.clipboard)
     }
     pub(super) fn options_scroll(&mut self, amount: f32) -> Result<()> {
+        #[cfg(target_os = "android")]
+        if super::native_resourcify::is_open() {
+            return super::native_resourcify_ui::scroll(self, amount);
+        }
         let framebuffer = self.renderer.as_ref().map_or([1280, 720], |r| {
             [r.config.width as i32, r.config.height as i32]
         });

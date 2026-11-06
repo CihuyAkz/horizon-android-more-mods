@@ -62,11 +62,6 @@ pub mod model_library;
 pub mod models;
 pub mod multiline_edit;
 pub mod native_emissive;
-#[cfg(target_os = "android")]
-#[path = "../../../mods/official/sodium-horizon/mixins/sodium_horizon/runtime.rs"]
-pub mod sodium_horizon_visibility;
-#[cfg(target_os = "android")]
-pub mod native_sodium_horizon;
 pub mod options_file;
 pub mod options_fixes;
 pub mod options_ui;

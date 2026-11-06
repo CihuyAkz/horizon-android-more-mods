@@ -8,6 +8,10 @@ use horizon_world::{
 };
 use std::{collections::BTreeMap, fs, path::Path};
 
+#[cfg(target_os = "android")]
+#[path = "../../../mods/official/jade/mixins/jade/gamerule.rs"]
+pub mod hz_jade_rule;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Value {
     Bool(bool),
@@ -127,7 +131,13 @@ pub const RULES: &[Rule] = &[
 ];
 pub fn rule(name: &str) -> Option<&'static Rule> {
     let name = name.strip_prefix("minecraft:").unwrap_or(name);
-    RULES.iter().find(|r| r.name == name)
+    RULES.iter().find(|r| r.name == name).or_else(|| {
+        #[cfg(target_os = "android")]
+        if name == hz_jade_rule::NAME {
+            return Some(&hz_jade_rule::RULE);
+        }
+        None
+    })
 }
 
 /// Current values (defaults unless set).
@@ -173,11 +183,19 @@ impl GameRules {
         }
         ok
     }
+    /// Rules available to this game build. Modded rules are included here,
+    /// while `to_nbt` and `from_nbt` deliberately keep vanilla's file clean.
+    pub fn available_rules(&self) -> Vec<&'static Rule> {
+        let mut rules: Vec<&'static Rule> = RULES.iter().collect();
+        #[cfg(target_os = "android")]
+        rules.push(&hz_jade_rule::RULE);
+        rules
+    }
     /// Every rule's value by name without namespace, as `save::Level` holds
     /// them (booleans as 0 or 1).
     pub fn by_name(&self) -> BTreeMap<String, i32> {
-        RULES
-            .iter()
+        self.available_rules()
+            .into_iter()
             .map(|r| {
                 let v = match self.values.get(r.name).copied().unwrap_or(r.default) {
                     Value::Bool(b) => i32::from(b),

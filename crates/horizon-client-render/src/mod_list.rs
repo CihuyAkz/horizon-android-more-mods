@@ -38,11 +38,6 @@ pub const ANDROID_BUNDLED: [(&str, &str, &str); 9] = [
         "Shows saturation and food restoration on the hunger HUD",
     ),
     (
-        "sodium_horizon",
-        "Sodium Horizon",
-        "Optional optimized section-visibility calculation",
-    ),
-    (
         "freecam",
         "Freecam",
         "Move the camera independently from the player",

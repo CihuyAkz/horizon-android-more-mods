@@ -5,7 +5,7 @@ use super::{
     Dispatcher,
     args::{ArgType, Resource, integer},
 };
-use horizon_client_core::gamerules::{RULES, Value};
+use horizon_client_core::gamerules::{GameRules, Value};
 
 /// Permission levels (Commands.LEVEL_*).
 pub const ALL: u8 = 0;
@@ -292,7 +292,7 @@ pub fn registered(dev: bool) -> Dispatcher {
     // gamerule <rule> [<value>] (short and namespaced names)
     let gr = d.literal(root, "gamerule");
     d.requires(gr, GAMEMASTERS);
-    for rule in RULES {
+    for rule in GameRules::default().available_rules() {
         for name in [rule.name.to_owned(), format!("minecraft:{}", rule.name)] {
             let r = d.literal(gr, &name);
             d.executes(r, "gamerule");

@@ -328,14 +328,7 @@ pub const ALL_VISIBLE: u64 = (1 << 36) - 1;
 fn visibility(pad: &Padded, info: &[Info]) -> u64 {
     visibility_reusing(pad, info, &mut Vec::new())
 }
-#[cfg(target_os = "android")]
-include!("../../../mods/official/sodium-horizon/mixins/sodium_horizon/visibility.rs");
-
 fn visibility_reusing(pad: &Padded, info: &[Info], stack: &mut Vec<usize>) -> u64 {
-    #[cfg(target_os = "android")]
-    if crate::native_sodium_horizon::enabled() {
-        return section_visibility(pad, info, stack);
-    }
     // The all-visible shortcut can leave a partially filled stack behind.
     stack.clear();
     // Opaque cells are already visited: resolve each state's opacity once,
