@@ -68,6 +68,12 @@ mod freecam;
 #[path = "../../../mods/official/freecam/android.rs"]
 pub(crate) mod freecam_hooks;
 #[cfg(target_os = "android")]
+#[path = "../../../mods/official/punchy/mixins/punchy/runtime.rs"]
+mod punchy;
+#[cfg(target_os = "android")]
+#[path = "../../../mods/official/punchy/mixins/punchy/geometry.rs"]
+mod punchy_geometry;
+#[cfg(target_os = "android")]
 mod android_input;
 mod armor_stands;
 mod atlas_slots;
@@ -13251,6 +13257,10 @@ impl Game<'_> {
     /// both hands in view space, converted to camera-relative world space.
     fn hand_geometry(&mut self, alpha: f64) -> Vec<Vertex> {
         let mut out = Vec::new();
+        #[cfg(target_os = "android")]
+        if let Some(punchy_out) = android_bundled::punchy_hand_geometry(self, alpha) {
+            return punchy_out;
+        }
         // GameRenderer.renderItemInHand: F1 hides the hand with the HUD.
         if self.spectator()
             || self.ui.hide_gui

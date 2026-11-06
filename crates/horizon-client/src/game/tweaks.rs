@@ -31,7 +31,6 @@ use horizon_client::{
     stations::hover_name,
 };
 use winit::{event::MouseButton, keyboard::KeyCode};
-use std::ops::ControlFlow;
 
 /// A sort button's side in GUI pixels.
 const SORT_BUTTON: f32 = 9.0;
@@ -495,12 +494,6 @@ impl Game<'_> {
     }
     /// Sorts `slots` with ordinary left clicks (needs an empty hand).
     fn sort_slots(&mut self, slots: &[usize]) {
-        #[cfg(target_os = "android")]
-        if let ControlFlow::Break(()) =
-            super::android_bundled::inventory_profiles_sort_slots(self, slots)
-        {
-            return;
-        }
         if self.carried.is_some() {
             return;
         }

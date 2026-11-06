@@ -3,7 +3,7 @@
 //! The helper files are included verbatim from the HNMOD bundle. These thin
 //! wrappers expose their injection points to the Android game glue.
 
-use crate::Result;
+use horizon_client::Result;
 use horizon_client::hud::HudBatch;
 
 include!("mixins/freecam/aim.rs");

@@ -144,6 +144,7 @@ pub(super) fn native_key(game: &mut Game<'_>, key: &str, pressed: bool) {
         zoom_key::run(&mut *game, key, pressed);
         accurate_block_placement_key::run(&mut *game, key, pressed);
         super::freecam_hooks::key(&mut *game, key, pressed);
+        super::punchy::key(&mut *game, key, pressed);
     }
 }
 
@@ -176,6 +177,15 @@ pub(super) fn native_mods(game: &mut Game<'_>, mods: &mut Vec<NativeMod>) {
         super::mod_appleskin_glue::on_list(&mut *mods);
         super::freecam_hooks::list(&mut *mods);
         mods.push(NativeMod {
+            id: super::punchy::ID.into(),
+            title: super::punchy::TITLE.into(),
+            description: "Self-contained Rust animation preview. Animation data included.".into(),
+            keys: vec![
+                ["inspect".into(), "Inspect item".into(), "key.keyboard.f6".into()],
+                ["reload".into(), "Reload animations".into(), "key.keyboard.f7".into()],
+            ],
+        });
+        mods.push(NativeMod {
             id: "sodium_horizon".into(),
             title: "Sodium Horizon 0.3.1".into(),
             description: "Optional optimized section-visibility calculation".into(),
@@ -196,6 +206,9 @@ pub(super) fn native_settings(game: &mut Game<'_>, mod_id: &str, buttons: &mut V
         connected_textures_settings::run(mod_id, &mut *buttons);
         super::mod_appleskin_glue::on_settings(&mut *game, mod_id, &mut *buttons);
         super::freecam_hooks::settings(&mut *game, mod_id, &mut *buttons);
+        if mod_id == super::punchy::ID {
+            super::punchy::settings(&*game, &mut *buttons);
+        }
     }
 }
 
@@ -211,6 +224,9 @@ pub(super) fn native_settings_click(game: &mut Game<'_>, mod_id: &str, button: u
         connected_textures_click::run(mod_id, button);
         super::mod_appleskin_glue::on_click(&mut *game, mod_id, button);
         super::freecam_hooks::click(&mut *game, mod_id, button);
+        if mod_id == super::punchy::ID {
+            super::punchy::click(&*game, button);
+        }
     }
 }
 
@@ -227,6 +243,7 @@ pub(super) fn native_tick(game: &mut Game<'_>) {
     #[cfg(target_os = "android")]
     {
         super::freecam_hooks::tick(&mut *game);
+        super::punchy::tick(&mut *game);
         horizon_client_render::native_sodium_horizon::set_enabled(
             game.native_on("sodium_horizon"),
         );
@@ -234,6 +251,20 @@ pub(super) fn native_tick(game: &mut Game<'_>) {
             game.android_accurate_block_placement_tick();
         }
     }
+}
+
+#[cfg(target_os = "android")]
+pub(super) fn punchy_hand_geometry(game: &mut Game<'_>, alpha: f64) -> Option<Vec<Vertex>> {
+    super::punchy::begin(game, alpha);
+    if !super::punchy::ready(game) {
+        return None;
+    }
+    let mut out = super::punchy_geometry::render(game, alpha);
+    super::punchy::arms(game, alpha, &mut out);
+    for vertex in &mut out {
+        vertex.layer &= !horizon_client::gfx::OIT_ENTITY;
+    }
+    Some(out)
 }
 
 pub(super) fn native_frame(game: &mut Game<'_>, elapsed: Duration) {
