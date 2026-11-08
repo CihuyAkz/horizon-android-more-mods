@@ -3,7 +3,7 @@ use super::{Mob, Species};
 // item_slime crumbs when the Slime blobs effect is on. Magma and sulfur cubes,
 // and every other tick, take the original path. Only the landing flag the
 // original would set is set here; gameplay state is untouched.
-fn visuality_slime(m: &mut Mob) -> core::ops::ControlFlow<()> {
+pub(super) fn visuality_slime(m: &mut Mob) -> core::ops::ControlFlow<()> {
     use horizon_client_render::gfx::native_render::visuality_horizon::engine as vh;
     if m.species() != Species::Slime || !(m.on_ground && !m.extra.flag2) {
         return core::ops::ControlFlow::Continue(());

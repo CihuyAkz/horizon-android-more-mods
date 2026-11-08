@@ -1,6 +1,8 @@
 // One block the client's ambient pass visited: amethyst, ore or soul sources.
 // Reads the loaded world only; the original pass runs unchanged after it.
-fn visuality_ambient(ctx: &AnimateContext<'_>, state: BlockStateId, pos: [i32; 3]) {
+use super::{AnimateContext, BlockStateId};
+
+pub(super) fn visuality_ambient(ctx: &AnimateContext<'_>, state: BlockStateId, pos: [i32; 3]) {
     use horizon_client_render::gfx::native_render::visuality_horizon::engine as vh;
     use vh::engine::class;
     vh::runtime::with_existing(|rt| {
