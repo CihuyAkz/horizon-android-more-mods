@@ -230,10 +230,6 @@ fn wrap(d: f32) -> f32 {
 impl Game<'_> {
     /// `key.togglePerspective`.
     pub(super) fn cycle_camera(&mut self) {
-        #[cfg(target_os = "android")]
-        if let core::ops::ControlFlow::Break(()) = crate::game::freecam_hooks::cycle(self) {
-            return;
-        }
         let previous = self.camera_type;
         self.camera_type = self.camera_type.cycle();
         // Minecraft.handleKeybinds: the chain follows the first-person view.
@@ -246,10 +242,6 @@ impl Game<'_> {
     /// front of) it, pulled in where visual shapes are in the way. Returns the
     /// position, yaw and pitch to render from.
     pub(super) fn camera_view(&mut self, partial: f32) -> Option<(glam::DVec3, f32, f32)> {
-        #[cfg(target_os = "android")]
-        if let core::ops::ControlFlow::Break(view) = crate::game::freecam_hooks::camera(self) {
-            return view;
-        }
         // Minecraft.cameraEntity: a server's spectator camera on a mob or
         // another player.
         let (entity, descending) = match self.camera_mob() {
@@ -537,10 +529,6 @@ impl Game<'_> {
     /// The model's old pitch is the player's `xRotO`, which the turn moves
     /// with `xRot` (`turn_rotation`).
     pub(super) fn turn_player(&mut self, xo: f64, yo: f64) {
-        #[cfg(target_os = "android")]
-        if let core::ops::ControlFlow::Break(()) = crate::game::freecam_hooks::turn(self, xo, yo) {
-            return;
-        }
         let pitch_o = self.player_model.as_ref().map(|m| m.previous_head_pitch);
         let rotation = turn_rotation(self.yaw, self.pitch, pitch_o, xo, yo);
         self.yaw = rotation.y_rot;
@@ -573,17 +561,13 @@ impl Game<'_> {
     /// `LevelExtractor`'s skip of the camera entity: the player's own body
     /// is drawn unless the camera is in first person, or while it sleeps.
     pub(super) fn own_body_in_view(&self) -> bool {
-        #[cfg(target_os = "android")]
-        if let core::ops::ControlFlow::Break(shown) = crate::game::freecam_hooks::body(self) {
-            return shown;
-        }
         !self.camera_type.first_person() || self.sleeping.is_some()
     }
     /// Whether the player's own model shows in the world view (its body or,
     /// while invisible, only its armour and held items).
     pub(super) fn player_model_shown(&self) -> bool {
         // A shader pack's shadow pass draws the player in first person too (shadowPlayer).
-        (self.own_body_in_view() || self.pack_shadow_casters.1)
+        (self.own_body_in_view() || self.pack_shadow_casters.0)
             && self
                 .player
                 .as_ref()
@@ -635,7 +619,7 @@ impl Game<'_> {
         // visibility (set by player_model_visibility) hides body parts, and
         // translucent_body marks the body OIT for the ghostly look. Only first
         // person and dead players skip it.
-        let render = if body || self.spectator() {
+        let render = if body || self.spectator() || self.pack_shadow_casters.0 {
             horizon_client::mobs::render::render_with
         } else {
             horizon_client::mobs::render::render_layers

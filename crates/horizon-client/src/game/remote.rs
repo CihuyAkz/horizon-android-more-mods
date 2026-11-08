@@ -847,10 +847,17 @@ impl Game<'_> {
             }
         };
         let player_type = super::perspective::player_type(&root);
+        let streaming_threads = if cfg!(target_os = "android") && self.integrated.is_some() {
+            (self.res.threads() / 2).max(2)
+        } else if cfg!(target_os = "android") {
+            self.res.threads().min(4)
+        } else {
+            self.res.threads()
+        };
         let mut streaming = Streaming::new(
             Arc::new(NoTerrain),
             self.pack.context.clone(),
-            self.res.threads(),
+            streaming_threads,
         );
         streaming.remote = true;
         streaming.radius = self.settings.render_distance;
@@ -1676,9 +1683,10 @@ impl Game<'_> {
         });
         if loaded && self.remote.as_ref().is_some_and(|r| !r.loaded_sent) {
             self.send(S::PlayerLoaded(Empty));
-            let r = self.remote.as_mut().unwrap();
-            r.loaded_sent = true;
-            r.level_load.finish();
+            if let Some(r) = self.remote.as_mut() {
+                r.loaded_sent = true;
+                r.level_load.finish();
+            }
         }
         Ok(())
     }
@@ -1715,8 +1723,12 @@ impl Game<'_> {
         // a decoder that needed >50 ms otherwise turns its whole queue into
         // one long main-thread stall. Boost progress without changing order.
         let bounded = cfg!(target_os = "android") || !overdue;
-        let chunk_budget = if cfg!(target_os = "android") && overdue {
-            Duration::from_millis(4)
+        let chunk_budget = if cfg!(target_os = "android") {
+            if overdue {
+                Duration::from_millis(2)
+            } else {
+                Duration::from_micros(1200)
+            }
         } else {
             CHUNK_PACKETS_PER_FRAME
         };
@@ -2037,10 +2049,17 @@ impl Game<'_> {
         if !same {
             // A new ClientLevel: Minecraft.setLevel stops every sound.
             self.stop_sounds_for_new_level();
+            let streaming_threads = if cfg!(target_os = "android") && self.integrated.is_some() {
+                (self.res.threads() / 2).max(2)
+            } else if cfg!(target_os = "android") {
+                self.res.threads().min(4)
+            } else {
+                self.res.threads()
+            };
             let mut streaming = Streaming::new(
                 Arc::new(NoTerrain),
                 self.pack.context.clone(),
-                self.res.threads(),
+                streaming_threads,
             );
             streaming.remote = true;
             streaming.radius = self.streaming.radius;
@@ -6652,10 +6671,6 @@ impl Game<'_> {
 
     /// MultiPlayerGameMode.startDestroyBlock / continueDestroyBlock.
     fn remote_mining(&mut self, start: bool) {
-        #[cfg(target_os = "android")]
-        if start {
-            super::punchy::mining_attempt(self);
-        }
         let debug_stick = self
             .held()
             .is_some_and(|stack| &*stack.item == "minecraft:debug_stick");
@@ -6983,8 +6998,6 @@ impl Game<'_> {
         let before = self.with_hand(hand, |g| g.held().map(|s| s.count));
         let swings = self.swings_started;
         let done = self.remote_use_item_on(hand);
-        #[cfg(target_os = "android")]
-        super::punchy::used(self, hand, done);
         if done
             && self.swings_started != swings
             && let Some(after) = self.with_hand(hand, |g| g.held().map(|s| s.count))
@@ -7301,49 +7314,6 @@ impl Game<'_> {
                 format!("minecraft:{sound}")
             };
             self.audio.play(&name, Some(at), *volume, *pitch);
-        }
-    }
-
-    /// Android static Accurate Block Placement adapter. Kept in this module so it can reuse
-    /// the game's private prediction and block-interaction routines without widening their API.
-    #[cfg(target_os = "android")]
-    pub(super) fn android_accurate_block_placement_tick(&mut self) {
-        use super::android_bundled::accurate_block_placement as abp;
-        let Some(player) = self
-            .player
-            .as_ref()
-            .map(|p| [p.position.x, p.position.y, p.position.z])
-        else {
-            abp::reset();
-            return;
-        };
-        let held = self.held().cloned();
-        if abp::holding()
-            && let Some(hit) = self.pick()
-            && !self.remote_block_reacts(&hit, held.as_ref()).0.consumes_action()
-        {
-            self.use_delay = self.use_delay.max(1);
-        }
-        for target in abp::due((self.yaw, self.pitch)) {
-            if !abp::still_fresh(&target, player) {
-                continue;
-            }
-            let hit = super::Hit {
-                pos: target.pos,
-                face: target.face,
-                point: target.point,
-            };
-            if self.remote_block_reacts(&hit, held.as_ref()).0.consumes_action() {
-                continue;
-            }
-            let at = target.placement();
-            let before = self.world.block(at[0], at[1], at[2]);
-            let kept = self.tick_hit.replace(Some(hit));
-            self.remote_use();
-            self.tick_hit = kept;
-            if self.world.block(at[0], at[1], at[2]) != before {
-                abp::placed(&target, at, player);
-            }
         }
     }
 
@@ -7794,36 +7764,25 @@ impl Game<'_> {
                 Hand::Main
             };
             if self.remote_use_item(hand) {
-                #[cfg(target_os = "android")]
-                super::punchy::used(self, hand, true);
                 self.heights.item_used(hand);
             }
             return;
         }
         // A successful Item.use always drops the hand (LocalPlayer.itemUsed).
         if self.remote_use_item(Hand::Main) {
-            #[cfg(target_os = "android")]
-            super::punchy::used(self, Hand::Main, true);
             self.heights.item_used(Hand::Main);
             return;
         }
         // The off hand's turn: the entity again, or the block.
-        let off_entity = self.entity_targeted();
-        let off_target = if off_entity {
+        let off_target = if self.entity_targeted() {
             self.remote_use_entity(Hand::Off)
         } else {
             self.remote_use_block(Hand::Off)
         };
         if off_target {
-            #[cfg(target_os = "android")]
-            if off_entity {
-                super::punchy::used(self, Hand::Off, true);
-            }
             return;
         }
         if self.remote_use_item(Hand::Off) {
-            #[cfg(target_os = "android")]
-            super::punchy::used(self, Hand::Off, true);
             self.heights.item_used(Hand::Off);
         }
     }
@@ -9579,10 +9538,7 @@ impl horizon_client::interaction_input::TargetUseWorld for RemoteUseWorld<'_, '_
         if self.0.pad.touch_shield {
             return false;
         }
-        let used = self.0.remote_use_entity(Hand::Main);
-        #[cfg(target_os = "android")]
-        super::punchy::used(self.0, Hand::Main, used);
-        used
+        self.0.remote_use_entity(Hand::Main)
     }
     fn use_block(&mut self) -> bool {
         #[cfg(target_os = "android")]

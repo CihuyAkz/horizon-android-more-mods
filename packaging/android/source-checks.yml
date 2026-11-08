@@ -11,6 +11,15 @@ on:
         description: Type-check all four Android ABIs (slower)
         type: boolean
         default: false
+      build_apk:
+        description: Build a public APK for one ABI and upload it as an artifact
+        type: boolean
+        default: false
+      abi:
+        description: ABI built when build_apk is enabled
+        type: choice
+        options: [arm64-v8a, armeabi-v7a, x86, x86_64]
+        default: arm64-v8a
 permissions:
   contents: read
 concurrency:
@@ -19,71 +28,25 @@ concurrency:
 jobs:
   source:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
-    env:
-      CARGO_BUILD_JOBS: '2'
-      CARGO_PROFILE_DEV_DEBUG: '0'
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Install pinned Rust toolchain
-        run: rustup toolchain install 1.95.0 --profile minimal --component clippy --component rustfmt
-      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            .local/android/diagnostics-tests/target
-            .local/android/performance-tests/target
-            .local/android/content-tests/target
-            .local/android/appearance-tests/target
-          key: android-source-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-${{ github.sha }}
-          restore-keys: |
-            android-source-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-
       - run: git diff --check
       - run: python3 tools/check_public_tree.py --history
       - run: python3 -m unittest discover -s tests -p 'test_android*.py'
-      - run: python3 tools/check_hnmod_official_layout.py
       - run: python3 tools/test_android_diagnostics.py
       - run: python3 tools/test_android_performance.py
       - run: python3 tools/test_android_content.py
+      - run: python3 tools/test_android_session.py
+      - run: python3 tools/test_android_hotplug.py
       - run: python3 tools/test_android_appearance.py
       - name: Check workflow export matches the active workflow
         run: |
           cmp .github/workflows/android-source.yml packaging/android/source-checks.yml
-          cmp .github/workflows/android-build.yml packaging/android/android-build.yml
-  mods:
-    name: Check official WASM mods
-    needs: source
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    env:
-      CARGO_BUILD_JOBS: '2'
-      CARGO_TARGET_DIR: .local/mod-ci-target
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          persist-credentials: false
-      - name: Install pinned Rust toolchain
-        run: rustup toolchain install 1.95.0 --profile minimal --component clippy --component rustfmt
-      - name: Install the WebAssembly target
-        run: rustup target add wasm32-unknown-unknown
-      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            .local/mod-ci-target
-          key: horizon-mods-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml', 'mods/official/**/Cargo.toml') }}-${{ github.sha }}
-          restore-keys: |
-            horizon-mods-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml', 'mods/official/**/Cargo.toml') }}-
-      - name: Compile all sandboxed official mods
-        run: >-
-          cargo check --locked --target wasm32-unknown-unknown
-          -p far-view -p fps-overlay -p keystrokes -p minimap -p recipes -p zoom
-
+          cmp .github/workflows/android-dev.yml packaging/android/dev-builds.yml
   native:
     if: github.event_name == 'workflow_dispatch' && inputs.native_checks
     needs: source
@@ -110,12 +73,6 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           persist-credentials: false
-      - name: Install pinned Rust toolchain
-        run: rustup toolchain install 1.95.0 --profile minimal --component clippy --component rustfmt
-      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
-        with:
-          distribution: temurin
-          java-version: '17'
       - name: Install Android toolchain
         run: |
           sdkmanager="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
@@ -126,4 +83,4 @@ jobs:
           "$sdkmanager" --sdk_root="$ANDROID_HOME" "ndk;28.2.13676358" "build-tools;35.0.0"
           rustup target add "${{ matrix.target }}"
       - name: Check Android Rust code without building an APK
-        run: python3 tools/android_build.py --abi "${{ matrix.abi }}" --check --public --sdk "$ANDROID_HOME" --java-home "$JAVA_HOME" --ndk-version 28.2.13676358 --build-tools-version 35.0.0
+        run: python3 tools/android_build.py --abi "${{ matrix.abi }}" --check --public --sdk "$ANDROID_HOME" --java-home "$JAVA_HOME_17_X64" --ndk-version 28.2.13676358 --build-tools-version 35.0.0

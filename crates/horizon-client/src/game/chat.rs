@@ -1351,11 +1351,7 @@ impl Game<'_> {
     }
     /// Load per-world command state when a world opens.
     pub(super) fn load_world_state(&mut self) {
-        #[cfg(target_os = "android")]
-        super::jade::rule_world_opening();
         self.ui.rules = GameRules::load(&self.world_root);
-        #[cfg(target_os = "android")]
-        super::jade::rule_level_opened(self);
         self.ui.clock = WorldClock::default();
         // PrimaryLevelData: the difficulty comes back from level.dat's difficulty_settings.
         self.ui.difficulty = self.level.difficulty_id();
