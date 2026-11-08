@@ -1,11 +1,15 @@
 
-name: Self Destruct - Single Branch
+name: Undo Self Destruct
 
 on:
   workflow_dispatch:
     inputs:
+      commit_sha:
+        description: 'Self-destruct commit SHA to revert'
+        required: true
+        type: string
       confirm:
-        description: 'Ketik DELETE CONTENTS untuk mengonfirmasi'
+        description: 'Type RESTORE to confirm'
         required: true
         type: string
 
@@ -13,42 +17,49 @@ permissions:
   contents: write
 
 jobs:
-  self-destruct:
+  restore:
     if: github.ref_type == 'branch'
     runs-on: ubuntu-latest
 
     steps:
       - name: Validate Confirmation
+        env:
+          CONFIRM: ${{ inputs.confirm }}
         run: |
-          if [ "$CONFIRM" != "DELETE CONTENTS" ]; then
+          if [ "$CONFIRM" != "RESTORE" ]; then
             echo "Confirmation failed."
             exit 1
           fi
-        env:
-          CONFIRM: ${{ inputs.confirm }}
 
       - name: Checkout Selected Branch
         uses: actions/checkout@v7
         with:
           ref: ${{ github.ref_name }}
-          fetch-depth: 1
+          fetch-depth: 0
 
-      - name: Delete All Files
+      - name: Validate Commit
+        env:
+          COMMIT_SHA: ${{ inputs.commit_sha }}
         run: |
-          git rm -r --ignore-unmatch -- .
-
-          if git diff --cached --quiet; then
-            echo "Branch is already empty."
-            exit 0
+          if ! git cat-file -e "${COMMIT_SHA}^{commit}"; then
+            echo "Invalid commit SHA."
+            exit 1
           fi
 
+          if ! git merge-base --is-ancestor "$COMMIT_SHA" HEAD; then
+            echo "Commit is not in this branch history."
+            exit 1
+          fi
+
+      - name: Revert Self Destruct
+        env:
+          COMMIT_SHA: ${{ inputs.commit_sha }}
+        run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git commit -m "Self destruct: remove all files"
+          git revert --no-edit "$COMMIT_SHA"
 
-      - name: Push Changes to Selected Branch
+      - name: Push Restored Branch
         run: |
-          git push origin "HEAD:refs/heads/$TARGET_BRANCH"
-        env:
-          TARGET_BRANCH: ${{ github.ref_name }}
+          git push origin "HEAD:refs/heads/$GITHUB_REF_NAME"
