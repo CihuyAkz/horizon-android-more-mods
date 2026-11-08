@@ -16,6 +16,19 @@ pub(super) const CONTROL_HELP: &[&str] = &[
     "options-set KEY VALUE          set an option (enums by name, keys as key.keyboard.w, lists as JSON), apply and save it",
 ];
 
+#[cfg(target_os = "android")]
+include!("../../../../mods/official/basic-hud/mixins/basic_hud/draw_options.rs");
+#[cfg(target_os = "android")]
+include!("../../../../mods/official/basic-hud/mixins/basic_hud/options_mouse.rs");
+#[cfg(target_os = "android")]
+include!("../../../../mods/official/basic-hud/mixins/basic_hud/options_drag.rs");
+#[cfg(target_os = "android")]
+include!("../../../../mods/official/basic-hud/mixins/basic_hud/options_key.rs");
+#[cfg(target_os = "android")]
+include!("../../../../mods/official/basic-hud/mixins/basic_hud/options_scroll.rs");
+#[cfg(target_os = "android")]
+include!("../../../../mods/official/basic-hud/mixins/basic_hud/options_shortcut.rs");
+
 impl Game<'_> {
     pub(super) fn save_title_options(&mut self) {
         if let Some(title) = &self.title
@@ -170,6 +183,10 @@ impl Game<'_> {
         }
     }
     pub(super) fn draw_options(&mut self, batch: &mut HudBatch) {
+        #[cfg(target_os = "android")]
+        if let std::ops::ControlFlow::Break(()) = basic_hud_draw_options(self, batch) {
+            return;
+        }
         self.watch_pack_folder();
         let mut ui = std::mem::take(&mut self.ui.options);
         ui.draw(&self.settings, batch, &self.gui.atlas, self.cursor);
@@ -212,6 +229,10 @@ impl Game<'_> {
         }
     }
     pub(super) fn options_mouse(&mut self, pressed: bool, right: bool) -> Result<()> {
+        #[cfg(target_os = "android")]
+        if let std::ops::ControlFlow::Break(result) = basic_hud_options_mouse(self, pressed, right) {
+            return result;
+        }
         if !pressed {
             if right {
                 return Ok(());
@@ -243,6 +264,10 @@ impl Game<'_> {
         self.handle_option_events(events)
     }
     pub(super) fn options_drag(&mut self) -> Result<()> {
+        #[cfg(target_os = "android")]
+        if let std::ops::ControlFlow::Break(result) = basic_hud_options_drag(self) {
+            return result;
+        }
         let size = self.gui_size();
         let framebuffer = self.renderer.as_ref().map_or([1280, 720], |r| {
             [r.config.width as i32, r.config.height as i32]
@@ -262,6 +287,10 @@ impl Game<'_> {
         self.handle_option_events(events)
     }
     pub(super) fn options_key(&mut self, key: KeyCode, text: Option<&str>) -> Result<()> {
+        #[cfg(target_os = "android")]
+        if let std::ops::ControlFlow::Break(result) = basic_hud_options_key(self, key, text) {
+            return result;
+        }
         let size = self.gui_size();
         let shift = self.has_shift_down();
         let framebuffer = self.renderer.as_ref().map_or([1280, 720], |r| {
@@ -279,11 +308,19 @@ impl Game<'_> {
         &mut self,
         shortcut: horizon_client::clipboard::EditShortcut,
     ) -> bool {
+        #[cfg(target_os = "android")]
+        if let std::ops::ControlFlow::Break(consumed) = basic_hud_options_shortcut(self) {
+            return consumed;
+        }
         self.ui
             .options
             .shortcut(&self.gui.atlas, shortcut, &mut self.clipboard)
     }
     pub(super) fn options_scroll(&mut self, amount: f32) -> Result<()> {
+        #[cfg(target_os = "android")]
+        if let std::ops::ControlFlow::Break(result) = basic_hud_options_scroll(self, amount) {
+            return result;
+        }
         let framebuffer = self.renderer.as_ref().map_or([1280, 720], |r| {
             [r.config.width as i32, r.config.height as i32]
         });

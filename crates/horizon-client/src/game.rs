@@ -56,6 +56,39 @@ mod agent_settings;
 mod allays;
 mod android_bundled;
 #[cfg(target_os = "android")]
+#[path = "../../../mods/official/basic-hud/mixins/basic_hud/runtime.rs"]
+mod basic_hud;
+#[cfg(target_os = "android")]
+#[path = "../../../mods/official/basic-hud/mixins/basic_hud/players.rs"]
+mod basic_hud_players;
+#[cfg(target_os = "android")]
+#[path = "../../../mods/official/basic-hud/mixins/basic_hud/i18n.rs"]
+mod basic_hud_i18n;
+#[cfg(target_os = "android")]
+#[path = "../../../mods/official/basic-hud/mixins/basic_hud/data_logic.rs"]
+mod basic_hud_logic;
+#[cfg(target_os = "android")]
+#[path = "../../../mods/official/basic-hud/mixins/basic_hud/data.rs"]
+mod basic_hud_data;
+#[cfg(target_os = "android")]
+#[path = "../../../mods/official/basic-hud/mixins/basic_hud/render.rs"]
+mod basic_hud_render;
+#[cfg(target_os = "android")]
+#[path = "../../../mods/official/basic-hud/mixins/basic_hud/editor.rs"]
+mod basic_hud_editor;
+#[cfg(target_os = "android")]
+#[path = "../../../mods/official/basic-hud/mixins/basic_hud/tab.rs"]
+mod basic_hud_tab;
+#[cfg(target_os = "android")]
+#[path = "../../../mods/official/basic-hud/mixins/basic_hud/recent_pickups.rs"]
+mod basic_hud_recent_pickups;
+#[cfg(target_os = "android")]
+#[path = "../../../mods/official/basic-hud/mixins/basic_hud/pickup_data.rs"]
+mod basic_hud_pickup_data;
+#[cfg(target_os = "android")]
+#[path = "../../../mods/official/visuality-horizon/mixins/visuality_horizon/game_glue.rs"]
+mod visuality_horizon;
+#[cfg(target_os = "android")]
 #[path = "../../../mods/official/appleskin-horizon/mixins/appleskin_horizon/runtime.rs"]
 mod mod_appleskin;
 #[cfg(target_os = "android")]

@@ -183,6 +183,17 @@ pub(super) enum ChatTrust {
     /// `GuiMessageTag.chatError`: the line `ChatListener.handleChatMessageError` adds.
     Error,
 }
+#[cfg(target_os = "android")]
+include!("../../../../mods/official/basic-hud/mixins/basic_hud/entity_spawn.rs");
+#[cfg(target_os = "android")]
+include!("../../../../mods/official/visuality-horizon/mixins/visuality_horizon/hurt.rs");
+#[cfg(target_os = "android")]
+include!("../../../../mods/official/visuality-horizon/mixins/visuality_horizon/entity_changed.rs");
+#[cfg(target_os = "android")]
+include!("../../../../mods/official/visuality-horizon/mixins/visuality_horizon/session.rs");
+#[cfg(target_os = "android")]
+include!("../../../../mods/official/basic-hud/mixins/basic_hud/entity_remove.rs");
+
 impl ChatTrust {
     /// `ChatTrustLevel.createTag`.
     fn tag(&self) -> Option<horizon_client::chat::Tag> {
@@ -1061,6 +1072,8 @@ impl Game<'_> {
 
     /// Disconnect and return to the multiplayer screen (DisconnectedScreen).
     pub(super) fn leave_server(&mut self, reason: Option<String>) -> Result<()> {
+        #[cfg(target_os = "android")]
+        visuality_session();
         if reason.is_none() && self.integrated.as_ref().is_some_and(|s| !s.stopped()) {
             return self.begin_closing_save(false);
         }
@@ -1994,6 +2007,8 @@ impl Game<'_> {
         keep_world: bool,
         reason: horizon_client::level_loading::Reason,
     ) {
+        #[cfg(target_os = "android")]
+        visuality_session();
         // The replacement player starts with its inventory menu, even if the
         // server switched levels without closing the previous container.
         self.remote_close_local();
@@ -2396,6 +2411,10 @@ impl Game<'_> {
     /// `recreateFromPacket`: yRot and xRot from the packet, the body and head
     /// both at its head yaw (LivingEntity).
     fn spawn_entity(&mut self, id: i32, kind: &str, position: [f64; 3], rotation: [f32; 3]) {
+        #[cfg(target_os = "android")]
+        visuality_entity_changed(id);
+        #[cfg(target_os = "android")]
+        basic_hud_entity_spawn(self, id);
         let [yaw, pitch, head] = rotation;
         let at = Vec3::new(position[0], position[1], position[2]);
         let mob_type = if kind == "minecraft:player" {
@@ -2678,6 +2697,10 @@ impl Game<'_> {
         self.turn_remote_projectile(id, rotation);
     }
     fn remove_entity(&mut self, id: i32) {
+        #[cfg(target_os = "android")]
+        visuality_entity_changed(id);
+        #[cfg(target_os = "android")]
+        basic_hud_entity_remove(self, id);
         // Entity.setRemoved detaches every passenger, even when no empty
         // SetPassengers packet preceded the vehicle's removal. Otherwise
         // mobs and other players keep their passenger pose after it is gone.
@@ -2900,6 +2923,8 @@ impl Game<'_> {
     }
 
     fn handle_packet(&mut self, packet: C) -> Result<()> {
+        #[cfg(target_os = "android")]
+        visuality_hurt(&packet);
         match packet {
             // ClientCommonPacketListenerImpl.handlePing runs on the game
             // thread, after all preceding packets (especially teleports).

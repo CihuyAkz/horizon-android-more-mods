@@ -17,6 +17,9 @@ pub(super) enum Taken {
     Orb(Box<ExperienceOrb>),
     Arrow(Box<Projectile>),
 }
+#[cfg(target_os = "android")]
+include!("../../../../mods/official/basic-hud/mixins/basic_hud/pickup_local.rs");
+
 impl Taken {
     /// The render state's position: the entity's at partial tick 1.
     fn position(&self) -> [f64; 3] {
@@ -106,6 +109,8 @@ impl Game<'_> {
     /// `handleTakeItemEntity`: `particleEngine.add(new ItemPickupParticle(...))` when the
     /// collector is known; it joins the group at the end of the next particle tick.
     pub(super) fn add_pickup(&mut self, taken: Taken, collector: Collector) {
+        #[cfg(target_os = "android")]
+        basic_hud_pickup_local(self, &taken, collector);
         if let Some(target) = self.collector_target(collector) {
             self.add_pickup_toward(taken, collector, target);
         }

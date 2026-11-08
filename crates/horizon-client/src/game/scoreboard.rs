@@ -70,6 +70,9 @@ fn root_owner(mut owner: [i32; 4], pet_owner: impl Fn([i32; 4]) -> Option<[i32; 
     owner
 }
 
+#[cfg(target_os = "android")]
+include!("../../../../mods/official/basic-hud/mixins/basic_hud/tab_hook.rs");
+
 impl Game<'_> {
     fn scoreboard_path(&self) -> std::path::PathBuf {
         self.world_root.join("data/minecraft/scoreboard.dat")
@@ -748,6 +751,10 @@ impl Game<'_> {
     /// held. A local world shows it with a joined LAN guest or a `list`
     /// objective.
     pub(super) fn draw_tab_list(&mut self, batch: &mut HudBatch) {
+        #[cfg(target_os = "android")]
+        if let std::ops::ControlFlow::Break(()) = basic_hud_draw_tab_list(self, batch) {
+            return;
+        }
         use horizon_client::tab_list::{self, TabInputs};
         // Player heads and the player list both draw from the same skin
         // slots: a new frame, with what the last one drew.

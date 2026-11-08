@@ -467,9 +467,14 @@ fn villager_data(m: &mut Mob, data: &[i32], builtin: &Builtin) {
     m.extra.variant3 = level.clamp(0, i32::from(u8::MAX)) as u8;
 }
 
+#[cfg(target_os = "android")]
+include!("../../../../mods/official/basic-hud/mixins/basic_hud/health_packet.rs");
+
 impl Game<'_> {
     /// SetEntityData for a mob of the server's.
     pub(super) fn remote_mob_data(&mut self, id: i32, values: &[(u8, i32, Value)]) {
+        #[cfg(target_os = "android")]
+        basic_hud_health_packet(self, id, values);
         let Some(r) = &self.remote else {
             return;
         };

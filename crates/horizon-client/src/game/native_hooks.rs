@@ -331,6 +331,9 @@ pub(super) use horizon_world::level::flags;
 #[allow(dead_code)]
 pub(crate) const NATIVE_HOOKS_API: u32 = 80;
 
+#[cfg(target_os = "android")]
+include!("../../../../mods/official/basic-hud/mixins/basic_hud/pickup_before.rs");
+
 impl GameLevel<'_> {
     /// An authoritative server committed a changed state through `Level.setBlock`.
     /// The world contains `new`; block side effects and neighbour updates follow.
@@ -3690,6 +3693,8 @@ impl Game<'_> {
     }
     /// Whether a native mod keeps the acting player from taking `stack`.
     pub(super) fn native_pickup_refused(&mut self, stack: &ItemStack) -> bool {
+        #[cfg(target_os = "android")]
+        basic_hud_pickup_before(self, stack);
         let player = self.native_acting_id();
         let mut canceled = false;
         self.native_item_picked_up(player, &stack.item, stack.count, &mut canceled);

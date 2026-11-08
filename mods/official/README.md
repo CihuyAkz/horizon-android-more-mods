@@ -16,8 +16,10 @@ This tree contains the Android-native ports and source-preserving imports used b
 | `freecam/` | `freecam` | 0.1.0 | partial Android runtime port; core camera/input hooks wired |
 | `motion-blur/` | `motion_blur` | 0.1.0 | source-only, not wired |
 | `punchy/` | `punchy` | 0.1.2 | source-only preview; renderer parity incomplete |
+| `basic-hud/` | `basic_hud` | 0.5.0 | statically wired to Android hooks; compile/device validation pending |
+| `visuality-horizon/` | `visuality_horizon` | 1.0.2 | statically wired to Android game and renderer hooks; compile/device validation pending |
 
-The imported HNMOD sources above are not Android runtime integrations: keeping an HNMOD folder under `mods/official/` does not by itself compile its modules or install its hooks. Their original manifests and Rust source are retained.
+Keeping an HNMOD folder under `mods/official/` does not by itself compile its modules or install its hooks. Basic HUD and Visuality are statically adapted to the Android client and registered in Options > Mods; both still need an Android build and device test.
 
 Voice Chat and Inventory Profiles were removed from this tree at the user's request. The 3D Skins mod remains removed.
 

@@ -12,6 +12,10 @@ use horizon_core::{
     random::RandomSource,
 };
 
+#[cfg(target_os = "android")]
+#[path = "../../../../mods/official/visuality-horizon/mixins/visuality_horizon/slime.rs"]
+mod visuality_slime_hook;
+
 // AnimState slots.
 const SQUISH: usize = 0;
 const TARGET_SQUISH: usize = 1;
@@ -182,6 +186,10 @@ fn landing_splash(m: &mut Mob, events: &mut Vec<MobEvent>) {
 /// `AbstractCubeMob.tick` on a client of a server: the landing splash follows
 /// the on-ground flag the server sends.
 pub fn client_tick(m: &mut Mob, events: &mut Vec<MobEvent>) {
+    #[cfg(target_os = "android")]
+    if let core::ops::ControlFlow::Break(()) = visuality_slime_hook::visuality_slime(m) {
+        return;
+    }
     if m.species() == Species::SulfurCube {
         super::sulfur_cube::client_tick(m);
     }

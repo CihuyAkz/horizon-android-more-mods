@@ -15,6 +15,9 @@ const TOTEM: &str = "minecraft:totem_of_undying";
 /// `EntityEvent.TOTEM_OF_UNDYING`.
 pub(super) const TOTEM_EVENT: i8 = 35;
 
+#[cfg(target_os = "android")]
+include!("../../../../mods/official/basic-hud/mixins/basic_hud/totem.rs");
+
 impl Game<'_> {
     /// Whether either hand holds a totem, for the next hurt: the window's
     /// player once a tick, a server's player for each of its turns.
@@ -113,6 +116,8 @@ impl Game<'_> {
     /// 30-tick emitter) and its sound, heard here only (`playLocalSound`),
     /// and the player's own rumble.
     pub(super) fn totem_event(&mut self, body: Body, own: bool) {
+        #[cfg(target_os = "android")]
+        basic_hud_totem(self, &body, own);
         self.particles.tracking_emitter_for(
             ParticleOptions::simple(ParticleType::TotemOfUndying),
             body.at,

@@ -49,6 +49,7 @@ members = [
     "xtask",
     "mods/official/recipes",
     "mods/official/punchy/mixins/punchy/engine",
+    "mods/official/visuality-horizon/mixins/visuality_horizon/engine",
 ]
 resolver = "2"
 

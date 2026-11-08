@@ -45,6 +45,34 @@ The Android adapters register `accurate_block_placement` and `connected_textures
 The implementation remains statically linked into the Android application; placing a folder in
 `mods/official/` alone does not make Horizon dynamically discover it.
 
+## Basic HUD Android static port
+
+### Basic HUD 0.5.0
+
+- Preserved at `mods/official/basic-hud/` and statically compiled only for Android.
+- Registered in Options > Mods with its own settings page and Right Shift layout-editor keybind.
+- Wired to HUD drawing, frame/tick, Tab-list rendering, name-tag health/totem overlays, totem events, entity lifecycle cleanup, and local/multiplayer pickup receipts.
+- Replaced the original private-field bridge for cooldown data with read-only `Cooldowns::entries()` and `Cooldowns::tick_count()` accessors in `horizon-items`.
+- The upstream allocator/thread-detach injection is omitted because its helper only implements the Windows GNU thread-detach path; it is not needed by the Android runtime.
+- The source pins Horizon revision `68ac6f647e7022b2c696e81863d7cface28c9416` and horizon-mixins revision `0d6b103c70633d8fd9443d8d0acd3aadaacedb06`.
+- The upstream repository declares MIT; its notice is retained in `mods/official/basic-hud/LICENSE`.
+
+Static source-path and hook-registration checks are added for the Android adapters. The Rust toolchain and Android SDK/NDK are unavailable in this editing environment, so compilation, APK packaging, install and on-device behaviour remain unverified.
+
+## Additional HNMOD packages
+
+The packages below retain their original manifests and source. Basic HUD and Visuality have Android static adapters.
+
+### Visuality Horizon 1.0.2
+
+- Imported to `mods/official/visuality-horizon/` with its engine crate, atlas, settings and source helpers intact.
+- The engine is a workspace package and is linked into `horizon-client-render` only for Android.
+- Wired to the renderer depth/world-drawn hooks, game tick/frame hooks, Options > Mods row/settings, damage and entity lifecycle signals, session reset, ambient block sampling, and slime landing replacement.
+- Its Android adapters use the current `WorldDrawn`/`RenderNeeds` API and the source functions present in this tree; the original private-hook payloads are not compiled as independent mixins.
+- The upstream package pins Horizon revision `c9d474dd9116e84c243f8992d75c11314df56f06`; the supplied bundle and Android source therefore still require a full Android compile to confirm API compatibility. The source package includes its MIT notice in the engine source.
+
+The two provided bundles pin different upstream Horizon commits. Basic HUD and Visuality have Android static adapters and separate Options > Mods rows. Android compilation, APK packaging and on-device behaviour have not been validated in this environment.
+
 ## Not separately ported
 
 ### Mod Menu 0.3.3
@@ -63,12 +91,12 @@ runtime testing. It is not wired into the active Android build by this patch.
 
 ## Build and verification status
 
-- Static source checks: the source-path, menu-registration, and metadata checks for the final layout pass.
+- Static source checks: the source-path, menu-registration, metadata and mod-specific adapter checks are run against the final tree.
 - The final source package includes both relocated mod source trees and the updated Rust path declarations.
 - Rust compilation, Android packaging, APK install, and in-game behavior: **not run**.
-  The editing environment does not have `rustc`, `cargo`, the Android SDK/NDK, JDK,
-  or Gradle configured. No compiled APK is included and compatibility on a device is
-  not yet established.
+  The editing environment does not have `rustc`, `cargo`, the Android SDK/NDK, or
+  Gradle configured (Java and `javac` are present). No compiled APK is included, and
+  compatibility on a device is not yet established.
 
 ## Apply the patch
 

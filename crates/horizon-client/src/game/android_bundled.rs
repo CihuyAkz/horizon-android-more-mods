@@ -5,6 +5,32 @@ use super::*;
 use super::native_hooks::*;
 
 #[cfg(target_os = "android")]
+include!("../../../../mods/official/basic-hud/mixins/basic_hud/list.rs");
+#[cfg(target_os = "android")]
+include!("../../../../mods/official/basic-hud/mixins/basic_hud/settings.rs");
+#[cfg(target_os = "android")]
+include!("../../../../mods/official/basic-hud/mixins/basic_hud/click.rs");
+#[cfg(target_os = "android")]
+include!("../../../../mods/official/basic-hud/mixins/basic_hud/hud.rs");
+#[cfg(target_os = "android")]
+include!("../../../../mods/official/basic-hud/mixins/basic_hud/tick.rs");
+#[cfg(target_os = "android")]
+include!("../../../../mods/official/basic-hud/mixins/basic_hud/frame.rs");
+#[cfg(target_os = "android")]
+include!("../../../../mods/official/basic-hud/mixins/basic_hud/key.rs");
+
+#[cfg(target_os = "android")]
+include!("../../../../mods/official/visuality-horizon/mixins/visuality_horizon/tick.rs");
+#[cfg(target_os = "android")]
+include!("../../../../mods/official/visuality-horizon/mixins/visuality_horizon/frame.rs");
+#[cfg(target_os = "android")]
+include!("../../../../mods/official/visuality-horizon/mixins/visuality_horizon/list.rs");
+#[cfg(target_os = "android")]
+include!("../../../../mods/official/visuality-horizon/mixins/visuality_horizon/settings.rs");
+#[cfg(target_os = "android")]
+include!("../../../../mods/official/visuality-horizon/mixins/visuality_horizon/settings_click.rs");
+
+#[cfg(target_os = "android")]
 include!("../../../../mods/official/armorhud/mixins/armorhud/list.rs");
 #[cfg(target_os = "android")]
 include!("../../../../mods/official/armorhud/mixins/armorhud/settings.rs");
@@ -199,6 +225,7 @@ pub(super) fn native_key(game: &mut Game<'_>, key: &str, pressed: bool) {
         super::freecam_hooks::key(&mut *game, key, pressed);
         super::punchy::key(&mut *game, key, pressed);
         armorhud_key(&mut *game, key, pressed);
+        basic_hud_key(&mut *game, key, pressed);
     }
 }
 
@@ -232,6 +259,8 @@ pub(super) fn native_mods(game: &mut Game<'_>, mods: &mut Vec<NativeMod>) {
         armorhud_listed(&mut *mods);
         jade_listed(&mut *mods);
         resourcify_listed(&mut *mods);
+        basic_hud_listed(&mut *mods, &mut *game);
+        visuality_listed(&mut *mods);
         super::freecam_hooks::list(&mut *mods);
         mods.push(NativeMod {
             id: super::punchy::ID.into(),
@@ -262,6 +291,8 @@ pub(super) fn native_settings(game: &mut Game<'_>, mod_id: &str, buttons: &mut V
         }
         armorhud_page(&mut *game, mod_id, &mut *buttons);
         jade_settings(&mut *game, mod_id, &mut *buttons);
+        basic_hud_page(&mut *game, mod_id, &mut *buttons);
+        visuality_page(&mut *game, mod_id, &mut *buttons);
     }
 }
 
@@ -282,6 +313,8 @@ pub(super) fn native_settings_click(game: &mut Game<'_>, mod_id: &str, button: u
         }
         armorhud_click(&mut *game, mod_id, button);
         jade_settings_click(&mut *game, mod_id, button);
+        basic_hud_click(&mut *game, mod_id, button);
+        visuality_click(&mut *game, mod_id, button);
     }
 }
 
@@ -349,6 +382,8 @@ pub(super) fn native_tick(game: &mut Game<'_>) {
     {
         super::freecam_hooks::tick(&mut *game);
         super::punchy::tick(&mut *game);
+        basic_hud_tick(&mut *game);
+        visuality_tick(&mut *game);
         if game.native_window() {
             accurate_block_placement_tick(&mut *game);
         }
@@ -379,6 +414,8 @@ pub(super) fn native_frame(game: &mut Game<'_>, elapsed: Duration) {
         connected_textures_frame::run(&mut *game);
         jade_frame(&mut *game);
         resourcify_frame(&mut *game);
+        basic_hud_frame(&mut *game, elapsed);
+        visuality_frame(&mut *game);
     }
 }
 
@@ -392,6 +429,7 @@ pub(super) fn native_hud(
         super::freecam_hooks::hud(game, batch);
         armorhud_hud(game, batch, corners);
         jade_hud(game, batch);
+        basic_hud_draw(game, batch, corners);
     }
     let _ = (game, batch, corners);
 }

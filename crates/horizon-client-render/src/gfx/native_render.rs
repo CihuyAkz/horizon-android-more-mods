@@ -7,6 +7,10 @@ use super::Vertex;
 use super::pack_draw::EntitySpan;
 use glam::{DVec3, Mat4};
 
+#[cfg(target_os = "android")]
+#[path = "../../../../mods/official/visuality-horizon/mixins/visuality_horizon/render_glue.rs"]
+pub mod visuality_horizon;
+
 /// What a mod can draw with once the world is drawn: after the sky, terrain, entities,
 /// particles, weather and the world post pass, before the first-person hand, the HUD and the
 /// screens. `color` holds the world's picture (copy it out before reading it: it is the target
@@ -58,12 +62,16 @@ pub struct RenderNeeds {
 #[inline(never)]
 pub fn native_world_drawn(world: &mut WorldDrawn<'_>) {
     let _ = world;
+    #[cfg(target_os = "android")]
+    visuality_horizon::world_drawn(world);
 }
 
 /// Asked as a frame is built and drawn: set what your mod needs.
 #[inline(never)]
 pub fn native_render_needs(needs: &mut RenderNeeds) {
     let _ = needs;
+    #[cfg(target_os = "android")]
+    visuality_horizon::render_needs(needs);
 }
 
 /// What the mods need this frame ([`native_render_needs`]).

@@ -22,6 +22,10 @@ use horizon_world::{
 };
 use std::{collections::BTreeMap, path::Path};
 
+#[cfg(target_os = "android")]
+#[path = "../../../mods/official/visuality-horizon/mixins/visuality_horizon/ambient.rs"]
+mod visuality_ambient_hook;
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum Animate {
     None,
@@ -824,6 +828,8 @@ fn block_animate_tick(
     pos: [i32; 3],
     player: [i32; 3],
 ) {
+    #[cfg(target_os = "android")]
+    visuality_ambient_hook::visuality_ambient(ctx, state, pos);
     let (fx, fy, fz) = (f64::from(pos[0]), f64::from(pos[1]), f64::from(pos[2]));
     match tables.kind(state) {
         Animate::None => {}

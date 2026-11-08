@@ -18,6 +18,9 @@ use horizon_protocol::{
     text::{Language, plain, translatable},
 };
 use horizon_world::nbt::{JavaString, Tag};
+#[cfg(target_os = "android")]
+#[path = "../../../mods/official/basic-hud/mixins/basic_hud/pickup_packets.rs"]
+pub(crate) mod basic_hud_pickup_packets;
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
@@ -248,7 +251,10 @@ impl Session {
     }
     /// Everything received since the last poll.
     pub fn poll(&self) -> Vec<Event> {
-        self.events.try_iter().collect()
+        let events: Vec<Event> = self.events.try_iter().collect();
+        #[cfg(target_os = "android")]
+        crate::net::basic_hud_pickup_packets::observe(self, &events);
+        events
     }
     /// Send a play packet; silently dropped once the connection is gone,
     /// and while the server has the connection back in configuration (a
