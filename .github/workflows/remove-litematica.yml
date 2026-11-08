@@ -73,6 +73,19 @@ jobs:
                   text,
               )
               if updated_mod_list != text:
+                  marker = "pub const ANDROID_BUNDLED:"
+                  start = updated_mod_list.find(marker)
+                  if start >= 0:
+                      end = updated_mod_list.find("];", start)
+                      if end >= 0:
+                          section = updated_mod_list[start:end]
+                          item_count = len(re.findall(r'^\s*(?:\(\s*)?"[a-z0-9_]+"', section, re.M))
+                          updated_mod_list, count = re.subn(
+                              r'(pub const ANDROID_BUNDLED:\s*\[\(&str,\s*&str,\s*&str\);\s*)\d+(\]\s*=\s*\[)',
+                              rf"\g<1>{item_count}\g<2>",
+                              updated_mod_list,
+                              count=1,
+                          )
                   mod_list.write_text(updated_mod_list, encoding="utf-8", newline="\n")
                   removed.append("Horizonmatica Mod List catalogue entry")
 
@@ -94,13 +107,28 @@ jobs:
                   text,
                   flags=re.IGNORECASE,
               )
-              # Remove the deleted storage registration from shared expected lists.
+              def remove_storage_token(match):
+                  if match.group("left"):
+                      return match.group("right") or ""
+                  return ""
+
               text = re.sub(
-                  r'(?m)^\s*["\']litematica_storage::listed["\']\s*,?\s*\n',
-                  "",
+                  r'(?P<left>,[ \t]*)["\']litematica_storage::listed["\'](?P<right>[ \t]*,)?',
+                  remove_storage_token,
                   text,
                   flags=re.IGNORECASE,
               )
+              if "litematica_storage::listed" in original.lower():
+                  text = re.sub(
+                      r'test_catalog_has_all_18_bundled_android_mods',
+                      "test_catalog_has_all_17_bundled_android_mods",
+                      text,
+                  )
+                  text = re.sub(
+                      r'(self\.assertEqual\(len\(ids\),\s*)18(\s*\))',
+                      r'\g<1>17\g<2>',
+                      text,
+                  )
               if text != original:
                   test_file.write_text(text, encoding="utf-8", newline="\n")
                   removed.append(str(test_file.relative_to(root)))
