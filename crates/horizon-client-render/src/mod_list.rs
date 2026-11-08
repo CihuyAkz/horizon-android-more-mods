@@ -11,7 +11,7 @@ use std::{
 
 pub const FILE: &str = "horizon-mods.txt";
 /// Fixed native modules compiled into Android APKs, all opt-in.
-pub const ANDROID_BUNDLED: [(&str, &str, &str); 18] = [
+pub const ANDROID_BUNDLED: [(&str, &str, &str); 17] = [
     (
         "zoom",
         "Zoom",
@@ -57,8 +57,7 @@ pub const ANDROID_BUNDLED: [(&str, &str, &str); 18] = [
     ("resourcify", "Resourcify", "Manage resource packs from the game"),
     ("basic_hud", "Basic HUD", "Configurable HUD layout and information"),
     ("visuality_horizon", "Visuality", "Visual effects and particles"),
-    ("horizonmatica", "Horizonmatica", "Litematica schematic folder and storage access setup"),
-    ("punchy", "Punchy", "First-person hand animation preview"),
+("punchy", "Punchy", "First-person hand animation preview"),
     ("freelook", "Freelook", "Look around independently while holding the key"),
     ("gyro", "Gyro", "Gyroscope-driven camera movement"),
     ("waypoints", "Waypoints", "Save and show world locations"),

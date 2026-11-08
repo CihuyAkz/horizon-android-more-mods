@@ -4,9 +4,6 @@ use super::*;
 
 use super::native_hooks::*;
 
-#[cfg(target_os = "android")]
-#[path = "litematica_storage.rs"]
-mod litematica_storage;
 
 #[cfg(target_os = "android")]
 include!("../../../../mods/official/basic-hud/mixins/basic_hud/list.rs");
@@ -269,7 +266,6 @@ pub(super) fn native_mods(game: &mut Game<'_>, mods: &mut Vec<NativeMod>) {
         resourcify_listed(&mut *mods);
         basic_hud_listed(&mut *mods, &mut *game);
         visuality_listed(&mut *mods);
-        litematica_storage::listed(&mut *mods);
         super::freecam_hooks::list(&mut *mods);
         super::freelook_hooks::list(&mut *mods);
         super::gyro_hooks::list(&mut *mods);
@@ -306,7 +302,6 @@ pub(super) fn native_settings(game: &mut Game<'_>, mod_id: &str, buttons: &mut V
         jade_settings(&mut *game, mod_id, &mut *buttons);
         basic_hud_page(&mut *game, mod_id, &mut *buttons);
         visuality_page(&mut *game, mod_id, &mut *buttons);
-        litematica_storage::settings(mod_id, &mut *buttons);
     }
 }
 
@@ -330,7 +325,6 @@ pub(super) fn native_settings_click(game: &mut Game<'_>, mod_id: &str, button: u
         jade_settings_click(&mut *game, mod_id, button);
         basic_hud_click(&mut *game, mod_id, button);
         visuality_click(&mut *game, mod_id, button);
-        litematica_storage::click(mod_id, button);
     }
 }
 
@@ -435,7 +429,6 @@ pub(super) fn native_frame(game: &mut Game<'_>, elapsed: Duration) {
         resourcify_frame(&mut *game);
         basic_hud_frame(&mut *game, elapsed);
         visuality_frame(&mut *game);
-        litematica_storage::poll();
     }
 }
 

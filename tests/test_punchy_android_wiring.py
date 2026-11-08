@@ -31,18 +31,18 @@ class HorizonAndroidIntegrationTests(unittest.TestCase):
         self.assertIn("let changed=game.swings_started!=s.previous_swings;", tick)
         self.assertIn("input.attack=(changed && !input.mining && !mining_attempt)", tick)
 
-    def test_catalog_has_all_18_bundled_android_mods(self):
+    def test_catalog_has_all_17_bundled_android_mods(self):
         catalog = (ROOT / "crates/horizon-client-render/src/mod_list.rs").read_text()
         bundled = (ROOT / "crates/horizon-client/src/game/android_bundled.rs").read_text()
         section = catalog.split("pub const ANDROID_BUNDLED:", 1)[1].split("/// The folder", 1)[0]
         ids = set(re.findall(r'^\s*\(?"([a-z0-9_]+)"', section, re.M))
-        self.assertEqual(len(ids), 18)
+        self.assertEqual(len(ids), 17)
         for token in (
             "zoom_list::run", "minimap_list::run", "recipes_list::run",
             "smartf3_list::run", "accurate_block_placement_list::run",
             "connected_textures_list::run", "mod_appleskin_glue::on_list",
             "armorhud_listed", "jade_listed", "resourcify_listed",
-            "basic_hud_listed", "visuality_listed", "litematica_storage::listed",
+            "basic_hud_listed", "visuality_listed",
             "freecam_hooks::list", "freelook_hooks::list", "gyro_hooks::list",
             "waypoints_hooks::list", "punchy::ID",
         ):
@@ -58,13 +58,3 @@ class HorizonAndroidIntegrationTests(unittest.TestCase):
         ):
             self.assertIn(token, source)
 
-    def test_horizonmatica_uses_the_schematics_directory_from_its_hnmod_runtime(self):
-        source = (ROOT / "crates/horizon-client/src/game/litematica_storage.rs").read_text()
-        self.assertIn("Game::native_config_dir()", source)
-        self.assertIn('game_directory.join("schematics")', source)
-        self.assertNotIn("/storage/emulated/0/HorizonAndroid/Litematica", source)
-        self.assertNotIn("MANAGE_EXTERNAL_STORAGE", source)
-
-
-if __name__ == "__main__":
-    unittest.main()

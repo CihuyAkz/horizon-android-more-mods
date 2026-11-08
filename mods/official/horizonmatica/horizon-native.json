@@ -1,8 +1,0 @@
-{
-  "schema": 1,
-  "id": "horizonmatica",
-  "version": "0.2.0",
-  "game": "26.3",
-  "horizon": "67dad0d1a5adca139b426c8114e74a33b376ba64",
-  "mixins": "e8cd0aa38cffef49cb2e088ef716baa107148c02"
-}
