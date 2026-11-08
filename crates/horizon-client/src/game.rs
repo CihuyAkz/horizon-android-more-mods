@@ -101,6 +101,21 @@ mod freecam;
 #[path = "../../../mods/official/freecam/android.rs"]
 pub(crate) mod freecam_hooks;
 #[cfg(target_os = "android")]
+#[path = "../../../mods/official/freelook/mixins/freelook/runtime.rs"]
+mod freelook;
+#[cfg(target_os = "android")]
+#[path = "../../../mods/official/freelook/android.rs"]
+pub(super) mod freelook_hooks;
+#[cfg(target_os = "android")]
+#[path = "../../../mods/official/gyro/android.rs"]
+pub(super) mod gyro_hooks;
+#[cfg(target_os = "android")]
+#[path = "../../../mods/official/waypoints/mixins/waypoints/runtime.rs"]
+mod waypoints_mod;
+#[cfg(target_os = "android")]
+#[path = "../../../mods/official/waypoints/android.rs"]
+pub(super) mod waypoints_hooks;
+#[cfg(target_os = "android")]
 #[path = "../../../mods/official/punchy/mixins/punchy/runtime.rs"]
 mod punchy;
 #[cfg(target_os = "android")]
@@ -7650,6 +7665,20 @@ impl Game<'_> {
     /// An agent moving the mouse (`mouse-move`) counts as a grabbed pointer in
     /// an active window, as it cannot grab the real one.
     fn apply_mouse_look(&mut self) {
+        #[cfg(target_os = "android")]
+        {
+            // A held Freelook key temporarily owns the camera angles. Do not
+            // feed its nested mouse-look call into Gyro as well.
+            if self.native_on(freelook::ID) {
+                if let std::ops::ControlFlow::Break(()) = freelook_hooks::mouse(self) {
+                    return;
+                }
+            }
+            if self.native_on(horizon_client::gyro::ID) && !freelook::held() {
+                gyro_hooks::mouse_look(self);
+                return;
+            }
+        }
         let look = self.look_options();
         let time = self.started.elapsed().as_secs_f64();
         let pointer = self.captured || self.agent_pointer;

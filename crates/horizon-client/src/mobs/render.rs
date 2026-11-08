@@ -2,6 +2,10 @@
 //! variant/baby model and texture selection, setupRotations, per-species
 //! scale, and extra layers (sheep wool, spider eyes, drowned/stray outer
 //! layers, villager overlays, collars...).
+#[cfg(target_os = "android")]
+#[path = "../../../../mods/official/gyro/mixins/gyro/model_roll_helper.rs"]
+mod gyro_model_roll;
+
 use super::{
     Mob, MobData, ModelNormals, Part, Species,
     anim::{self, Poses},
@@ -981,7 +985,10 @@ pub fn base_transform(m: &Mob, alpha: f32, camera: glam::DVec3) -> glam::Mat4 {
         m.previous.z + (m.position.z - m.previous.z) * a,
     ) - camera
         + enderman_render_offset(m, alpha);
-    base_transform_at(m, alpha, glam::Mat4::from_translation(p.as_vec3()))
+    let transform = base_transform_at(m, alpha, glam::Mat4::from_translation(p.as_vec3()));
+    #[cfg(target_os = "android")]
+    let transform = gyro_model_roll::on_return(m, transform);
+    transform
 }
 /// `EndermanRenderer.getRenderOffset`: a creepy (angry) enderman is moved by
 /// a gaussian 0.02 blocks sideways in x and z every frame. Vanilla draws from

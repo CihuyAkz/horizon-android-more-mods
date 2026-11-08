@@ -242,6 +242,10 @@ impl Game<'_> {
     /// front of) it, pulled in where visual shapes are in the way. Returns the
     /// position, yaw and pitch to render from.
     pub(super) fn camera_view(&mut self, partial: f32) -> Option<(glam::DVec3, f32, f32)> {
+        #[cfg(target_os = "android")]
+        if let std::ops::ControlFlow::Break(view) = super::freelook_hooks::camera(self, partial) {
+            return view;
+        }
         // Minecraft.cameraEntity: a server's spectator camera on a mob or
         // another player.
         let (entity, descending) = match self.camera_mob() {

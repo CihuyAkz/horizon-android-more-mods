@@ -48,7 +48,10 @@ impl Game<'_> {
         let portal = fx.o_portal + partial * (fx.portal - fx.o_portal);
         let scale = self.screen_effect_scale();
         let intensity = portal.max(self.nausea_blend(partial)) * (scale * scale);
-        spinning_effect_matrix(intensity, fx.spinning_time + partial * fx.spinning_speed)
+        let matrix = spinning_effect_matrix(intensity, fx.spinning_time + partial * fx.spinning_speed);
+        #[cfg(target_os = "android")]
+        let matrix = super::gyro_hooks::spinning(self, matrix);
+        matrix
     }
     /// What `AbstractClientPlayer.getFieldOfViewModifier` reads.
     fn fov_player(&self) -> Option<FovPlayer> {

@@ -226,6 +226,9 @@ pub(super) fn native_key(game: &mut Game<'_>, key: &str, pressed: bool) {
         super::punchy::key(&mut *game, key, pressed);
         armorhud_key(&mut *game, key, pressed);
         basic_hud_key(&mut *game, key, pressed);
+        super::freelook_hooks::key(&mut *game, key, pressed);
+        super::gyro_hooks::key(&mut *game, key, pressed);
+        super::waypoints_hooks::key(&mut *game, key, pressed);
     }
 }
 
@@ -234,6 +237,7 @@ pub(super) fn native_wheel(game: &mut Game<'_>, steps: f32, claimed: &mut bool) 
     #[cfg(target_os = "android")]
     {
         zoom_wheel::run(&*game, steps, &mut *claimed);
+        super::freelook_hooks::wheel(&*game, steps, &mut *claimed);
     }
 }
 
@@ -262,6 +266,9 @@ pub(super) fn native_mods(game: &mut Game<'_>, mods: &mut Vec<NativeMod>) {
         basic_hud_listed(&mut *mods, &mut *game);
         visuality_listed(&mut *mods);
         super::freecam_hooks::list(&mut *mods);
+        super::freelook_hooks::list(&mut *mods);
+        super::gyro_hooks::list(&mut *mods);
+        super::waypoints_hooks::list(&mut *mods);
         mods.push(NativeMod {
             id: super::punchy::ID.into(),
             title: super::punchy::TITLE.into(),
@@ -293,6 +300,7 @@ pub(super) fn native_settings(game: &mut Game<'_>, mod_id: &str, buttons: &mut V
         jade_settings(&mut *game, mod_id, &mut *buttons);
         basic_hud_page(&mut *game, mod_id, &mut *buttons);
         visuality_page(&mut *game, mod_id, &mut *buttons);
+        super::waypoints_hooks::settings(&mut *game, mod_id, &mut *buttons);
     }
 }
 
@@ -315,6 +323,7 @@ pub(super) fn native_settings_click(game: &mut Game<'_>, mod_id: &str, button: u
         jade_settings_click(&mut *game, mod_id, button);
         basic_hud_click(&mut *game, mod_id, button);
         visuality_click(&mut *game, mod_id, button);
+        super::waypoints_hooks::settings_click(&mut *game, mod_id, button);
     }
 }
 
@@ -416,6 +425,9 @@ pub(super) fn native_frame(game: &mut Game<'_>, elapsed: Duration) {
         resourcify_frame(&mut *game);
         basic_hud_frame(&mut *game, elapsed);
         visuality_frame(&mut *game);
+        super::freelook_hooks::frame(&mut *game);
+        super::gyro_hooks::frame(&mut *game, elapsed);
+        super::waypoints_hooks::frame(&mut *game);
     }
 }
 
@@ -430,6 +442,7 @@ pub(super) fn native_hud(
         armorhud_hud(game, batch, corners);
         jade_hud(game, batch);
         basic_hud_draw(game, batch, corners);
+        super::waypoints_hooks::hud(game, batch);
     }
     let _ = (game, batch, corners);
 }
