@@ -155,6 +155,7 @@
     .notice { color: #9aa9bc; border-left: 2px solid #d6a85d; padding: 10px 13px; font-size: 11px; line-height: 1.7; margin: 20px 0 0; background: rgba(214,168,93,.05); }
     footer { border-top: 1px solid var(--line); padding: 23px 0 32px; color: var(--muted); font-size: 10px; display: flex; justify-content: space-between; gap: 15px; }
     .status { color: var(--muted); font-size: 11px; }
+    .status[hidden] { display: none !important; }
     .error { color: #ffb4a9; }
     .empty { color: var(--muted); font-size: 12px; padding: 15px 0; }
 
@@ -576,36 +577,132 @@
       observeDynamicReveals($("history-list"));
     }
 
-    async function loadReleases() {
-      const status = $("sync-status");
-      try {
-        const response = await fetch(API, {
-          headers: { "Accept": "application/vnd.github+json" },
-          cache: "no-store"
-        });
-        if (!response.ok) throw new Error(`GitHub API returned ${response.status}`);
-        const releases = await response.json();
-        const published = releases.filter(release => !release.draft && !release.prerelease);
-        if (!published.length) throw new Error("No public releases are available.");
+    const RELEASE_CACHE_KEY = "horizon-android-releases-cache";
+    const RELEASE_REFRESH_INTERVAL = 10 * 60 * 1000;
+    let releaseRefreshTimer = null;
+    let releaseRequestRunning = false;
+    let lastReleaseRequest = 0;
 
-        const latest = published[0];
-        $("version").textContent = latest.tag_name || "Latest";
-        $("release-title").textContent = latest.name || latest.tag_name || "Latest Release";
-        $("published").textContent = formatDate(latest.published_at);
-        $("release-body").innerHTML = markdownToSafeHtml(latest.body);
-        renderAssets(latest.assets);
-        renderHistory(published);
+    function renderReleases(releases) {
+      const published = releases.filter(release => !release.draft && !release.prerelease);
+      if (!published.length) throw new Error("No public releases are available.");
+
+      const latest = published[0];
+      $("version").textContent = latest.tag_name || "Latest";
+      $("release-title").textContent = latest.name || latest.tag_name || "Latest Release";
+      $("published").textContent = formatDate(latest.published_at);
+      $("release-body").innerHTML = markdownToSafeHtml(latest.body);
+      renderAssets(latest.assets);
+      renderHistory(published);
+    }
+
+    function readCachedReleases() {
+      try {
+        const cached = JSON.parse(localStorage.getItem(RELEASE_CACHE_KEY) || "null");
+        return Array.isArray(cached) ? cached : null;
+      } catch {
+        return null;
+      }
+    }
+
+    function cacheReleases(releases) {
+      try {
+        localStorage.setItem(RELEASE_CACHE_KEY, JSON.stringify(releases));
+      } catch (error) {
+        console.warn("Unable to save the release cache:", error);
+      }
+    }
+
+    function scheduleReleaseRefresh() {
+      window.clearTimeout(releaseRefreshTimer);
+      releaseRefreshTimer = window.setTimeout(() => {
+        if (document.visibilityState === "visible") {
+          loadReleases();
+        } else {
+          scheduleReleaseRefresh();
+        }
+      }, RELEASE_REFRESH_INTERVAL);
+    }
+
+    async function loadReleases() {
+      if (releaseRequestRunning) return;
+      releaseRequestRunning = true;
+      lastReleaseRequest = Date.now();
+
+      const status = $("sync-status");
+      status.hidden = false;
+      status.textContent = "Connecting to GitHub…";
+      status.classList.remove("error");
+      status.style.color = "";
+
+      try {
+        const controller = new AbortController();
+        const timeout = window.setTimeout(() => controller.abort(), 15000);
+        let response;
+        try {
+          response = await fetch(API, {
+            headers: {
+              "Accept": "application/vnd.github+json",
+              "X-GitHub-Api-Version": "2022-11-28"
+            },
+            cache: "no-cache",
+            signal: controller.signal
+          });
+        } finally {
+          window.clearTimeout(timeout);
+        }
+
+        if (!response.ok) {
+          throw new Error(`GitHub API returned ${response.status}`);
+        }
+
+        const releases = await response.json();
+        renderReleases(releases);
+        cacheReleases(releases);
+
         status.textContent = "● Connected · Up to date";
         status.style.color = "var(--green)";
+        status.title = "Release information was refreshed from GitHub.";
       } catch (error) {
-        status.textContent = "Showing the last available data";
-        status.classList.add("error");
-        console.error("Failed to load GitHub Releases:", error);
+        // Keep the last rendered or cached release details, but do not leave
+        // a permanent "last available data" warning on the page.
+        status.textContent = "";
+        status.hidden = true;
+        status.title = error.name === "AbortError"
+          ? "GitHub did not respond before the request timed out."
+          : error.message;
+        console.warn("GitHub Releases could not be refreshed:", error);
+      } finally {
+        releaseRequestRunning = false;
+        scheduleReleaseRefresh();
+      }
+    }
+
+    // Show the most recently saved release list immediately, then refresh it.
+    const cachedReleases = readCachedReleases();
+    if (cachedReleases) {
+      try {
+        renderReleases(cachedReleases);
+      } catch (error) {
+        console.warn("The saved GitHub release cache is invalid:", error);
       }
     }
 
     $("year").textContent = new Date().getFullYear();
     loadReleases();
+
+    // Retry promptly when connectivity returns or when the tab becomes active.
+    window.addEventListener("online", () => {
+      window.clearTimeout(releaseRefreshTimer);
+      loadReleases();
+    });
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible" &&
+          Date.now() - lastReleaseRequest >= RELEASE_REFRESH_INTERVAL) {
+        window.clearTimeout(releaseRefreshTimer);
+        loadReleases();
+      }
+    });
   </script>
 </body>
 </html>
