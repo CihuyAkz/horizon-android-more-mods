@@ -68,6 +68,8 @@ pub struct TouchUi {
     pub keyboard: Option<Keyboard>,
     gesture: Option<(u64, [f32; 2], [f32; 2], bool)>,
     pointer_drag: Option<u64>,
+    /// Finger currently pressing the Back-only overlay for the Basic HUD editor.
+    basic_hud_editor_back_touch: Option<u64>,
     held_keys: BTreeMap<u64, KeyCode>,
     pub f3_latched: bool,
 }
@@ -111,6 +113,7 @@ impl Default for TouchUi {
             keyboard: None,
             gesture: None,
             pointer_drag: None,
+            basic_hud_editor_back_touch: None,
             held_keys: BTreeMap::new(),
             f3_latched: false,
         }
@@ -659,6 +662,7 @@ impl TouchUi {
     pub fn cancel(&mut self) {
         self.gesture = None;
         self.pointer_drag = None;
+        self.basic_hud_editor_back_touch = None;
         self.relative = None;
         self.relative_click = None;
         self.sensitivity_dragging = false;
@@ -753,6 +757,50 @@ impl TouchUi {
         }
         None
     }
+    /// Starts ownership of the Back-only overlay touch. Its release remains
+    /// consumed even if Escape closes the editor before the finger is lifted.
+    pub fn begin_basic_hud_editor_back_touch(&mut self, id: u64) -> bool {
+        if self.basic_hud_editor_back_touch.is_some() {
+            return false;
+        }
+        self.basic_hud_editor_back_touch = Some(id);
+        true
+    }
+
+    /// Returns true while consuming the owned Back touch through End/Cancel.
+    pub fn consume_basic_hud_editor_back_touch(&mut self, id: u64, phase: TouchPhase) -> bool {
+        if self.basic_hud_editor_back_touch != Some(id) {
+            return false;
+        }
+        if matches!(phase, TouchPhase::Ended | TouchPhase::Cancelled) {
+            self.basic_hud_editor_back_touch = None;
+        }
+        true
+    }
+
+    /// Claims one Android touch as the Basic HUD editor's mouse pointer.
+    /// Other fingers are ignored until the owning touch ends or is cancelled.
+    pub fn editor_pointer_phase(&mut self, id: u64, phase: TouchPhase) -> bool {
+        if self
+            .basic_hud_editor_back_touch
+            .is_some_and(|owner| owner != id)
+        {
+            return false;
+        }
+        if phase == TouchPhase::Started {
+            match self.pointer_drag {
+                None => self.pointer_drag = Some(id),
+                Some(owner) if owner == id => {}
+                Some(_) => return false,
+            }
+        }
+        let owned = self.pointer_drag == Some(id);
+        if owned && matches!(phase, TouchPhase::Ended | TouchPhase::Cancelled) {
+            self.pointer_drag = None;
+        }
+        owned
+    }
+
     /// Sliders retain mouse dragging; list rows use scroll-or-tap gestures.
     pub fn direct_pointer(&mut self, id: u64, p: [f32; 2], phase: TouchPhase) -> bool {
         if phase == TouchPhase::Started
@@ -927,6 +975,17 @@ impl TouchUi {
         }
     }
 }
+/// Bounds of the minimal Android Back control shown over the Basic HUD editor.
+pub fn basic_hud_editor_back_rect(width: f32) -> [f32; 4] {
+    [width - 53.0, 3.0, 50.0, 20.0]
+}
+
+/// Draw only Horizon's Back button while the Basic HUD layout editor is open.
+pub fn draw_basic_hud_editor_back(b: &mut HudBatch, a: &HudAtlas) {
+    let [x, y, w, _] = basic_hud_editor_back_rect(b.width);
+    button(b, a, "Back", x, y, w);
+}
+
 fn button(b: &mut HudBatch, a: &HudAtlas, label: &str, x: f32, y: f32, w: f32) {
     if !crate::touch::theme_button(b, a, "button", [x, y, w, 20.0], false, u32::MAX, true) {
         b.fill(a, x, y, w, 20.0, rgba(16, 18, 24, 180));
@@ -7888,6 +7947,36 @@ mod tests {
         ui.expanded = false;
         ui.goy_mode = true;
         assert!(ui.action(400.0, 240.0, [10.0, 10.0], false).is_none());
+    }
+
+    #[test]
+    fn basic_hud_editor_pointer_is_owned_by_one_finger_until_release() {
+        let mut ui = TouchUi::default();
+        assert!(ui.editor_pointer_phase(7, TouchPhase::Started));
+        assert!(!ui.editor_pointer_phase(8, TouchPhase::Started));
+        assert!(ui.editor_pointer_phase(7, TouchPhase::Moved));
+        assert!(ui.editor_pointer_phase(7, TouchPhase::Ended));
+        assert!(ui.editor_pointer_phase(8, TouchPhase::Started));
+        assert!(ui.editor_pointer_phase(8, TouchPhase::Cancelled));
+        assert!(!ui.editor_pointer_phase(8, TouchPhase::Moved));
+    }
+
+    #[test]
+    fn basic_hud_editor_back_touch_is_consumed_until_end_or_cancel() {
+        let mut ui = TouchUi::default();
+        assert!(ui.begin_basic_hud_editor_back_touch(14));
+        assert!(!ui.begin_basic_hud_editor_back_touch(15));
+        assert!(!ui.editor_pointer_phase(15, TouchPhase::Started));
+        assert!(ui.consume_basic_hud_editor_back_touch(14, TouchPhase::Moved));
+        assert!(!ui.consume_basic_hud_editor_back_touch(15, TouchPhase::Ended));
+        assert!(ui.consume_basic_hud_editor_back_touch(14, TouchPhase::Ended));
+        assert!(!ui.consume_basic_hud_editor_back_touch(14, TouchPhase::Moved));
+    }
+
+    #[test]
+    fn basic_hud_editor_back_button_stays_in_the_menu_corner() {
+        assert_eq!(basic_hud_editor_back_rect(427.0), [374.0, 3.0, 50.0, 20.0]);
+        assert_eq!(basic_hud_editor_back_rect(320.0), [267.0, 3.0, 50.0, 20.0]);
     }
 
     #[test]

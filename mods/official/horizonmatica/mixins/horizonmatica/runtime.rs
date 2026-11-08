@@ -1033,16 +1033,15 @@ fn schematics_dir() -> Result<PathBuf, String> {
         let dir = PathBuf::from(DIRECTORY);
         std::fs::create_dir_all(&dir).map_err(|e| {
             format!(
-                "{DIRECTORY}: {e}. On Android 11+, enable All files access for Horizon Android in system settings."
+                "{DIRECTORY}: {e}. Open Options > Mods > Horizonmatica and grant All files access in Android Special app access."
             )
         })?;
-        let placeholder = dir.join("put your schematic over here.txt");
-        if !placeholder.exists() {
+        let marker = dir.join("put your schematic over here.txt");
+        if !marker.exists() {
             std::fs::write(
-                &placeholder,
-                "Put your .litematic, .schem, .schematic, or .nbt files in this folder.\\n",
-            )
-            .map_err(|e| format!("{}: {e}", placeholder.display()))?;
+                &marker,
+                "Put your .litematic, .schem, .schematic, or .nbt files in this folder.\n",
+            ).map_err(|e| format!("{}: {e}", marker.display()))?;
         }
         Ok(dir)
     }

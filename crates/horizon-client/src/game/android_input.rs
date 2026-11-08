@@ -1386,6 +1386,81 @@ impl Game<'_> {
             }
         }
     }
+    /// Direct one-finger pointer input for the Basic HUD editor. Unlike normal
+    /// menu gestures, a held touch must remain a mouse press while it moves so
+    /// the editor can drag widgets instead of interpreting the gesture as scroll.
+    pub(super) fn android_basic_hud_editor_touch(
+        &mut self,
+        t: &Touch,
+        events: &dyn super::event_loop::EventLoopCtl,
+        id: WindowId,
+    ) {
+        let Some(batch) = self.gui_scale() else {
+            return;
+        };
+        let point = [
+            t.location.x as f32 / batch.scale,
+            t.location.y as f32 / batch.scale,
+        ];
+        let ended = matches!(t.phase, TouchPhase::Ended | TouchPhase::Cancelled);
+        if t.phase == TouchPhase::Started {
+            self.ui.options.touch_start();
+        }
+
+        // A Back-button touch is handled as Escape and consumed through its release.
+        if self.pad.touch.consume_ignored(t.id, ended) {
+            return;
+        }
+
+        if t.phase == TouchPhase::Started {
+            // Claim first, so a second finger cannot trigger Back during an active drag.
+            if !self.pad.touch_ui.editor_pointer_phase(t.id, TouchPhase::Started) {
+                return;
+            }
+            let [x, y, w, h] = horizon_client::touch_ui::basic_hud_editor_back_rect(batch.width);
+            if point[0] >= x && point[0] <= x + w && point[1] >= y && point[1] <= y + h {
+                self.pad.touch_ui.editor_pointer_phase(t.id, TouchPhase::Ended);
+                if !self.pad.touch_ui.begin_basic_hud_editor_back_touch(t.id) {
+                    return;
+                }
+                self.pad.touch.clear();
+                crate::platform::hide();
+                self.audio.play_button_click();
+                self.android_touch_haptic(10);
+                if let Err(error) = self.pad_back() {
+                    log::warn!("Basic HUD editor Back: {error}");
+                }
+                return;
+            }
+        } else if !self.pad.touch_ui.editor_pointer_phase(t.id, t.phase) {
+            return;
+        }
+
+        self.handle_window_event(
+            events,
+            id,
+            WindowEvent::CursorMoved {
+                device_id: t.device_id,
+                position: t.location,
+            },
+        );
+        if t.phase != TouchPhase::Moved {
+            self.handle_window_event(
+                events,
+                id,
+                WindowEvent::MouseInput {
+                    device_id: t.device_id,
+                    button: MouseButton::Left,
+                    state: if t.phase == TouchPhase::Started {
+                        ElementState::Pressed
+                    } else {
+                        ElementState::Released
+                    },
+                },
+            );
+        }
+    }
+
     pub(super) fn android_menu_touch(
         &mut self,
         t: &Touch,
