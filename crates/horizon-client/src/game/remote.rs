@@ -6696,6 +6696,14 @@ impl Game<'_> {
 
     /// MultiPlayerGameMode.startDestroyBlock / continueDestroyBlock.
     fn remote_mining(&mut self, start: bool) {
+        #[cfg(target_os = "android")]
+        if (start
+            || (self.creative
+                && self.remote.as_ref().is_some_and(|remote| remote.destroy_delay == 0)))
+            && self.pick().is_some()
+        {
+            super::punchy::mining_attempt(self);
+        }
         let debug_stick = self
             .held()
             .is_some_and(|stack| &*stack.item == "minecraft:debug_stick");
@@ -6940,6 +6948,13 @@ impl Game<'_> {
     /// the server, and whether the click ends there is what this client's
     /// copy of the entity answers (`MultiPlayerGameMode.interact`).
     fn remote_use_entity(&mut self, hand: Hand) -> bool {
+        let success = self.remote_use_entity_inner(hand);
+        #[cfg(target_os = "android")]
+        super::punchy::used(self, hand, success);
+        success
+    }
+
+    fn remote_use_entity_inner(&mut self, hand: Hand) -> bool {
         // A menu this use opens (a chest minecart's) is no clicked block's.
         if let Some(r) = self.remote.as_mut() {
             r.use_target = None;
@@ -7036,6 +7051,13 @@ impl Game<'_> {
     /// MultiPlayerGameMode.useItemOn for `hand`: whether the click ends there
     /// (the block reacts, or a block item is placed).
     fn remote_use_item_on(&mut self, hand: Hand) -> bool {
+        let success = self.remote_use_item_on_inner(hand);
+        #[cfg(target_os = "android")]
+        super::punchy::used(self, hand, success);
+        success
+    }
+
+    fn remote_use_item_on_inner(&mut self, hand: Hand) -> bool {
         let held = self.with_hand(hand, |g| g.held().cloned());
         let held_block = held
             .as_ref()
@@ -7533,6 +7555,13 @@ impl Game<'_> {
     /// MultiPlayerGameMode.useItem for `hand`, if it holds something: whether
     /// the click ends there, as far as this client can tell (`use_ends_click`).
     fn remote_use_item(&mut self, hand: Hand) -> bool {
+        let success = self.remote_use_item_inner(hand);
+        #[cfg(target_os = "android")]
+        super::punchy::used(self, hand, success);
+        success
+    }
+
+    fn remote_use_item_inner(&mut self, hand: Hand) -> bool {
         let Some(held) = self.with_hand(hand, |g| g.held().cloned()) else {
             return false;
         };

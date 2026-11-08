@@ -11,7 +11,7 @@ use std::{
 
 pub const FILE: &str = "horizon-mods.txt";
 /// Fixed native modules compiled into Android APKs, all opt-in.
-pub const ANDROID_BUNDLED: [(&str, &str, &str); 9] = [
+pub const ANDROID_BUNDLED: [(&str, &str, &str); 18] = [
     (
         "zoom",
         "Zoom",
@@ -52,11 +52,16 @@ pub const ANDROID_BUNDLED: [(&str, &str, &str); 9] = [
         "Connected Textures",
         "Connect matching block texture edges",
     ),
-    (
-        "punchy",
-        "Punchy",
-        "First-person hand animation preview",
-    ),
+    ("armorhud", "Armor HUD", "Shows equipped armor and durability beside the hotbar"),
+    ("jade", "Jade", "Shows information about the block or entity being targeted"),
+    ("resourcify", "Resourcify", "Manage resource packs from the game"),
+    ("basic_hud", "Basic HUD", "Configurable HUD layout and information"),
+    ("visuality_horizon", "Visuality", "Visual effects and particles"),
+    ("horizonmatica", "Horizonmatica", "Litematica schematic folder and storage access setup"),
+    ("punchy", "Punchy", "First-person hand animation preview"),
+    ("freelook", "Freelook", "Look around independently while holding the key"),
+    ("gyro", "Gyro", "Gyroscope-driven camera movement"),
+    ("waypoints", "Waypoints", "Save and show world locations"),
 ];
 
 /// The folder holding `.hmod` files, beside `options.txt`.

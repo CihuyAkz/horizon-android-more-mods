@@ -227,6 +227,9 @@ pub(super) fn native_key(game: &mut Game<'_>, key: &str, pressed: bool) {
         zoom_key::run(&mut *game, key, pressed);
         accurate_block_placement_key::run(&mut *game, key, pressed);
         super::freecam_hooks::key(&mut *game, key, pressed);
+        super::freelook_hooks::key(&mut *game, key, pressed);
+        super::gyro_hooks::key(&mut *game, key, pressed);
+        super::waypoints_hooks::key(&mut *game, key, pressed);
         super::punchy::key(&mut *game, key, pressed);
         armorhud_key(&mut *game, key, pressed);
         basic_hud_key(&mut *game, key, pressed);
@@ -238,6 +241,7 @@ pub(super) fn native_wheel(game: &mut Game<'_>, steps: f32, claimed: &mut bool) 
     #[cfg(target_os = "android")]
     {
         zoom_wheel::run(&*game, steps, &mut *claimed);
+        super::freelook_hooks::wheel(&*game, steps, &mut *claimed);
     }
 }
 
@@ -267,11 +271,13 @@ pub(super) fn native_mods(game: &mut Game<'_>, mods: &mut Vec<NativeMod>) {
         visuality_listed(&mut *mods);
         litematica_storage::listed(&mut *mods);
         super::freecam_hooks::list(&mut *mods);
+        super::freelook_hooks::list(&mut *mods);
+        super::gyro_hooks::list(&mut *mods);
+        super::waypoints_hooks::list(&mut *mods);
         mods.push(NativeMod {
             id: super::punchy::ID.into(),
             title: super::punchy::TITLE.into(),
-            description: "Punchy first-person hand animation preview. Animation data included."
-                .into(),
+            description: "First-person hand animations. Bundled clips included.".into(),
             keys: vec![
                 ["inspect".into(), "Inspect item".into(), "key.keyboard.f6".into()],
                 ["reload".into(), "Reload animations".into(), "key.keyboard.f7".into()],
@@ -292,6 +298,7 @@ pub(super) fn native_settings(game: &mut Game<'_>, mod_id: &str, buttons: &mut V
         connected_textures_settings::run(mod_id, &mut *buttons);
         super::mod_appleskin_glue::on_settings(&mut *game, mod_id, &mut *buttons);
         super::freecam_hooks::settings(&mut *game, mod_id, &mut *buttons);
+        super::waypoints_hooks::settings(&mut *game, mod_id, &mut *buttons);
         if mod_id == super::punchy::ID {
             super::punchy::settings(&*game, &mut *buttons);
         }
@@ -315,6 +322,7 @@ pub(super) fn native_settings_click(game: &mut Game<'_>, mod_id: &str, button: u
         connected_textures_click::run(mod_id, button);
         super::mod_appleskin_glue::on_click(&mut *game, mod_id, button);
         super::freecam_hooks::click(&mut *game, mod_id, button);
+        super::waypoints_hooks::settings_click(&mut *game, mod_id, button);
         if mod_id == super::punchy::ID {
             super::punchy::click(&*game, button);
         }
@@ -417,6 +425,9 @@ pub(super) fn native_frame(game: &mut Game<'_>, elapsed: Duration) {
     #[cfg(target_os = "android")]
     {
         super::freecam_hooks::frame(&*game, elapsed);
+        super::freelook_hooks::frame(&mut *game);
+        super::gyro_hooks::frame(&mut *game, elapsed);
+        super::waypoints_hooks::frame(&mut *game);
         recipes_frame::run(&mut *game);
         accurate_block_placement_frame::run(&mut *game);
         connected_textures_frame::run(&mut *game);
@@ -436,6 +447,7 @@ pub(super) fn native_hud(
     #[cfg(target_os = "android")]
     {
         super::freecam_hooks::hud(game, batch);
+        super::waypoints_hooks::hud(game, batch);
         armorhud_hud(game, batch, corners);
         jade_hud(game, batch);
         basic_hud_draw(game, batch, corners);

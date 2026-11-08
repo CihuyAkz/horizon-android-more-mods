@@ -781,7 +781,12 @@ impl ActionMachine {
             ItemKind::Drink => ("use_drink", ActionKind::Drink, Source::SustainedUse),
             _ => ("use_item", ActionKind::Interact, Source::SustainedUse),
         };
-        if let Some(clip) = clips.resolve(name, u.hand)
+        let clip = clips.resolve(name, u.hand).or_else(|| {
+            (kind == ActionKind::Interact)
+                .then(|| clips.resolve("interact", u.hand))
+                .flatten()
+        });
+        if let Some(clip) = clip
             && needs_play(input, &clip, u.hand)
         {
             let mut p = play(kind, clip, u.hand);
@@ -1104,6 +1109,39 @@ mod tests {
         assert_eq!(spear_charge_stage(30, 5, 15, 25, 35), (3, false));
         assert_eq!(spear_charge_stage(31, 5, 15, 25, 35), (3, true));
         assert_eq!(spear_charge_stage(1000, 5, 0, 0, 0), (1, false));
+    }
+
+    #[test]
+    fn generic_held_use_uses_interaction_clip_when_item_clip_is_missing() {
+        let mut machine = ActionMachine::default();
+        let input = Input {
+            use_down: true,
+            using: Some(UseState {
+                kind: ItemKind::Other,
+                hand: Hand::Off,
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let play = selected(machine.tick(&input, &Catalog(&["interact"])).unwrap());
+        assert_eq!(play.kind, ActionKind::Interact);
+        assert_eq!(play.hand, Hand::Off);
+        assert_eq!(play.clip.name, "interact");
+        assert!(play.looping);
+    }
+
+    #[test]
+    fn successful_interaction_event_uses_interact_clip_for_offhand() {
+        let mut machine = ActionMachine::default();
+        let input = Input {
+            use_trigger: Some(Hand::Off),
+            ..Default::default()
+        };
+        let play = selected(machine.tick(&input, &Catalog(&["interact"])).unwrap());
+        assert_eq!(play.kind, ActionKind::Interact);
+        assert_eq!(play.hand, Hand::Off);
+        assert_eq!(play.clip.name, "interact");
+        assert!(!play.looping);
     }
 
     #[test]

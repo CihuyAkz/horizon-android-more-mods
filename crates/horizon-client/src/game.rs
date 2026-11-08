@@ -13425,10 +13425,6 @@ impl Game<'_> {
     /// both hands in view space, converted to camera-relative world space.
     fn hand_geometry(&mut self, alpha: f64) -> Vec<Vertex> {
         let mut out = Vec::new();
-        #[cfg(target_os = "android")]
-        if let Some(punchy_out) = android_bundled::punchy_hand_geometry(self, alpha) {
-            return punchy_out;
-        }
         // GameRenderer.renderItemInHand: F1 hides the hand with the HUD.
         if self.spectator()
             || self.ui.hide_gui
@@ -13441,6 +13437,10 @@ impl Game<'_> {
             || self.screen == Screen::Dead
         {
             return out;
+        }
+        #[cfg(target_os = "android")]
+        if let Some(punchy_out) = android_bundled::punchy_hand_geometry(self, alpha) {
+            return punchy_out;
         }
         let a = alpha as f32;
         // FirstPersonHandsAndItemsRenderer: the swing goes to the hand that

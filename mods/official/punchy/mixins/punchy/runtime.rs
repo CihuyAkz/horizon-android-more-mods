@@ -3,7 +3,7 @@ use super::*;
 use glam::{EulerRot, Mat4, Quat, Vec3};
 use punchy_engine::player::Playback;
 use punchy_engine::{Clip, Pose, actions as action, phases, resources};
-use std::{cell::RefCell, collections::BTreeMap, sync::Arc};
+use std::{cell::RefCell, collections::{BTreeMap, VecDeque}, sync::Arc};
 
 pub(super) const ID: &str = "punchy";
 pub(super) const TITLE: &str = "Punchy";
@@ -24,7 +24,8 @@ struct State {
     active: Option<Playback>,
     previous_swings: u32,
     use_down: bool,
-    successful_use: Option<action::Hand>,
+    successful_use: VecDeque<action::Hand>,
+    item_kinds: [Option<String>; 2],
     mining_attempt: bool,
     offhand_item: bool,
     inspect: bool,
@@ -57,11 +58,7 @@ impl action::ClipCatalog for Catalog<'_> {
             "inspect" => &["new_inspect_right", "new_inspect_left"],
             _ => &[],
         };
-        let mapped = self
-            .state
-            .tuning
-            .as_ref()
-            .and_then(|t| t.animation(&self.state.last_items[hand.index()], name, left));
+        let mapped = tuning_animation(self.state, hand, name);
         let custom = mapped
             .as_ref()
             .and_then(|m| m.name.as_deref())
@@ -127,6 +124,24 @@ fn hand(h: Hand) -> action::Hand {
         action::Hand::Off
     }
 }
+fn tuning_animation(
+    state: &State,
+    hand: action::Hand,
+    action_name: &str,
+) -> Option<punchy_engine::tuning::Animation> {
+    let index = hand.index();
+    let item = &state.last_items[index];
+    let context = punchy_engine::tuning::ItemContext {
+        id: item,
+        kind: state.item_kinds[index].as_deref(),
+        ..Default::default()
+    };
+    state.tuning.as_ref()?.animation_for(
+        &context,
+        action_name,
+        state.main_left != (hand == action::Hand::Off),
+    )
+}
 
 pub(super) fn tick(game: &mut Game<'_>) {
     if !game.native_window() {
@@ -140,7 +155,7 @@ pub(super) fn tick(game: &mut Game<'_>) {
             s.consume = Default::default();
             s.mining = Default::default();
             s.forced_stack = None;
-            s.successful_use = None;
+            s.successful_use.clear();
             s.mining_attempt = false;
             s.previous_swings = game.swings_started;
         });
@@ -165,22 +180,29 @@ pub(super) fn tick(game: &mut Game<'_>) {
         let changed=game.swings_started!=s.previous_swings;
         s.previous_swings=game.swings_started;
         let mining_attempt=std::mem::take(&mut s.mining_attempt);
-        input.attack=(changed && attack_down && !input.mining && !mining_attempt).then_some(hand(game.swing.attack_hand()));
+        input.attack=(changed && !input.mining && !mining_attempt).then_some(hand(game.swing.attack_hand()));
         input.mining_trigger=mining_attempt || changed && input.mining;
         let use_hand=hand(using.unwrap_or(Hand::Main));
-        let input_driven=s.tuning.as_ref().and_then(|t|t.animation(&s.last_items[use_hand.index()],"useItem",s.main_left!=(use_hand==action::Hand::Off))).is_some_and(|e|e.trigger_on_input);
-        input.use_trigger=s.successful_use.take().or_else(|| (use_down && !s.use_down && input_driven).then_some(use_hand));
+        let was_use_down=s.use_down;
         s.use_down=use_down;
         for (i,stack) in items.iter().enumerate() {
             input.hands[i].kind=stack.as_ref().map_or(action::ItemKind::Empty,|v|action::ItemKind::from_id(&v.item));
             input.hands[i].crossbow_charged=stack.as_ref().and_then(|v|v.data()).is_some_and(|d|!d.charged.is_empty());
             let id=stack.as_ref().map_or("",|v|v.item.as_ref()).to_owned();
+            s.item_kinds[i] = stack.as_ref().and_then(|stack| {
+                game.items()
+                    .get(&stack.item)
+                    .filter(|info| info.block.is_some())
+                    .map(|_| "FULL_BLOCK".to_owned())
+            });
             if id!=s.last_items[i] {
                 input.hotbar_changed|=i==0;
                 input.equip=Some(action::EquipEvent {hand:if i==0 {action::Hand::Main}else{action::Hand::Off},entering:!id.is_empty()});
                 s.last_items[i]=id;
             }
         }
+        let input_driven=tuning_animation(&s,use_hand,"useItem").is_some_and(|e|e.trigger_on_input);
+        input.use_trigger=s.successful_use.pop_front().or_else(|| (use_down && !was_use_down && input_driven).then_some(use_hand));
         if let Some(h)=using {
             let i=usize::from(h==Hand::Off);
             if let Some(stack)=items[i].as_ref() {
@@ -198,10 +220,9 @@ pub(super) fn tick(game: &mut Game<'_>) {
                     charge_duration_ticks:owner.crossbow_charge_duration as i32,..Default::default()});
             }
         }
-        if let Some(tuning)=s.tuning.as_ref() {
+        if s.tuning.is_some() {
             let h=input.attack.unwrap_or(action::Hand::Main);
-            let left=s.main_left!=(h==action::Hand::Off);
-            if let Some(entry)=tuning.animation(&s.last_items[h.index()],"attack",left) {
+            if let Some(entry)=tuning_animation(&s,h,"attack") {
                 input.attack_options.custom_entry_present=true;
                 input.attack_options.combo=if entry.variations.is_empty(){entry.name.into_iter().collect()}else{entry.variations};
                 input.attack_options.critical_clip=entry.critical;
@@ -468,8 +489,17 @@ pub(super) fn begin(game: &mut Game<'_>, alpha: f64) {
                         let weight = s.active.as_ref().map_or(1., |p| {
                             p.previous_weight + (p.weight - p.previous_weight) * s.render_alpha
                         });
-                        let arm = tuning.arm_transform(id, left).unwrap_or_default();
-                        let item = tuning.item_transform(id, left).unwrap_or_default();
+                        let context = punchy_engine::tuning::ItemContext {
+                            id,
+                            kind: s.item_kinds[h].as_deref(),
+                            ..Default::default()
+                        };
+                        let arm = tuning
+                            .transform_for(&context, left, true)
+                            .unwrap_or_default();
+                        let item = tuning
+                            .transform_for(&context, left, false)
+                            .unwrap_or_default();
                         let suppress_tuning = animation.is_some_and(|(c, t, _)| {
                             c.effect_active("disable_arm_tuning", t)
                                 || (c.effect_active("use_keyframes_v2", t)
@@ -561,7 +591,13 @@ pub(super) fn authored(left: bool) -> bool {
 // Called only after a successful client-side interaction, including offhand.
 pub(super) fn used(game: &Game<'_>, used_hand: Hand, success: bool) {
     if success && game.native_window() && enabled(game) {
-        STATE.with(|s| s.borrow_mut().successful_use = Some(hand(used_hand)));
+        STATE.with(|cell| {
+            let mut state = cell.borrow_mut();
+            if state.successful_use.len() >= 32 {
+                state.successful_use.pop_front();
+            }
+            state.successful_use.push_back(hand(used_hand));
+        });
     }
 }
 
@@ -594,15 +630,12 @@ fn phase_playback(s: &State) -> phases::Playback {
 }
 fn phase_selection(
     s: &State,
-    item: &str,
     kind: &str,
     hand: action::Hand,
     speed: f32,
 ) -> Option<phases::Selection> {
-    let entry =
-        s.tuning
-            .as_ref()?
-            .animation(item, kind, s.main_left != (hand == action::Hand::Off))?;
+    let item = &s.last_items[hand.index()];
+    let entry = tuning_animation(s, hand, kind)?;
     let resolve = |name: &str| {
         let (_, clip) = entry.resolve(name, &s.clips)?;
         Some(phases::ClipSpec {
@@ -649,7 +682,7 @@ fn stack_token(s: &mut State, stack: Option<&ItemStack>, mining: bool) -> u64 {
 fn phase_effects(s: &mut State, effects: Vec<phases::Effect>) {
     for effect in effects {
         match effect {
-            phases::Effect::ClearUseTracker => s.successful_use = None,
+            phases::Effect::ClearUseTracker => s.successful_use.clear(),
             phases::Effect::SetForcedStack { hand, token } => {
                 s.forced_stack = token
                     .checked_sub(1)
@@ -691,7 +724,7 @@ fn phase_tick(
     s.tick += 1;
     let playback = phase_playback(s);
     let mining_selection =
-        phase_selection(s, &s.last_items[0], "mining", action::Hand::Main, speed);
+        phase_selection(s, "mining", action::Hand::Main, speed);
     let mining_stack = stack_token(s, items[0].as_ref(), true);
     let mining = s.mining.tick(&phases::MiningInput {
         tick: s.tick,
@@ -716,7 +749,7 @@ fn phase_tick(
         _ => None,
     };
     let selection = consume_kind
-        .and_then(|kind| phase_selection(s, &s.last_items[h], kind, s.consume_hand, speed));
+        .and_then(|kind| phase_selection(s, kind, s.consume_hand, speed));
     let tokens = [
         stack_token(s, items[0].as_ref(), false),
         stack_token(s, items[1].as_ref(), false),
