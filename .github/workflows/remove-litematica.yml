@@ -61,6 +61,50 @@ jobs:
                   path.unlink()
                   removed.append(relative)
 
+          # Remove the in-game Mod List catalogue entry (the UI label/description
+          # is also a tracked Litematica reference). Handle both compact and
+          # rustfmt-expanded tuple layouts.
+          mod_list = root / "crates/horizon-client-render/src/mod_list.rs"
+          if mod_list.is_file():
+              text = mod_list.read_text(encoding="utf-8")
+              updated_mod_list, count = re.subn(
+                  r'(?ms)^\s*\(\s*"horizonmatica"\s*,\s*"Horizonmatica"\s*,\s*"[^"]*(?:Litematica|schematic)[^"]*"\s*,?\s*\),?\s*\n?',
+                  "",
+                  text,
+              )
+              if updated_mod_list != text:
+                  mod_list.write_text(updated_mod_list, encoding="utf-8", newline="\n")
+                  removed.append("Horizonmatica Mod List catalogue entry")
+
+          # Remove tests that only assert the deleted Litematica storage wiring,
+          # and remove any stale catalogue assertion from shared Punchy tests.
+          for test_file in root.rglob("*.py"):
+              if ".git" in test_file.parts or ".venv" in test_file.parts:
+                  continue
+              try:
+                  text = test_file.read_text(encoding="utf-8")
+              except (UnicodeDecodeError, OSError):
+                  continue
+              original = text
+              # Drop a complete unittest method whose name identifies the
+              # removed Horizonmatica/Litematica behavior.
+              text = re.sub(
+                  r'(?ms)^    def test_[^\n]*(?:horizonmatica|litematica)[^\n]*:\n.*?(?=^    def |^class |\Z)',
+                  "",
+                  text,
+                  flags=re.IGNORECASE,
+              )
+              # Remove the deleted storage registration from shared expected lists.
+              text = re.sub(
+                  r'(?m)^\s*["\']litematica_storage::listed["\']\s*,?\s*\n',
+                  "",
+                  text,
+                  flags=re.IGNORECASE,
+              )
+              if text != original:
+                  test_file.write_text(text, encoding="utf-8", newline="\n")
+                  removed.append(str(test_file.relative_to(root)))
+
           # Disconnect every Android entry point to the removed storage module.
           source = android_file.read_text(encoding="utf-8")
           updated = re.sub(
