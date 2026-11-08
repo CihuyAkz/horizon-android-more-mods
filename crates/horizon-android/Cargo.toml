@@ -40,6 +40,7 @@ horizon-shaders = { path = "../horizon-shaders" }
 horizon-friends = { path = "../horizon-friends" }
 # Native mod discovery shares the upstream index. Java mods are not supported.
 horizon-mods = { path = "../horizon-mods", default-features = false, features = ["index"] }
+punchy-engine = { path = "../../mods/official/punchy/mixins/punchy/engine" }
 wgpu = { version = "30.0.1", default-features = false, features = ["std", "parking_lot", "vulkan", "metal", "wgsl", "naga-ir"] }
 winit = { version = "0.30.13", features = ["android-native-activity"] }
 pollster = "0.4"
