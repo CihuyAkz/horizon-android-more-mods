@@ -1,2 +1,0 @@
-Put your .litematic, .schem, .schematic, or .nbt files in this folder.
-The Android app creates a copy of this file at /storage/emulated/0/HorizonAndroid/Litematica/.

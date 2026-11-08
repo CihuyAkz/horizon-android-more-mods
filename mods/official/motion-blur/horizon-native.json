@@ -1,9 +1,0 @@
-{
-  "game": "26.3",
-  "hooks": 80,
-  "horizon": "c9d474dd9116e84c243f8992d75c11314df56f06",
-  "id": "motion_blur",
-  "mixins": "a2af5c0dd4117d51ecd70066ba7a00b4a2c10dab",
-  "schema": 1,
-  "version": "0.1.0"
-}
