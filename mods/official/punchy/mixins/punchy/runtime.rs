@@ -6,7 +6,7 @@ use punchy_engine::{Clip, Pose, actions as action, phases, resources};
 use std::{cell::RefCell, collections::BTreeMap, sync::Arc};
 
 pub(super) const ID: &str = "punchy";
-pub(super) const TITLE: &str = "Punchy Rust 3.1b — preview";
+pub(super) const TITLE: &str = "Punchy";
 thread_local! { static STATE: RefCell<State> = RefCell::new(State::default()); }
 #[derive(Default)]
 struct State {
@@ -111,7 +111,7 @@ fn load(state: &mut State) {
     }
 }
 fn enabled(game: &Game<'_>) -> bool {
-    game.native_on(ID) && game.native_setting(ID, "enabled").as_deref() != Some("false")
+    game.native_on(ID)
 }
 fn global_speed(game: &Game<'_>) -> f32 {
     game.native_setting(ID, "speed")
@@ -272,8 +272,6 @@ pub(super) fn key(game: &mut Game<'_>, key: &str, pressed: bool) {
     }
 }
 pub(super) fn settings(game: &Game<'_>, buttons: &mut Vec<String>) {
-    let on = enabled(game);
-    buttons.push(format!("Punchy preview: {}", if on { "ON" } else { "OFF" }));
     buttons.push(format!("Animation speed: {:.1}", global_speed(game)));
     buttons.push("Reload animations".into());
     buttons.push(format!(
@@ -292,8 +290,7 @@ pub(super) fn settings(game: &Game<'_>, buttons: &mut Vec<String>) {
 }
 pub(super) fn click(game: &Game<'_>, button: usize) {
     match button {
-        0 => game.native_set_setting(ID, "enabled", if enabled(game) { "false" } else { "true" }),
-        1 => {
+        0 => {
             let speed = global_speed(game);
             game.native_set_setting(
                 ID,
@@ -305,8 +302,8 @@ pub(super) fn click(game: &Game<'_>, button: usize) {
                 },
             );
         }
-        2 => STATE.with(|s| *s.borrow_mut() = State::default()),
-        3 => game.native_set_setting(
+        1 => STATE.with(|s| *s.borrow_mut() = State::default()),
+        2 => game.native_set_setting(
             ID,
             "hand_poses",
             if game.native_setting(ID, "hand_poses").as_deref() == Some("horizon") {

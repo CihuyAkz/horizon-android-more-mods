@@ -35,9 +35,9 @@ its author grants permission or supplies a compatible license.
 The supplied Mod Menu mod is not separately bundled: this Android source already
 provides an Options > Mods page with per-mod settings, so the HNMOD's alternate
 menu would duplicate existing UI and its title-screen hooks are not a safe drop-in.
-The supplied Punchy Rust Preview is not ported: its own README documents several
-missing/experimental animation, renderer, physics, and compatibility systems; it
-needs a dedicated renderer/hand-animation port and device testing.
+The supplied Punchy Rust Preview is wired as an Android runtime and hand-rendering
+preview. Its own README documents remaining animation, renderer, physics, and
+compatibility gaps, so device testing is still required.
 
 The two user-supplied Android ports now live as separate native official source
 packages under `mods/official/accurate-block-placement/` and

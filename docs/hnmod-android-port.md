@@ -59,6 +59,13 @@ The implementation remains statically linked into the Android application; placi
 
 Static source-path and hook-registration checks are added for the Android adapters. The Rust toolchain and Android SDK/NDK are unavailable in this editing environment, so compilation, APK packaging, install and on-device behaviour remain unverified.
 
+### Punchy Rust Preview 0.1.2
+
+- Statically bundled into the Android client with its animation, geometry, and tuning data.
+- Connected to the game tick, keybinds, successful-use/mining triggers, and first-person hand geometry renderer.
+- The Mods row uses the short title `Punchy` so its ON/OFF state remains visible. It is the only enable/disable control; its settings page contains animation speed, reload, and hand-pose selection.
+- This remains a preview, not full Punchy parity. Armour/body animation, every custom animation condition, the complete item mesh/physics/attachment renderer, and full Java/Fabric behaviour are not implemented. Android compilation and device testing remain unverified.
+
 ## Additional HNMOD packages
 
 The packages below retain their original manifests and source. Basic HUD and Visuality have Android static adapters.
@@ -81,13 +88,6 @@ This Android source already has an Options > Mods page with mod rows and individ
 settings pages. The supplied Mod Menu HNMOD replaces/extends menu/title-screen UI,
 so it is not a safe drop-in and would duplicate the existing Mods entry point. The
 existing Android Mods UI remains in place instead of adding a second menu layer.
-
-### Punchy Rust Preview 0.1.2
-
-The supplied preview's own README documents missing or experimental animation,
-renderer, editor, physics, particles, and compatibility systems. It is tied to a
-separate Horizon revision and needs a dedicated hand-animation/renderer port plus
-runtime testing. It is not wired into the active Android build by this patch.
 
 ## Build and verification status
 

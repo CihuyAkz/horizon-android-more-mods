@@ -11,7 +11,7 @@ use std::{
 
 pub const FILE: &str = "horizon-mods.txt";
 /// Fixed native modules compiled into Android APKs, all opt-in.
-pub const ANDROID_BUNDLED: [(&str, &str, &str); 8] = [
+pub const ANDROID_BUNDLED: [(&str, &str, &str); 9] = [
     (
         "zoom",
         "Zoom",
@@ -51,6 +51,11 @@ pub const ANDROID_BUNDLED: [(&str, &str, &str); 8] = [
         "connected_textures",
         "Connected Textures",
         "Connect matching block texture edges",
+    ),
+    (
+        "punchy",
+        "Punchy",
+        "First-person hand animation preview",
     ),
 ];
 

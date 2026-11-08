@@ -11,4 +11,4 @@
 
 Integrated into the Android client as a statically bundled **preview**. The Punchy engine and animation data are compiled into the Android client; the port wires the first-person hand/item geometry, animation tick, keybinds, settings, and successful-use/mining triggers. It is not dynamically loaded from a runtime mods directory.
 
-This is not complete Punchy renderer parity. Armour/body animation, every custom animation condition, and full Java/Fabric behaviour are not claimed as implemented. The Mods title and settings explicitly identify the preview.
+This is not complete Punchy renderer parity. Armour/body animation, every custom animation condition, and full Java/Fabric behaviour are not claimed as implemented. The Mods description identifies it as a preview; the short Mods title keeps the ON/OFF state visible.

@@ -35,7 +35,7 @@ Het zelfstandige native pakket staat in `dist/punchy-rust-preview-0.1.2.hnmod` v
 
 Installeer dit ene `.hnmod`-pakket in de bedoelde Horizon-instance en laat de launcher de native build maken. Dit is de normale bouwstap voor Horizon-native mods; er zijn geen aanvullende bestanden of runtimes nodig. De gegevens worden in de gamebinary ingebouwd, dus er hoeft ook geen losse datamap naast de game te blijven staan.
 
-Options → Mods → Punchy Rust toont de previewschakelaar, snelheid, reload en de keuze tussen Punchy- en Horizon-handposes. F6 inspecteert; F7 herlaadt de ingebouwde animaties. Beide toetsen zijn in de modinstellingen te wijzigen.
+Android Options → Mods gebruikt de Punchy-modrij als enige ON/OFF-schakelaar; de instellingenpagina bevat snelheid, reload en de keuze tussen Punchy- en Horizon-handposes. F6 inspecteert; F7 herlaadt de ingebouwde animaties. Beide toetsen zijn in de modinstellingen te wijzigen.
 
 De animatiegegevens zijn afkomstig uit het voor deze lokale port aangeleverde Punchy 3.1b-bestand; `LICENSE-Punchy` bewaart de oorspronkelijke vermelding. De rendereradapter bevat Horizon MIT-code; zie `LICENSE-Horizon`.
 

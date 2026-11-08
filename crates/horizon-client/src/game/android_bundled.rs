@@ -270,7 +270,8 @@ pub(super) fn native_mods(game: &mut Game<'_>, mods: &mut Vec<NativeMod>) {
         mods.push(NativeMod {
             id: super::punchy::ID.into(),
             title: super::punchy::TITLE.into(),
-            description: "Self-contained Rust animation preview. Animation data included.".into(),
+            description: "Punchy first-person hand animation preview. Animation data included."
+                .into(),
             keys: vec![
                 ["inspect".into(), "Inspect item".into(), "key.keyboard.f6".into()],
                 ["reload".into(), "Reload animations".into(), "key.keyboard.f7".into()],

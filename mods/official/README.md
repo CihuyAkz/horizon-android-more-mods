@@ -15,7 +15,7 @@ This tree contains the Android-native ports and source-preserving imports used b
 |---|---|---:|---|
 | `freecam/` | `freecam` | 0.1.0 | partial Android runtime port; core camera/input hooks wired |
 | `motion-blur/` | `motion_blur` | 0.1.0 | source-only, not wired |
-| `punchy/` | `punchy` | 0.1.2 | source-only preview; renderer parity incomplete |
+| `punchy/` | `punchy` | 0.1.2 | statically bundled Android preview; renderer parity incomplete |
 | `basic-hud/` | `basic_hud` | 0.5.0 | statically wired to Android hooks; compile/device validation pending |
 | `visuality-horizon/` | `visuality_horizon` | 1.0.2 | statically wired to Android game and renderer hooks; compile/device validation pending |
 
