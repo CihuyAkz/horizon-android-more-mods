@@ -38,6 +38,13 @@ jobs:
             exit 1
           fi
 
+          COMMIT_MESSAGE=$(git log -1 --format=%s "$COMMIT_SHA")
+
+          if [ "$COMMIT_MESSAGE" != "Self destruct: remove all files" ]; then
+            echo "The selected commit is not a self-destruct commit."
+            exit 1
+          fi
+
       - name: Revert Self Destruct
         env:
           COMMIT_SHA: ${{ inputs.commit_sha }}
@@ -45,7 +52,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git revert --no-edit "$COMMIT_SHA"
+          git revert -X ours --no-edit "$COMMIT_SHA"
 
       - name: Push Restored Branch
         run: |
