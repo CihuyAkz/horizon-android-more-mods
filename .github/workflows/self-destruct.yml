@@ -1,0 +1,54 @@
+
+name: Self Destruct - Single Branch
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Ketik DELETE CONTENTS untuk mengonfirmasi'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  self-destruct:
+    if: github.ref_type == 'branch'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate Confirmation
+        run: |
+          if [ "$CONFIRM" != "DELETE CONTENTS" ]; then
+            echo "Confirmation failed."
+            exit 1
+          fi
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+
+      - name: Checkout Selected Branch
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 1
+
+      - name: Delete All Files
+        run: |
+          git rm -r --ignore-unmatch -- .
+
+          if git diff --cached --quiet; then
+            echo "Branch is already empty."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git commit -m "Self destruct: remove all files"
+
+      - name: Push Changes to Selected Branch
+        run: |
+          git push origin "HEAD:refs/heads/$TARGET_BRANCH"
+        env:
+          TARGET_BRANCH: ${{ github.ref_name }}
