@@ -20,7 +20,7 @@ use horizon_protocol::{
 use horizon_world::nbt::{JavaString, Tag};
 #[cfg(target_os = "android")]
 #[path = "../../../mods/official/basic-hud/mixins/basic_hud/pickup_packets.rs"]
-pub(crate) mod basic_hud_pickup_packets;
+pub mod basic_hud_pickup_packets;
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
