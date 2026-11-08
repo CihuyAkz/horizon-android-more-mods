@@ -1,0 +1,9 @@
+id = "punchy"
+name = "Punchy"
+version = "0.1.2"
+kind = "android_bundled_native"
+source_archive = "punchy-rust-0.1.2.hnmod"
+horizon_revision = "81ae4a7d8f27d38e5cabbdcda0a06b2c4b000045"
+mixins_revision = "ddd9700b21997c95d95ac6ee5ecafe3830cf622a"
+required_hooks = 1
+android_status = "integrated_preview"

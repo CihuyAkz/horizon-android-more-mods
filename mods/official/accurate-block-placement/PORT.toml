@@ -1,0 +1,6 @@
+id = "accurate_block_placement"
+name = "Accurate Block Placement"
+version = "1.0.0"
+kind = "android_static_native"
+source_archive = "accurate_block_placement-1.0.0.hnmod"
+menu_entry = "Options > Mods"

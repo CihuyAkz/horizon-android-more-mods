@@ -1,0 +1,46 @@
+[
+  {
+    "id": "zoom",
+    "commit": "e3ee0a7c450b28c3ed58fa59a4881ec78c5ee2e0",
+    "repository": "https://github.com/horizon-rust/horizon-mods",
+    "license": "MIT",
+    "changes": "Static Android adapters; helper visibility/names adapted; reset profile state. SmartF3 preserves the Android F3 scale and code-of-conduct screen."
+  },
+  {
+    "id": "minimap",
+    "commit": "e3ee0a7c450b28c3ed58fa59a4881ec78c5ee2e0",
+    "repository": "https://github.com/horizon-rust/horizon-mods",
+    "license": "MIT",
+    "changes": "Static Android adapters; helper visibility/names adapted; reset profile state. SmartF3 preserves the Android F3 scale and code-of-conduct screen."
+  },
+  {
+    "id": "recipes",
+    "commit": "e3ee0a7c450b28c3ed58fa59a4881ec78c5ee2e0",
+    "repository": "https://github.com/horizon-rust/horizon-mods",
+    "license": "MIT",
+    "changes": "Static Android adapters; helper visibility/names adapted; reset profile state. SmartF3 preserves the Android F3 scale and code-of-conduct screen."
+  },
+  {
+    "id": "smartf3",
+    "commit": "184b92bab7851684bbe6b840c5b8cacc10fa05f2",
+    "repository": "https://github.com/d3grando/smartf3",
+    "license": "MIT",
+    "changes": "Static Android adapters; helper visibility/names adapted; reset profile state. SmartF3 preserves the Android F3 scale and code-of-conduct screen."
+  },
+  {
+    "id": "accurate_block_placement",
+    "version": "1.0.0",
+    "source_revision": "hnmod supplied by user; Horizon pin aa27eca326db26e999d4e59d7899576016764b1e",
+    "license": "Not specified in supplied HNMOD archive; runtime source identifies its upstream Accurate Block Placement: Reborn dependency as MIT-licensed",
+    "changes": "Static Android adapter; tick integration moved to current client tick hook while using Horizon's private prediction helpers in remote.rs; profile reset support. Keep local until the HNMOD author clarifies the license of the Rust port itself.",
+    "source_path": "mods/official/accurate-block-placement/"
+  },
+  {
+    "id": "connected_textures",
+    "version": "0.1.2",
+    "source_revision": "hnmod supplied by user; Horizon pin 9d979caa48a3bb58203319b9ea044db58c38e0d8",
+    "license": "Not specified in supplied HNMOD archive",
+    "changes": "Static Android renderer adapter; CTM pass applied after current Mesher::mesh_reusing output; config and settings hook adapters. Local/private use only until rights holder confirms a license.",
+    "source_path": "mods/official/connected-textures/"
+  }
+]

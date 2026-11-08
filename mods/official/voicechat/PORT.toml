@@ -1,0 +1,9 @@
+id = "voicechat"
+name = "Voice Chat"
+version = "1.0.0"
+kind = "hnmod_source_only"
+source_archive = "voicechat-1.0.0.hnmod"
+horizon_revision = "c9d474dd9116e84c243f8992d75c11314df56f06"
+mixins_revision = "ddd9700b21997c95d95ac6ee5ecafe3830cf622a"
+required_hooks = 1
+android_status = "source_only_not_wired"
