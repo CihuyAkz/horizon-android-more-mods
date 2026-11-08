@@ -293,6 +293,56 @@ pub(super) fn native_minimap(game: &Game<'_>, minimap: &mut Option<NativeMinimap
     }
 }
 
+#[cfg(target_os = "android")]
+fn accurate_block_placement_tick(game: &mut Game<'_>) {
+    use accurate_block_placement as abp;
+
+    let Some(player) = game
+        .player
+        .as_ref()
+        .map(|p| [p.position.x, p.position.y, p.position.z])
+    else {
+        abp::reset();
+        return;
+    };
+
+    let hand = if game.held().is_some() {
+        Hand::Main
+    } else {
+        Hand::Off
+    };
+
+    for sample in abp::due((game.yaw, game.pitch)) {
+        if !abp::still_fresh(&sample, player) {
+            continue;
+        }
+
+        let hit = Hit {
+            pos: sample.pos,
+            face: sample.face,
+            point: sample.point,
+        };
+        let placed_at = sample.placement();
+        let before = game.world.block(placed_at[0], placed_at[1], placed_at[2]);
+        let held_before = game.with_hand(hand, |g| g.held().map(|stack| stack.count));
+        let used = game.with_hand(hand, |g| g.use_hand(Some(&hit)));
+
+        if matches!(used, Ok(true)) {
+            // Prevent the ordinary held-use path from placing a duplicate.
+            game.use_delay = 4;
+
+            if !game.use_failed {
+                let after = game.world.block(placed_at[0], placed_at[1], placed_at[2]);
+                let held_after = game.with_hand(hand, |g| g.held().map(|stack| stack.count));
+                let consumed = held_after < held_before;
+                if after != before || consumed || game.creative {
+                    abp::placed(&sample, placed_at, player);
+                }
+            }
+        }
+    }
+}
+
 pub(super) fn native_tick(game: &mut Game<'_>) {
     let _ = &game;
     #[cfg(target_os = "android")]
@@ -300,7 +350,7 @@ pub(super) fn native_tick(game: &mut Game<'_>) {
         super::freecam_hooks::tick(&mut *game);
         super::punchy::tick(&mut *game);
         if game.native_window() {
-            game.android_accurate_block_placement_tick();
+            accurate_block_placement_tick(&mut *game);
         }
     }
 }

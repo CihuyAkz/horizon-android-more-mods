@@ -56,6 +56,42 @@ mod agent_settings;
 mod allays;
 mod android_bundled;
 #[cfg(target_os = "android")]
+#[path = "../../../mods/official/appleskin-horizon/mixins/appleskin_horizon/runtime.rs"]
+mod mod_appleskin;
+#[cfg(target_os = "android")]
+#[path = "../../../mods/official/appleskin-horizon/mixins/appleskin_horizon/glue.rs"]
+mod mod_appleskin_glue;
+#[cfg(target_os = "android")]
+#[path = "../../../mods/official/freecam/mixins/freecam/runtime.rs"]
+mod freecam;
+#[cfg(target_os = "android")]
+#[path = "../../../mods/official/freecam/android.rs"]
+pub(crate) mod freecam_hooks;
+#[cfg(target_os = "android")]
+#[path = "../../../mods/official/punchy/mixins/punchy/runtime.rs"]
+mod punchy;
+#[cfg(target_os = "android")]
+#[path = "../../../mods/official/punchy/mixins/punchy/geometry.rs"]
+mod punchy_geometry;
+#[cfg(target_os = "android")]
+#[path = "../../../mods/official/armorhud/mixins/armorhud/runtime.rs"]
+mod armorhud;
+#[cfg(target_os = "android")]
+#[path = "../../../mods/official/jade/mixins/jade/jade.rs"]
+mod jade;
+#[cfg(target_os = "android")]
+#[path = "../../../mods/official/jade/mixins/jade/jade_theme.rs"]
+mod jade_theme;
+#[cfg(target_os = "android")]
+#[path = "../../../mods/official/jade/mixins/jade/jade_config.rs"]
+mod jade_config;
+#[cfg(target_os = "android")]
+#[path = "../../../mods/official/resourcify/mixins/resourcify/runtime.rs"]
+mod native_resourcify;
+#[cfg(target_os = "android")]
+#[path = "../../../mods/official/resourcify/mixins/resourcify/ui.rs"]
+mod native_resourcify_ui;
+#[cfg(target_os = "android")]
 mod android_input;
 mod armor_stands;
 mod atlas_slots;
