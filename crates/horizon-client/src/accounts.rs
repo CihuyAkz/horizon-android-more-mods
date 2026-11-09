@@ -247,6 +247,18 @@ pub fn player_skin() -> Option<(String, bool)> {
     }
 }
 
+/// The playing Ely.by account's skin as Ely.by named it at the sign-in or the last renewal
+/// (`starling_account::ely`, kept with the account): its URL and whether its arms are slim. None
+/// for another profile, or an Ely.by account Ely.by named no skin for.
+pub fn ely_skin() -> Option<(String, bool)> {
+    match player()? {
+        starling_account::Player::Account(account) if account.provider == Provider::Ely => {
+            account.skin.map(|(url, model)| (url, model == "slim"))
+        }
+        _ => None,
+    }
+}
+
 /// Where the playing profile's skin can go besides this game: a Microsoft account's profile (and
 /// how the last upload there went), Ely.by's website, or nowhere for an offline one.
 pub fn skin_cloud() -> crate::own_skin::Cloud {
