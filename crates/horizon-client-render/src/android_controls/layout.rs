@@ -507,6 +507,8 @@ pub struct Settings {
     pub inventory_controls: bool,
     #[serde(default)]
     pub virtual_mouse_enabled: bool,
+    /// Explicit Mouse-button hide override, retained across launches.
+    pub virtual_mouse_hidden: bool,
     #[serde(default)]
     pub disable_game_animations: bool,
     #[serde(default = "default_res_scale")]
@@ -666,6 +668,7 @@ impl Default for Settings {
             toggle_sprint: false,
             inventory_controls: false,
             virtual_mouse_enabled: false,
+            virtual_mouse_hidden: false,
             disable_game_animations: false,
             resolution_scale_percent: default_res_scale(),
             virtual_mouse_sensitivity: 1.0,

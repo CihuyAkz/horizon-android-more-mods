@@ -127,6 +127,7 @@ impl Game<'_> {
     }
     pub(in crate::game) fn mobile_options_apply(&mut self) {
         self.mobile.controls.settings = self.settings.touch.clone();
+        self.mobile.ui.menu_direct_pointer = self.settings.touch.virtual_mouse_hidden;
         self.input_used(self.input_mode);
         if let Err(e) = self.mobile.controls.settings.save() {
             log::warn!("Controls settings: {e}");
@@ -146,6 +147,7 @@ impl Game<'_> {
             horizon_client::android_control_theme::set_android_dpi(w.scale_factor() as f32);
         }
         self.mobile.controls.settings = self.settings.touch.clone();
+        self.mobile.ui.menu_direct_pointer = self.settings.touch.virtual_mouse_hidden;
         self.mobile
             .ui
             .refresh_presets_cache(self.mobile.controls.settings.control_style);
@@ -1562,6 +1564,10 @@ impl Game<'_> {
                         }
                         self.mobile.ui.cancel();
                         self.mobile.ui.menu_direct_pointer = !self.mobile.ui.menu_direct_pointer;
+                        self.mobile.controls.settings.virtual_mouse_hidden =
+                            self.mobile.ui.menu_direct_pointer;
+                        self.settings.touch = self.mobile.controls.settings.clone();
+                        self.mobile.controls.settings.save()?;
                         self.android_sync_pointer();
                     }
                     Action::More => self.mobile.ui.expanded = !self.mobile.ui.expanded,
