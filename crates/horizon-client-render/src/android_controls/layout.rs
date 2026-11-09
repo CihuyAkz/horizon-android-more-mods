@@ -436,9 +436,52 @@ impl Placement {
         }
     }
 }
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum InputSelection {
+    #[default]
+    Auto,
+    Touch,
+    KeyboardMouse,
+    Controller,
+}
+impl InputSelection {
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Auto => "Auto",
+            Self::Touch => "Touch",
+            Self::KeyboardMouse => "Keyboard & Mouse",
+            Self::Controller => "Controller",
+        }
+    }
+    pub fn cycle(&mut self, back: bool) {
+        let modes = [
+            Self::Auto,
+            Self::Touch,
+            Self::KeyboardMouse,
+            Self::Controller,
+        ];
+        let i = modes.iter().position(|m| m == self).unwrap_or(0);
+        *self = modes[(i + if back { 3 } else { 1 }) % modes.len()];
+    }
+    pub fn resolve(
+        self,
+        automatic: horizon_client_input::input_mode::InputMode,
+    ) -> horizon_client_input::input_mode::InputMode {
+        use horizon_client_input::input_mode::InputMode;
+        match self {
+            Self::Auto => automatic,
+            Self::Touch => InputMode::Touch,
+            Self::KeyboardMouse => InputMode::KeyboardMouse,
+            Self::Controller => InputMode::Pad,
+        }
+    }
+}
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Settings {
+    /// Input display policy; Auto follows the last device used.
+    pub input_selection: InputSelection,
     pub mode: Mode,
     pub split_controls: bool,
     pub contextual_interact: bool,
@@ -601,6 +644,7 @@ impl Default for Settings {
             row[Control::Attack as usize].passthrough = true;
         }
         Self {
+            input_selection: InputSelection::Auto,
             mode: Mode::Crosshair,
             split_controls: false,
             contextual_interact: false,

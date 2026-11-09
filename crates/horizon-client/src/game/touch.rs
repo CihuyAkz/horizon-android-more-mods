@@ -1098,7 +1098,7 @@ impl Game<'_> {
 
     /// Whether a finger landing at window pixel `p` is on a scrollbar's track, which it should
     /// drag like a held mouse instead of scrolling the list.
-    fn on_scrollbar(&self, p: [f32; 2]) -> bool {
+    pub(super) fn on_scrollbar(&self, p: [f32; 2]) -> bool {
         let batch = HudBatch::new(self.touch_size());
         let (x, y) = (p[0] / batch.scale, p[1] / batch.scale);
         // A custom button's canvas: a finger paints, it doesn't scroll.

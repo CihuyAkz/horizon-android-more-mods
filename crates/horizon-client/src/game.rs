@@ -17269,6 +17269,18 @@ impl Game<'_> {
         }
     }
     fn handle_window_event_inner(&mut self, event_loop: &dyn EventLoopCtl, mut event: WindowEvent) {
+        #[cfg(target_os = "android")]
+        if let WindowEvent::KeyboardInput { event: key, .. } = &mut event {
+            if let Some(code) =
+                horizon_client::keypad::resolve_key(key.physical_key, &key.logical_key)
+            {
+                key.physical_key = PhysicalKey::Code(code);
+            }
+            if self.mobile_keypad_key(event_loop, key) {
+                return;
+            }
+        }
+
         if let WindowEvent::Focused(false) = &event {
             self.physical_keys.clear();
             self.physical_buttons.clear();

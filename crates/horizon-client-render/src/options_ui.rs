@@ -211,6 +211,7 @@ impl Opt {
 
     pub(crate) fn caption(self) -> &'static str {
         match self {
+            Opt::AndroidInputSelection => "Input device",
             Opt::TouchMode => "Control scheme",
             Opt::TouchCrosshairGestures => "Touch gestures",
             Opt::TouchControlHub => "Control hub button",
@@ -641,6 +642,7 @@ impl Opt {
             Opt::TouchSwapJumpSneak => {
                 Some(if s.touch.swap_jump_sneak { "ON" } else { "OFF" }.into())
             }
+            Opt::AndroidInputSelection => Some(s.touch.input_selection.label().into()),
             Opt::TouchAutoSprint => Some(
                 if s.touch.sprint_with_joystick {
                     "ON"
@@ -1164,6 +1166,7 @@ impl Opt {
             Opt::TouchAttackSide => s.touch.attack_indicator_left ^= true,
             Opt::TouchSwapJumpSneak => s.touch.swap_jump_sneak ^= true,
             Opt::TouchAutoSprint => s.touch.sprint_with_joystick ^= true,
+            Opt::AndroidInputSelection => s.touch.input_selection.cycle(back),
 
             Opt::GuiScale => {
                 let max = crate::window::calculate_scale(framebuffer, 0, s.force_unicode) as u32;
@@ -1782,6 +1785,7 @@ enum Act {
     Key(&'static str),
     ResetKey(&'static str),
     ResetKeys,
+    KeyboardProfile,
     /// Controller binds: wait for a button, reset one, reset all.
     PadKey(&'static str),
     ResetPadKey(&'static str),
@@ -3557,72 +3561,76 @@ impl OptionsUi {
                 rows
             }
             Page::Controls => {
-                let mut rows = vec![Row::Buttons(
-                    button(
-                        0.0,
-                        0.0,
-                        150.0,
-                        tr("options.mouse_settings"),
-                        Act::Push(Page::Mouse),
-                    ),
-                    Some(button(
-                        0.0,
-                        0.0,
-                        150.0,
-                        tr("controls.keybinds"),
-                        Act::Push(Page::KeyBinds),
-                    )),
-                )];
-                let mut controls = vanilla_control_options();
-                if cfg!(target_os = "android") {
-                    controls.push(Opt::TouchAutoSprint);
-                }
-                rows.extend(pairs(&controls));
-                rows.push(Row::Buttons(
-                    button(
-                        0.,
-                        0.,
-                        if cfg!(target_os = "android") {
-                            150.
-                        } else {
-                            310.
-                        },
-                        tr("horizon.pages.open.controller"),
-                        Act::Push(Page::Controller),
-                    ),
-                    cfg!(target_os = "android").then(|| {
+                let android = cfg!(target_os = "android");
+                let mut rows = Vec::new();
+                if android {
+                    rows.push(Row::Big(Opt::AndroidInputSelection));
+                    rows.push(Row::Buttons(
                         button(
                             0.,
                             0.,
                             150.,
                             Text::literal("Touch Controls..."),
                             Act::Push(Page::Touch),
-                        )
-                    }),
-                ));
+                        ),
+                        Some(button(
+                            0.,
+                            0.,
+                            150.,
+                            tr("horizon.pages.open.controller"),
+                            Act::Push(Page::Controller),
+                        )),
+                    ));
+                }
                 rows.push(Row::Buttons(
                     button(
                         0.,
                         0.,
-                        if cfg!(target_os = "android") {
-                            150.
-                        } else {
-                            310.
-                        },
+                        150.,
+                        tr("controls.keybinds"),
+                        Act::Push(Page::KeyBinds),
+                    ),
+                    Some(button(
+                        0.,
+                        0.,
+                        150.,
+                        tr("options.mouse_settings"),
+                        Act::Push(Page::Mouse),
+                    )),
+                ));
+                if !android {
+                    rows.push(Row::Buttons(
+                        button(
+                            0.,
+                            0.,
+                            310.,
+                            tr("horizon.pages.open.controller"),
+                            Act::Push(Page::Controller),
+                        ),
+                        None,
+                    ));
+                }
+                let mut controls = vanilla_control_options();
+                if android {
+                    let at = controls.iter().position(|o| *o == Opt::AutoJump).unwrap() + 1;
+                    controls.insert(at, Opt::TouchAutoSprint);
+                }
+                rows.extend(pairs(&controls));
+                rows.push(Row::Buttons(
+                    button(
+                        0.,
+                        0.,
+                        150.,
                         Text::literal("Bedrock Inventory: ").append(on_off(s.bedrock_inventory)),
                         Act::BedrockInventory,
                     ),
-                    cfg!(target_os = "android").then(|| {
+                    (!android).then(|| {
                         button(
                             0.,
                             0.,
                             150.,
                             Text::literal("Customize Layout..."),
-                            if cfg!(target_os = "android") {
-                                Act::TouchLayout
-                            } else {
-                                Act::CustomButtons
-                            },
+                            Act::CustomButtons,
                         )
                     }),
                 ));
@@ -4321,17 +4329,43 @@ impl OptionsUi {
                     list: false,
                     row: 0,
                 });
-                let mut mappings: Vec<(&str, &str)> =
-                    MAPPINGS.iter().map(|(n, _, c)| (*n, *c)).collect();
+                let keypad = s.keypad.enabled;
+                if cfg!(target_os = "android") || keypad {
+                    top = 64.0;
+                    out.push(button(
+                        cx - 150.0,
+                        39.0,
+                        300.0,
+                        Text::literal(if keypad {
+                            "Input profile: D-pad / keypad"
+                        } else {
+                            "Input profile: Keyboard"
+                        }),
+                        Act::KeyboardProfile,
+                    ));
+                }
+                let label = |name: &str| {
+                    crate::keypad::ACTIONS
+                        .iter()
+                        .find(|a| a.0 == name)
+                        .map_or_else(|| lang::get(name), |a| a.1.to_owned())
+                };
+                let mut mappings: Vec<(&str, &str)> = if keypad {
+                    crate::keypad::ACTIONS
+                        .iter()
+                        .map(|a| (a.0, "movement"))
+                        .collect()
+                } else {
+                    MAPPINGS.iter().map(|(n, _, c)| (*n, *c)).collect()
+                };
                 let query = self.settings_search.value.to_lowercase();
                 mappings.retain(|(name, _)| {
-                    query.is_empty() || lang::get(name).to_lowercase().contains(&query)
+                    query.is_empty() || label(name).to_lowercase().contains(&query)
                 });
                 mappings.sort_by(|a, b| {
                     let ca = CATEGORIES.iter().position(|c| *c == a.1).unwrap_or(99);
                     let cb = CATEGORIES.iter().position(|c| *c == b.1).unwrap_or(99);
-                    ca.cmp(&cb)
-                        .then_with(|| lang::get(a.0).cmp(&lang::get(b.0)))
+                    ca.cmp(&cb).then_with(|| label(a.0).cmp(&label(b.0)))
                 });
                 let row_left = cx - 170.0;
                 let scrollbar_x = row_left + 340.0 + 6.0 + 2.0;
@@ -4388,16 +4422,40 @@ impl OptionsUi {
                         w: 200.0,
                         h: 9.0,
                         kind: WKind::Text {
-                            text: tr(name),
+                            text: if keypad {
+                                Text::literal(label(name))
+                            } else {
+                                tr(name)
+                            },
                             color: u32::MAX,
                             centered: false,
                         },
                         list: false,
                         row: 0,
                     });
-                    let key = s.keys.get(name).to_owned();
+                    let key = if keypad {
+                        s.keypad
+                            .keys(name)
+                            .first()
+                            .cloned()
+                            .unwrap_or_else(|| "key.keyboard.unknown".into())
+                    } else {
+                        s.keys.get(name).to_owned()
+                    };
                     let mut message = keybinds::display_name(&key);
-                    let conflicts = s.keys.conflicts(name);
+                    let conflicts: Vec<_> = if keypad {
+                        crate::keypad::ACTIONS
+                            .iter()
+                            .filter(|a| {
+                                a.0 != name
+                                    && s.keypad.keys(a.0).contains(&key)
+                                    && key != "key.keyboard.unknown"
+                            })
+                            .map(|a| a.0)
+                            .collect()
+                    } else {
+                        s.keys.conflicts(name)
+                    };
                     if !conflicts.is_empty() {
                         message = Text::literal("[ ")
                             .append(message.with_color(text::WHITE))
@@ -4416,7 +4474,14 @@ impl OptionsUi {
                     }
                     let reset_x = scrollbar_x - 50.0 - 10.0;
                     let change_x = reset_x - 5.0 - 75.0;
-                    let name_static = MAPPINGS.iter().find(|m| m.0 == name).map_or("", |m| m.0);
+                    let name_static = if keypad {
+                        crate::keypad::ACTIONS
+                            .iter()
+                            .find(|a| a.0 == name)
+                            .map_or("", |a| a.0)
+                    } else {
+                        MAPPINGS.iter().find(|m| m.0 == name).map_or("", |m| m.0)
+                    };
                     out.push(button(change_x, y, 75.0, message, Act::Key(name_static)));
                     if !conflicts.is_empty() {
                         out.push(Widget {
@@ -4440,11 +4505,15 @@ impl OptionsUi {
                         tr("controls.reset"),
                         Act::ResetKey(name_static),
                     );
-                    out.push(if s.keys.is_default(name) {
-                        inactive(reset)
-                    } else {
-                        reset
-                    });
+                    out.push(
+                        if (keypad && !s.keypad.bindings.contains_key(name))
+                            || (!keypad && s.keys.is_default(name))
+                        {
+                            inactive(reset)
+                        } else {
+                            reset
+                        },
+                    );
                     y += 20.0;
                     rows.end(&mut out, y);
                 }
@@ -5693,12 +5762,26 @@ impl OptionsUi {
                             events.push(Event::Changed);
                         }
                         Act::Key(name) => self.selected_key = Some(name),
+                        Act::KeyboardProfile => {
+                            s.keypad.enabled ^= true;
+                            self.selected_key = None;
+                            self.scroll = 0.;
+                            events.push(Event::Changed);
+                        }
                         Act::ResetKey(name) => {
-                            s.keys.set(name, KeyBinds::default_of(name));
+                            if name.starts_with("key.keypad.") {
+                                s.keypad.bindings.remove(name);
+                            } else {
+                                s.keys.set(name, KeyBinds::default_of(name));
+                            }
                             events.push(Event::Changed);
                         }
                         Act::ResetKeys => {
-                            s.keys.reset_all();
+                            if s.keypad.enabled {
+                                s.keypad.bindings.clear();
+                            } else {
+                                s.keys.reset_all();
+                            }
                             events.push(Event::Changed);
                         }
                         Act::PadKey(action) => self.selected_pad_action = Some(action),
@@ -6219,6 +6302,12 @@ impl OptionsUi {
             .filter(|_| self.page() == Page::HdrCalibration)
             .map(|c| c.picture(h))
     }
+    /// A lifted finger no longer hovers a button. Text editing retains its focus.
+    pub fn release_touch_focus(&mut self) {
+        if !self.focus_from_keyboard && self.focus != Some(FocusId::Search) {
+            self.focus = None;
+        }
+    }
     pub fn back(&mut self, s: &mut Settings) -> Vec<Event> {
         let mut events = Vec::new();
         // A pack's screen goes back to the one that opened it.
@@ -6441,6 +6530,10 @@ impl OptionsUi {
         let Some(name) = self.selected_key.take() else {
             return Vec::new();
         };
+        if name.starts_with("key.keypad.") {
+            s.keypad.set(name, value);
+            return vec![Event::Changed];
+        }
         if name == NATIVE_KEY {
             let (i, k) = self.selected_native_key.take().unwrap_or_default();
             let Some(m) = s.mods.installed.get(i) else {
@@ -6844,12 +6937,26 @@ impl OptionsUi {
                             events.push(Event::Changed);
                         }
                         Act::Key(name) => self.selected_key = Some(name),
+                        Act::KeyboardProfile => {
+                            s.keypad.enabled ^= true;
+                            self.selected_key = None;
+                            self.scroll = 0.;
+                            events.push(Event::Changed);
+                        }
                         Act::ResetKey(name) => {
-                            s.keys.set(name, KeyBinds::default_of(name));
+                            if name.starts_with("key.keypad.") {
+                                s.keypad.bindings.remove(name);
+                            } else {
+                                s.keys.set(name, KeyBinds::default_of(name));
+                            }
                             events.push(Event::Changed);
                         }
                         Act::ResetKeys => {
-                            s.keys.reset_all();
+                            if s.keypad.enabled {
+                                s.keypad.bindings.clear();
+                            } else {
+                                s.keys.reset_all();
+                            }
                             events.push(Event::Changed);
                         }
                         Act::PadKey(action) => self.selected_pad_action = Some(action),

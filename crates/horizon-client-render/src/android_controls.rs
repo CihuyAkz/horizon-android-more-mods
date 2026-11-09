@@ -2891,6 +2891,23 @@ mod tests {
         assert_eq!(hotbar_slot(427.0, 240.0, [320.0, 230.0]), None);
     }
     #[test]
+    fn manual_input_selection_survives_profiles_and_ignores_other_device_activity() {
+        use crate::android_controls::layout::InputSelection;
+        use horizon_client_input::input_mode::InputMode;
+        let settings = Settings {
+            input_selection: InputSelection::Touch,
+            ..Default::default()
+        };
+        let restored: Settings =
+            serde_json::from_slice(&serde_json::to_vec(&settings).unwrap()).unwrap();
+        for input in [InputMode::Touch, InputMode::Pad, InputMode::KeyboardMouse] {
+            assert_eq!(restored.input_selection.resolve(input), InputMode::Touch);
+            assert_eq!(InputSelection::Auto.resolve(input), input);
+        }
+        let old: Settings = serde_json::from_str("{}").unwrap();
+        assert_eq!(old.input_selection.resolve(InputMode::Pad), InputMode::Pad);
+    }
+    #[test]
     fn old_profiles_keep_custom_layouts_and_new_preferences_have_safe_defaults() {
         let mut settings: Settings =
             serde_json::from_str(r#"{"mode":"tap","sensitivity":1.5}"#).unwrap();

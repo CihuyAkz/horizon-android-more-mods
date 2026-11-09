@@ -185,13 +185,13 @@ fn android_utility_sprites(images: &[PackedImage]) -> Vec<PackedImage> {
         ".....###.....",
         "..##.###.##..",
         ".###########.",
-        ".##.#####.##.",
-        "..##.....##..",
+        ".###########.",
+        "..###...###..",
         "####.....####",
         "####.....####",
         "####.....####",
-        "..##.....##..",
-        ".##.#####.##.",
+        "..###...###..",
+        ".###########.",
         ".###########.",
         "..##.###.##..",
         ".....###.....",
@@ -4197,7 +4197,7 @@ texture=wide",
             .unwrap();
     }
     #[test]
-    fn settings_glyph_and_plate_share_one_alpha_and_a_square_bore() {
+    fn settings_glyph_and_plate_share_one_alpha_and_a_rounded_bore() {
         let images = vec![(
             "starling:gui/sprites/touch/custom_blank".into(),
             22,
@@ -4219,9 +4219,11 @@ texture=wide",
         // above it. Its alpha is the plate's, rather than two blended layers.
         for y in 8..13 {
             for x in 8..13 {
+                let corner = (x == 8 || x == 12) && (y == 8 || y == 12);
+                let ink = if corner { 0 } else { 128 };
                 assert_eq!(
                     &gear[(y * 22 + x) * 4..(y * 22 + x) * 4 + 4],
-                    &[128, 128, 128, 204]
+                    &[ink, ink, ink, 204]
                 );
             }
         }

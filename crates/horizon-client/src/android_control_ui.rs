@@ -56,6 +56,8 @@ pub struct TouchUi {
     pub custom_kb_drag: Option<(u64, f32, bool)>,
     pub goy_mode: bool,
     pub virtual_mouse: bool,
+    pub virtual_mouse_available: bool,
+    pub menu_direct_pointer: bool,
     /// Mirror of `!settings.virtual_mouse_enabled` for legacy callers; authoritative state lives in `touch::Settings::virtual_mouse_enabled`.
     pub pointer_off: bool,
     /// Whether the virtual pointer has been spawned at the playable viewport center at least once.
@@ -105,6 +107,8 @@ impl Default for TouchUi {
             custom_kb_drag: None,
             goy_mode: false,
             virtual_mouse: false,
+            virtual_mouse_available: false,
+            menu_direct_pointer: false,
             pointer_off: false,
             cursor_initialized: false,
             last_viewport: None,
@@ -532,6 +536,7 @@ impl TouchUi {
         captured: bool,
     ) -> bool {
         self.pointer_off = !controls.settings.virtual_mouse_enabled;
+        self.virtual_mouse_available = controls.settings.virtual_mouse_enabled;
         if controls.editor.is_some() {
             return false;
         }
@@ -545,6 +550,9 @@ impl TouchUi {
         if !controls.settings.virtual_mouse_enabled {
             self.goy_in_game_mouse = false;
             return false;
+        }
+        if in_menu {
+            return !self.menu_direct_pointer;
         }
         match controls.settings.control_style {
             crate::android_controls::ControlStyle::Mcpe => {
@@ -765,14 +773,15 @@ impl TouchUi {
         None
     }
     /// Sliders retain mouse dragging; list rows use scroll-or-tap gestures.
-    pub fn direct_pointer(&mut self, id: u64, p: [f32; 2], phase: TouchPhase) -> bool {
+    pub fn direct_pointer(&mut self, id: u64, p: [f32; 2], phase: TouchPhase, track: bool) -> bool {
         if phase == TouchPhase::Started
-            && crate::widgets::last_targets().iter().any(|t| {
-                let [x, y, w, h] = t.rect;
-                matches!(t.kind, crate::widgets::Kind::Slider { .. })
-                    && (x..x + w).contains(&p[0])
-                    && (y..y + h).contains(&p[1])
-            })
+            && (track
+                || crate::widgets::last_targets().iter().any(|t| {
+                    let [x, y, w, h] = t.rect;
+                    matches!(t.kind, crate::widgets::Kind::Slider { .. })
+                        && (x..x + w).contains(&p[0])
+                        && (y..y + h).contains(&p[1])
+                }))
         {
             self.pointer_drag = Some(id);
         }
@@ -817,6 +826,13 @@ impl TouchUi {
         }
     }
     pub fn action(&self, w: f32, h: f32, p: [f32; 2], menu: bool) -> Option<Action> {
+        if menu
+            && self.virtual_mouse_available
+            && (3.0..23.0).contains(&p[1])
+            && (w - 112.0..w - 56.0).contains(&p[0])
+        {
+            return Some(Action::VirtualMouse);
+        }
         if !self.goy_mode {
             if menu && self.virtual_mouse {
                 for ([x, y, width, height], right) in mouse_button_rects(w, h) {
@@ -861,6 +877,20 @@ impl TouchUi {
         None
     }
     pub fn draw(&self, b: &mut HudBatch, a: &HudAtlas, menu: bool) {
+        if menu && self.virtual_mouse_available {
+            button(
+                b,
+                a,
+                if self.virtual_mouse {
+                    "Mouse*"
+                } else {
+                    "Mouse"
+                },
+                b.width - 112.,
+                3.,
+                56.,
+            );
+        }
         if menu && !self.goy_mode && crate::android_controls::current_hud_opacity_scale() > 0.01 {
             button(b, a, "Back", b.width - 53.0, 3.0, 50.0);
             if self.virtual_mouse {
@@ -8152,6 +8182,35 @@ mod tests {
         assert_eq!(ui.release_mouse(3), None);
         ui.virtual_mouse = false;
         assert!(ui.action(427.0, 267.0, [399.0, 226.0], true).is_none());
+    }
+    #[test]
+    fn menu_pointer_can_be_hidden_and_restored_without_disabling_virtual_mouse() {
+        let mut ui = TouchUi::default();
+        let mut controls = crate::android_controls::TouchControls::default();
+        controls.settings.virtual_mouse_enabled = true;
+        assert!(ui.compute_virtual_mouse_visibility(&controls, true, false, true, false));
+        assert!(matches!(
+            ui.action(427., 267., [330., 13.], true),
+            Some(Action::VirtualMouse)
+        ));
+        ui.menu_direct_pointer = true;
+        assert!(!ui.compute_virtual_mouse_visibility(&controls, true, false, true, false));
+        assert!(matches!(
+            ui.action(427., 267., [330., 13.], true),
+            Some(Action::VirtualMouse)
+        ));
+        ui.menu_direct_pointer = false;
+        assert!(ui.compute_virtual_mouse_visibility(&controls, true, false, true, false));
+        assert!(controls.settings.virtual_mouse_enabled);
+    }
+    #[test]
+    fn scrollbar_owns_drag_until_release_outside_track() {
+        let mut ui = TouchUi::default();
+        assert!(ui.direct_pointer(1, [300., 40.], TouchPhase::Started, true));
+        assert!(ui.direct_pointer(1, [280., 180.], TouchPhase::Moved, false));
+        assert!(!ui.direct_pointer(2, [100., 80.], TouchPhase::Moved, false));
+        assert!(ui.direct_pointer(1, [280., 180.], TouchPhase::Ended, false));
+        assert!(!ui.direct_pointer(1, [280., 180.], TouchPhase::Moved, false));
     }
     #[test]
     fn virtual_mouse_moves_relatively_and_dragging_never_clicks() {

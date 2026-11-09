@@ -233,6 +233,17 @@ impl Game<'_> {
             self.pad_output_off();
             PadState::default()
         };
+        #[cfg(target_os = "android")]
+        let hardware = {
+            self.mobile.keypad.configure(&self.settings.keypad);
+            let keypad = if !self.settings.keypad.enabled || self.pad_in_menu() || !self.focused {
+                self.mobile.keypad.clear();
+                Default::default()
+            } else {
+                self.mobile.keypad.poll()
+            };
+            hardware.merge(&keypad)
+        };
         let state = hardware.merge(&self.pad.injected);
         self.pad.virtual_input = self.pad.injected != PadState::default();
         for button in std::mem::take(&mut self.pad.taps) {
@@ -241,7 +252,7 @@ impl Game<'_> {
         if state.active(&self.settings.controller) {
             self.last_input = Instant::now();
             self.input_used(InputMode::Pad);
-            self.pad.in_use = true;
+            self.pad.in_use = self.input_mode == InputMode::Pad;
         }
         let state = state.merge(&self.pad.touch);
         for button in std::mem::take(&mut self.pad.touch_taps) {

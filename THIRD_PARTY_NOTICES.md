@@ -280,7 +280,9 @@ control hub, virtual pointer and auxiliary keyboard are adapted from
 MIT, copyright (c) 2026 Ludovic Marie and the Horizon contributors (see [LICENSE](LICENSE)).
 Source: `crates/horizon-client-render/src/touch.rs`, `touch/{layout,editor,custom}.rs`,
 `crates/horizon-client/src/{touch_ui,ui_theme,osk,ui_text}.rs`, and Android input
-integration in `game/android_input.rs`, `game/pad.rs` and `game.rs`.
+integration in `game/android_input.rs`, `game/pad.rs` and `game.rs`. The
+physical D-pad/keypad profile is from `horizon-client-render/src/keypad.rs`
+and its editable bindings in `options_ui.rs`.
 
 The port uses Starling's input, IME, inventory, controller and renderer interfaces.
 Its UI rasterization shares Starling's existing runtime atlas allocator; it does

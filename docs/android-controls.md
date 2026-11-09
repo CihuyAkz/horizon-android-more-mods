@@ -2,7 +2,7 @@
 
 Starling integrates Horizon Android's control engine and visual editor. Open the
 control hub to select **MCPE** or **GoyControl**, change the movement mode or edit
-a layout. The touch-layout entry in Controls opens the same visual editor.
+a layout. The layout entry in Controls > Touch Controls opens the same visual editor.
 
 The editor supports moving and resizing controls, independent dimensions,
 component properties, colors, borders, shapes, labels and event bindings. It has
@@ -40,3 +40,20 @@ folder; selecting an account does not select a control preset. Existing Starling
 format automatically.
 
 See `THIRD_PARTY_NOTICES.md` for the MIT source attribution.
+
+Physical D-pad/keypad devices can select **Input profile: D-pad / keypad** in
+**Controls > Key Binds**. The profile uses the original Android directional and
+numeric aliases, supports rebinding and persists in `horizon-keypad.json`.
+Keyboard is the default profile. Text fields retain ordinary text input.
+
+**Input device** in Controls selects Auto, Touch, Keyboard & Mouse or Controller.
+Auto follows the last device used; an explicit selection keeps that mode active.
+This preference is saved with the touch settings. When Virtual Mouse is enabled,
+**Mouse** beside Back switches menu navigation between direct touch and the
+relative pointer without disabling the feature globally.
+
+Inventory follow-up: verify and improve item disposal and creative crafting in
+Starling's custom Bedrock Inventory. These custom inventory workflows are not
+provided by copying the control layout and must be checked separately from the
+vanilla inventory. The Shift modifier routes slot taps through the normal
+quick-move handler; scrollbar tracks retain direct dragging.

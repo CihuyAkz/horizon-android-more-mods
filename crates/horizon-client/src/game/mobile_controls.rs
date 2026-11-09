@@ -15,6 +15,7 @@ mod mobile_platform;
 #[derive(Default)]
 pub(super) struct MobileControls {
     pub controls: horizon_client::android_controls::TouchControls,
+    pub keypad: horizon_client::keypad::Keypad,
     pub ui: horizon_client::android_control_ui::TouchUi,
     custom_keys: std::collections::HashSet<KeyCode>,
     custom_pressed_at: std::collections::HashMap<String, u64>,
@@ -28,6 +29,41 @@ pub(super) struct MobileControls {
 }
 
 impl Game<'_> {
+    pub(in crate::game) fn mobile_keypad_key(
+        &mut self,
+        events: &dyn super::event_loop::EventLoopCtl,
+        event: &winit::event::KeyEvent,
+    ) -> bool {
+        if !self.settings.keypad.enabled {
+            return false;
+        }
+        let Some(key) = horizon_client::keypad::resolve_key(event.physical_key, &event.logical_key)
+        else {
+            return false;
+        };
+        if self.options_waiting_for_key() || mobile_platform::active() || self.text_field_focused()
+        {
+            return false;
+        }
+        if self.pad_in_menu() {
+            if let Some(button) = self.settings.keypad.menu_button(key) {
+                if !event.repeat {
+                    self.pad.in_use = true;
+                    self.pad_menu_button(events, button, event.state == ElementState::Pressed)
+                        .unwrap_or_else(|e| log::warn!("Keypad menu: {e}"));
+                }
+                return true;
+            }
+            if event.state != ElementState::Released {
+                return false;
+            }
+        }
+        self.mobile.keypad.configure(&self.settings.keypad);
+        self.mobile
+            .keypad
+            .key(key, event.state == ElementState::Pressed)
+    }
+
     pub(in crate::game) fn mobile_controls_enabled(&self) -> bool {
         cfg!(target_os = "android")
     }
@@ -91,6 +127,7 @@ impl Game<'_> {
     }
     pub(in crate::game) fn mobile_options_apply(&mut self) {
         self.mobile.controls.settings = self.settings.touch.clone();
+        self.input_used(self.input_mode);
         if let Err(e) = self.mobile.controls.settings.save() {
             log::warn!("Controls settings: {e}");
         }
@@ -104,6 +141,7 @@ impl Game<'_> {
             return;
         }
         self.mobile.loaded = true;
+        self.input_used(self.input_mode);
         if let Some(w) = &self.window {
             horizon_client::android_control_theme::set_android_dpi(w.scale_factor() as f32);
         }
@@ -151,7 +189,7 @@ impl Game<'_> {
             self.android_release_touch_keys(true);
             self.pad.set_touch_state(Default::default());
         }
-        let shown = self.touch_shown();
+        let shown = self.touch_shown() || self.settings.keypad.enabled;
         let context_use = self.touch_context_use();
         let item_use = self.held().is_some_and(|s| {
             !horizon_client::android_controls::item_uses_on_tap(&s.item)
@@ -168,6 +206,7 @@ impl Game<'_> {
             .any(|s| self.blocks_attacks(s).is_some());
         let breaking = self.touch_mining_progress();
         let tc = &mut self.mobile.controls;
+        tc.auxiliary_only = self.settings.keypad.enabled;
         tc.shield_available = shield_available;
         tc.context_use = tc.settings.contextual_interact && context_use;
         tc.goy_rendered_by_ui = true;
@@ -235,7 +274,8 @@ impl Game<'_> {
             self.debug_key(KeyCode::F3, KeyAction::Release);
         }
         if settings {
-            self.mobile.ui.floating_menu = true;
+            self.mobile.ui.floating_menu = false;
+            self.open_options(self.title.is_some());
             self.capture(false);
         }
 
@@ -254,6 +294,7 @@ impl Game<'_> {
     pub(in crate::game) fn mobile_draw(&self, b: &mut HudBatch) {
         use horizon_client::android_control_ui as ui;
         if !self.has_touch()
+            && !self.settings.keypad.enabled
             && self.mobile.controls.editor.is_none()
             && !self.mobile.ui.floating_menu
         {
@@ -393,7 +434,10 @@ impl Game<'_> {
             return;
         }
         if in_menu {
-            if !self.mobile.ui.virtual_mouse && self.slot_touch_event(events, id, t) {
+            if !self.mobile.ui.virtual_mouse
+                && !self.has_shift_down()
+                && self.slot_touch_event(events, id, t)
+            {
                 return;
             }
             self.android_menu_touch(t, events, id);
@@ -1511,10 +1555,7 @@ impl Game<'_> {
                             self.android_menu_mouse(events, id, right, false)?;
                         }
                         self.mobile.ui.cancel();
-                        let next = !self.mobile.controls.settings.virtual_mouse_enabled;
-                        self.mobile.controls.settings.virtual_mouse_enabled = next;
-                        self.mobile.ui.pointer_off = !next;
-                        let _ = self.mobile.controls.settings.save();
+                        self.mobile.ui.menu_direct_pointer = !self.mobile.ui.menu_direct_pointer;
                         self.android_sync_pointer();
                     }
                     Action::More => self.mobile.ui.expanded = !self.mobile.ui.expanded,
@@ -1635,6 +1676,12 @@ impl Game<'_> {
             }
         }
     }
+    fn android_menu_touch_release(&mut self, phase: TouchPhase) {
+        if matches!(phase, TouchPhase::Ended | TouchPhase::Cancelled) {
+            self.ui.options.release_touch_focus();
+            self.cursor = (-1., -1.);
+        }
+    }
     pub(super) fn android_menu_touch(
         &mut self,
         t: &Touch,
@@ -1653,7 +1700,8 @@ impl Game<'_> {
         if t.phase == TouchPhase::Started && self.screen == Screen::Options {
             // Starling tracks list and slider presses through its window events.
         }
-        let direct = self.mobile.ui.direct_pointer(t.id, p, t.phase);
+        let track = self.on_scrollbar([t.location.x as f32, t.location.y as f32]);
+        let direct = self.mobile.ui.direct_pointer(t.id, p, t.phase, track);
         self.handle_window_event(
             events,
             id,
@@ -1680,6 +1728,7 @@ impl Game<'_> {
                     InputOrigin::User,
                 );
             }
+            self.android_menu_touch_release(t.phase);
             return;
         }
         match self
@@ -1722,6 +1771,7 @@ impl Game<'_> {
             ),
             Gesture::None => {}
         }
+        self.android_menu_touch_release(t.phase);
     }
     pub(super) fn android_virtual_touch(
         &mut self,
