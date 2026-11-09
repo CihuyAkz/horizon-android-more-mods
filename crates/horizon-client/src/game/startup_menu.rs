@@ -580,6 +580,22 @@ impl Loading {
         true
     }
 
+    /// Whether a finger landing at `touch` is on a button of the options (a cycle button, a row of
+    /// Video Settings), which a drag starting sideways would press: it only scrolls.
+    pub(super) fn menu_options_button_at(&mut self, touch: &winit::event::Touch) -> bool {
+        if !self.menu.options_open || self.gui.is_none() {
+            return false;
+        }
+        let batch = HudBatch::new(self.menu_size());
+        let cursor = (
+            touch.location.x as f32 / batch.scale,
+            touch.location.y as f32 / batch.scale,
+        );
+        self.menu
+            .options
+            .list_button_at(&self.settings, (batch.width, batch.height), cursor)
+    }
+
     pub(super) fn poll_menu_resources(&mut self) -> Result<()> {
         // Once `Done` arrived the generation is over: the caller may have taken
         // its result, and the finished loader's channel is closed.
