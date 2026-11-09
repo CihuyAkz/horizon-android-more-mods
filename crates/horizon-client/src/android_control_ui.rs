@@ -551,8 +551,13 @@ impl TouchUi {
             self.goy_in_game_mouse = false;
             return false;
         }
+        // The Mouse button is an explicit hide override, including after
+        // leaving a menu for keypad/non-touch gameplay.
+        if self.menu_direct_pointer {
+            return false;
+        }
         if in_menu {
-            return !self.menu_direct_pointer;
+            return true;
         }
         match controls.settings.control_style {
             crate::android_controls::ControlStyle::Mcpe => {
@@ -8195,6 +8200,12 @@ mod tests {
         ));
         ui.menu_direct_pointer = true;
         assert!(!ui.compute_virtual_mouse_visibility(&controls, true, false, true, false));
+        // Returning to the world with a keypad must not resurrect the cursor.
+        assert!(!ui.compute_virtual_mouse_visibility(&controls, false, false, false, true));
+        assert!(!ui.compute_virtual_mouse_visibility(&controls, false, true, false, false));
+        controls.settings.control_style = crate::android_controls::ControlStyle::GoyControl;
+        ui.goy_in_game_mouse = true;
+        assert!(!ui.compute_virtual_mouse_visibility(&controls, false, false, false, false));
         assert!(matches!(
             ui.action(427., 267., [330., 13.], true),
             Some(Action::VirtualMouse)
