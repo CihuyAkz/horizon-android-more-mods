@@ -356,6 +356,7 @@ impl Game<'_> {
                 t.phase == TouchPhase::Started,
                 matches!(t.phase, TouchPhase::Ended | TouchPhase::Cancelled),
             );
+            self.settings.touch = self.mobile.controls.settings.clone();
             self.mobile_click_feedback();
             return;
         }
@@ -516,6 +517,7 @@ impl Game<'_> {
             None => {}
             Some(other) => return Err(format!("unknown touch-layout action: {other}").into()),
         }
+        self.settings.touch = self.mobile.controls.settings.clone();
         Ok(Some(
             serde_json::json!({"ok":true,"editing":self.mobile.controls.editor.is_some(),"layout":self.mobile.controls.settings}),
         ))
@@ -794,6 +796,7 @@ impl Game<'_> {
                 } else {
                     self.mobile.ui.goy_in_game_mouse = !self.mobile.ui.goy_in_game_mouse;
                 }
+                self.settings.touch = self.mobile.controls.settings.clone();
                 self.android_sync_pointer();
                 self.android_touch_haptic(14);
             }
@@ -1491,6 +1494,9 @@ impl Game<'_> {
                     self.android_custom_token_tap(&token);
                 }
             }
+            // Hub actions edit the live controls while Options edits its copy.
+            // Keep that copy current before another option change applies it.
+            self.settings.touch = self.mobile.controls.settings.clone();
             return Ok(true);
         }
         if t.phase == TouchPhase::Moved {

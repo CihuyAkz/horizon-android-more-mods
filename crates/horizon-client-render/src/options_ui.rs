@@ -3614,6 +3614,7 @@ impl OptionsUi {
                 if android {
                     let at = controls.iter().position(|o| *o == Opt::AutoJump).unwrap() + 1;
                     controls.insert(at, Opt::TouchAutoSprint);
+                    controls.retain(|o| *o != Opt::OperatorItemsTab);
                 }
                 rows.extend(pairs(&controls));
                 rows.push(Row::Buttons(
@@ -3624,7 +3625,9 @@ impl OptionsUi {
                         Text::literal("Bedrock Inventory: ").append(on_off(s.bedrock_inventory)),
                         Act::BedrockInventory,
                     ),
-                    (!android).then(|| {
+                    Some(if android {
+                        option_widget(s, Opt::OperatorItemsTab, 0., 0., 150.)
+                    } else {
                         button(
                             0.,
                             0.,
