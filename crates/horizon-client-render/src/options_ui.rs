@@ -1615,6 +1615,8 @@ enum Act {
     /// A native mod's key (mod, key) waits for a key; a button of its page.
     NativeKey(usize, usize),
     NativeButton(usize, usize),
+    /// A button of the Mods page's game with native mods.
+    NativeGame(crate::mod_list::NativeGameAct),
     OpenModFolder,
     OpenCatalog(CatalogShelf),
     /// The creative screen with the inventory beside it, or as the game draws it.
@@ -1768,6 +1770,10 @@ pub enum Event {
     ListShaderPacks,
     /// The Mods page opened: the native mods folder read again, for a mod copied in meanwhile.
     ListMods,
+    /// Installed mod `.0` was turned on or off (after `Changed`, which saved it).
+    ModToggled(usize),
+    /// Android: a button of the Mods page's game with native mods (`ModList::native_game`).
+    NativeGame(crate::mod_list::NativeGameAct),
     /// A shader pack or its profile was picked, or the pack turned off: save and apply it.
     ShaderPack,
     /// The Shader Packs page's folder (on a phone without the Starling folder, its offer).
@@ -2072,6 +2078,63 @@ impl Default for OptionsUi {
         }
     }
 }
+/// The longest line of a Mods page note, in characters: about a button's width.
+const NOTE_CHARS: usize = 52;
+
+/// `text` in lines of at most `max` characters, broken between words.
+fn wrap_words(text: &str, max: usize) -> Vec<String> {
+    let mut lines = Vec::new();
+    let mut line = String::new();
+    for word in text.split_whitespace() {
+        if !line.is_empty() && line.chars().count() + 1 + word.chars().count() > max {
+            lines.push(std::mem::take(&mut line));
+        }
+        if !line.is_empty() {
+            line.push(' ');
+        }
+        line.push_str(word);
+    }
+    if !line.is_empty() {
+        lines.push(line);
+    }
+    lines
+}
+
+/// Android: the Mods page's game with native mods (`ModList::native_game`): its lines, cut to the
+/// list's width, its buttons two to a row, and a gap before the mods.
+fn native_game_rows(s: &Settings) -> Vec<Row> {
+    let Some(game) = &s.mods.native_game else {
+        return Vec::new();
+    };
+    let mut rows = Vec::new();
+    for (text, warning) in &game.lines {
+        for line in wrap_words(text, NOTE_CHARS) {
+            rows.push(if *warning {
+                Row::Warning(line)
+            } else {
+                Row::Note(line)
+            });
+        }
+    }
+    let widget = |(label, act): &(String, crate::mod_list::NativeGameAct), w: f32| {
+        button(
+            0.0,
+            0.0,
+            w,
+            Text::literal(label.clone()),
+            Act::NativeGame(*act),
+        )
+    };
+    for pair in game.buttons.chunks(2) {
+        rows.push(match pair {
+            [a, b] => Row::Buttons(widget(a, 150.0), Some(widget(b, 150.0))),
+            _ => Row::Buttons(widget(&pair[0], 310.0), None),
+        });
+    }
+    rows.push(Row::Note(String::new()));
+    rows
+}
+
 fn button(x: f32, y: f32, w: f32, label: Text, act: Act) -> Widget {
     Widget {
         x,
@@ -3640,61 +3703,46 @@ impl OptionsUi {
             }
             Page::Font => pairs(&[Opt::ForceUnicode, Opt::JapaneseGlyphs]),
             Page::Mods => {
+                // Android: which game runs, above the mods.
+                let mut rows = native_game_rows(s);
                 if s.mods.installed.is_empty() {
-                    return vec![Row::Header("horizon.mods.empty")];
+                    rows.push(Row::Header("horizon.mods.empty"));
+                    return rows;
                 }
-                s.mods
-                    .installed
-                    .iter()
-                    .enumerate()
-                    .map(|(i, installed)| {
-                        let mut label = Text::literal(format!("{}: ", installed.title))
-                            .append(on_off(s.mods.is_on(i)));
-                        if installed.problem.as_deref() == Some(crate::mod_list::NOT_BUILT) {
-                            label = label.append(tr("horizon.mods.not_built"));
-                        } else if installed.problem.is_some() {
-                            label = label.append(tr("horizon.mods.stopped"));
-                        } else if installed.dev {
-                            label = label.append(tr("horizon.mods.dev"));
-                        }
-                        let dead = installed.dev || installed.id.is_empty();
-                        // Only native mods with actual settings need a second button.
-                        if installed
-                            .native
-                            .as_ref()
-                            .is_some_and(|page| !page.keys.is_empty() || !page.buttons.is_empty())
-                        {
-                            let toggle = button(0.0, 0.0, 150.0, label, Act::ToggleMod(i));
-                            // A mod not in this game (Android): its one button, Compile, at once.
-                            let settings = if installed.problem.as_deref()
-                                == Some(crate::mod_list::NOT_BUILT)
-                            {
-                                button(
-                                    0.0,
-                                    0.0,
-                                    150.0,
-                                    Text::literal("Compile"),
-                                    Act::NativeButton(i, 0),
-                                )
-                            } else {
-                                button(
-                                    0.0,
-                                    0.0,
-                                    150.0,
-                                    tr("horizon.mods.settings"),
-                                    Act::ModSettings(i),
-                                )
-                            };
-                            Row::Buttons(
-                                if dead { inactive(toggle) } else { toggle },
-                                Some(settings),
-                            )
-                        } else {
-                            let widget = button(0.0, 0.0, 310.0, label, Act::ToggleMod(i));
-                            Row::Buttons(if dead { inactive(widget) } else { widget }, None)
-                        }
-                    })
-                    .collect()
+                let mods = s.mods.installed.iter().enumerate().map(|(i, installed)| {
+                    let mut label = Text::literal(format!("{}: ", installed.title))
+                        .append(on_off(s.mods.is_on(i)));
+                    if installed.problem.as_deref() == Some(crate::mod_list::NOT_BUILT) {
+                        label = label.append(tr("horizon.mods.not_built"));
+                    } else if installed.problem.is_some() {
+                        label = label.append(tr("horizon.mods.stopped"));
+                    } else if installed.dev {
+                        label = label.append(tr("horizon.mods.dev"));
+                    }
+                    let dead = installed.dev || installed.id.is_empty();
+                    // Only native mods with actual settings need a second button.
+                    if installed
+                        .native
+                        .as_ref()
+                        .is_some_and(|page| !page.keys.is_empty() || !page.buttons.is_empty())
+                    {
+                        let toggle = button(0.0, 0.0, 150.0, label, Act::ToggleMod(i));
+                        // A mod not in this game (Android) is compiled from the page's top.
+                        let settings = button(
+                            0.0,
+                            0.0,
+                            150.0,
+                            tr("horizon.mods.settings"),
+                            Act::ModSettings(i),
+                        );
+                        Row::Buttons(if dead { inactive(toggle) } else { toggle }, Some(settings))
+                    } else {
+                        let widget = button(0.0, 0.0, 310.0, label, Act::ToggleMod(i));
+                        Row::Buttons(if dead { inactive(widget) } else { widget }, None)
+                    }
+                });
+                rows.extend(mods);
+                rows
             }
             Page::NativeMod(i) => self.native_rows(s, i),
             Page::ShaderPacks => {
@@ -5596,6 +5644,7 @@ impl OptionsUi {
                         Act::ToggleMod(i) => {
                             s.mods.toggle(i);
                             events.push(Event::Changed);
+                            events.push(Event::ModToggled(i));
                         }
                         Act::ModSettings(i) => {
                             events.push(Event::ButtonClick);
@@ -5607,6 +5656,7 @@ impl OptionsUi {
                             self.selected_native_key = Some((i, k));
                         }
                         Act::NativeButton(i, b) => events.push(Event::NativeButton(i, b)),
+                        Act::NativeGame(act) => events.push(Event::NativeGame(act)),
                         Act::OpenModFolder => events.push(Event::OpenModFolder),
                         Act::OpenCatalog(shelf) => events.push(Event::OpenCatalog(shelf)),
                         Act::OpenShaderPackFolder => events.push(Event::OpenShaderPackFolder),
@@ -6782,6 +6832,7 @@ impl OptionsUi {
                         Act::ToggleMod(i) => {
                             s.mods.toggle(i);
                             events.push(Event::Changed);
+                            events.push(Event::ModToggled(i));
                         }
                         Act::ModSettings(i) => {
                             self.focus = None;
@@ -6795,6 +6846,7 @@ impl OptionsUi {
                             self.selected_native_key = Some((i, k));
                         }
                         Act::NativeButton(i, b) => events.push(Event::NativeButton(i, b)),
+                        Act::NativeGame(act) => events.push(Event::NativeGame(act)),
                         Act::OpenModFolder => events.push(Event::OpenModFolder),
                         Act::OpenCatalog(shelf) => events.push(Event::OpenCatalog(shelf)),
                         Act::PickShaderPack(i) => {
@@ -7590,8 +7642,100 @@ mod tests {
             false,
         );
         assert!(events.contains(&Event::Changed));
+        // The game hears which: a native mod changes the next start's build.
+        assert!(events.contains(&Event::ModToggled(0)));
         assert!(!s.mods.is_on(0));
         assert!(s.mods.disabled.contains("no_settings"));
+    }
+
+    #[test]
+    fn the_mods_page_says_which_game_runs_above_the_mods_and_its_buttons_act() {
+        use crate::mod_list::{NativeGame, NativeGameAct};
+        let atlas = atlas();
+        let mut s = Settings::default();
+        let mut ui = OptionsUi::default();
+        let size = (480.0, 400.0);
+        let now = "Now: Starling 0.8.0 from the APK, without native mods.";
+        let old = "The build with Wrench was made for an earlier install of Starling, so it no \
+                   longer loads. Compile again.";
+        s.mods.native_game = Some(NativeGame {
+            lines: vec![(now.into(), false), (old.into(), true)],
+            buttons: vec![
+                ("Compile".into(), NativeGameAct::Compile),
+                ("Use GitHub (slower)".into(), NativeGameAct::CompileOnGithub),
+                (
+                    "Play without native mods".into(),
+                    NativeGameAct::PlayWithout,
+                ),
+            ],
+        });
+        s.mods.installed.push(crate::mod_list::Installed {
+            id: "wrench".into(),
+            title: "wrench 0.1.0".into(),
+            description: String::new(),
+            problem: Some(crate::mod_list::NOT_BUILT.into()),
+            dev: false,
+            native: Some(crate::mod_list::NativePage::default()),
+        });
+        ui.show(Page::Mods);
+        let (widgets, ..) = ui.layout(&s, size.0, size.1);
+        // Each line in pieces that fit a button's width, red for the build that no longer loads.
+        let lines = |color: u32| -> Vec<String> {
+            widgets
+                .iter()
+                .filter_map(|w| match &w.kind {
+                    WKind::Text { text, color: c, .. } if *c == color => Some(text.plain()),
+                    _ => None,
+                })
+                .filter(|line| !line.is_empty())
+                .collect()
+        };
+        let grey = lines(0xFFA0A0A0);
+        let red = lines(rgba(255, 85, 85, 255));
+        assert!(grey.len() > 1 && red.len() > 1, "{grey:?} {red:?}");
+        for line in wrap_words(old, NOTE_CHARS) {
+            assert!(
+                line.chars().count() <= NOTE_CHARS && red.contains(&line),
+                "{line}"
+            );
+        }
+        assert!(grey.join(" ").contains(now), "{grey:?}");
+        let old_words = old.split_whitespace().collect::<Vec<_>>().join(" ");
+        assert!(red.join(" ").contains(&old_words), "{red:?}");
+        let shown = |act: NativeGameAct| {
+            widgets
+                .iter()
+                .find(
+                    |w| matches!(w.kind, WKind::Button { act: Act::NativeGame(a), .. } if a == act),
+                )
+                .unwrap_or_else(|| panic!("{act:?}'s button"))
+        };
+        // Two to a row; the one left over takes the row.
+        assert_eq!(shown(NativeGameAct::Compile).w, 150.0);
+        assert_eq!(shown(NativeGameAct::CompileOnGithub).w, 150.0);
+        let without = shown(NativeGameAct::PlayWithout);
+        assert_eq!(without.w, 310.0);
+        // Above the mods, whose row has no Compile of its own.
+        let toggle = widgets
+            .iter()
+            .find(|w| {
+                matches!(
+                    w.kind,
+                    WKind::Button {
+                        act: Act::ToggleMod(0),
+                        ..
+                    }
+                )
+            })
+            .expect("the mod's row");
+        assert!(toggle.y > without.y);
+        assert_eq!(toggle.w, 310.0);
+        let (x, y) = (without.x + 1.0, without.y + 1.0);
+        let events = ui.click(&mut s, &atlas, x, y, size, [480, 400], false, false);
+        assert_eq!(
+            events.last(),
+            Some(&Event::NativeGame(NativeGameAct::PlayWithout))
+        );
     }
 
     #[test]

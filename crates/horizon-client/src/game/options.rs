@@ -493,6 +493,8 @@ impl Game<'_> {
                         horizon_client::shader_pack_list::scan(&Self::shader_packs_dir());
                 }
                 Event::ListMods => self.list_copied_native_mods(),
+                Event::ModToggled(i) => self.mod_toggled(i),
+                Event::NativeGame(act) => self.native_game_button(act),
                 // Saved; the next frame's `shader_pack_inputs` loads the pick.
                 Event::ShaderPack => self.settings.save(&Self::options_path()),
                 Event::OpenCustomButtons => self.open_custom_buttons(),

@@ -471,6 +471,23 @@ impl Game<'_> {
     #[cfg(not(target_os = "android"))]
     pub(super) fn list_copied_native_mods(&mut self) {}
 
+    /// Installed mod `i` was turned on or off on the Mods page: a native one changes which build
+    /// the next start runs (`native_builds.rs`). Only a phone has builds.
+    #[cfg(target_os = "android")]
+    pub(super) fn mod_toggled(&mut self, i: usize) {
+        self.native_mod_toggled(i);
+    }
+    #[cfg(not(target_os = "android"))]
+    pub(super) fn mod_toggled(&mut self, _i: usize) {}
+
+    /// A button of the Mods page's game with native mods (`native_builds.rs`).
+    #[cfg(target_os = "android")]
+    pub(super) fn native_game_button(&mut self, act: mod_list::NativeGameAct) {
+        self.native_game_act(act);
+    }
+    #[cfg(not(target_os = "android"))]
+    pub(super) fn native_game_button(&mut self, _act: mod_list::NativeGameAct) {}
+
     /// A native mod the catalog just put in the folder: its row on the Mods page, with Compile.
     #[cfg(target_os = "android")]
     pub(super) fn list_new_native_mods(&mut self) {

@@ -34,6 +34,32 @@ pub struct ModList {
     pub keys: BTreeMap<String, BTreeMap<String, String>>,
     /// What the Mods page shows, filled by the game from the mods it found.
     pub installed: Vec<Installed>,
+    /// Android: which game runs and which the next start runs, above the mods.
+    pub native_game: Option<NativeGame>,
+}
+
+/// Android: the game with native mods as the Mods page says it (game/native_builds.rs): the APK's
+/// own or a build with some mods compiled in, then what the player can do about it.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct NativeGame {
+    /// Lines of text, each with whether it is a warning (red).
+    pub lines: Vec<(String, bool)>,
+    pub buttons: Vec<(String, NativeGameAct)>,
+}
+
+/// A button of [`NativeGame`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum NativeGameAct {
+    /// The mods turned on, compiled on the build server, or on GitHub's machines through it.
+    Compile,
+    CompileOnGithub,
+    /// The compile under way, shown again.
+    ShowCompile,
+    Restart,
+    /// The next start runs the APK's own game.
+    PlayWithout,
+    /// Another build server.
+    BuildServer,
 }
 
 /// One installed mod as the Mods page shows it.
@@ -94,7 +120,7 @@ impl ModList {
             enabled,
             disabled,
             keys,
-            installed: Vec::new(),
+            ..Default::default()
         }
     }
     pub fn serialize(&self) -> String {
