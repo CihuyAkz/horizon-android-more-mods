@@ -427,7 +427,8 @@ impl Game<'_> {
             self.pad.touch.left
         };
         #[cfg(target_os = "android")]
-        if self.touch_shown()
+        if self.mobile_controls_enabled()
+            && self.touch_shown()
             && (!self.mobile.controls.settings.analog_movement
                 || self.mobile.controls.settings.mode
                     == horizon_client::android_controls::Mode::Dpad)

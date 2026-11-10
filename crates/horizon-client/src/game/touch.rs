@@ -450,7 +450,16 @@ impl Game<'_> {
     /// The player plays with a touch screen: a touch was seen, and on Android no keyboard, mouse
     /// or controller took over since (game/input_mode.rs).
     pub(super) fn has_touch(&self) -> bool {
-        (cfg!(target_os = "android") || self.touch.seen) && self.touch_shown()
+        (self.touch_engine() || self.touch.seen) && self.touch_shown()
+    }
+    /// The MCPE or GoyControl controls play the touch screen (Android, not Starling Classic).
+    #[cfg(target_os = "android")]
+    fn touch_engine(&self) -> bool {
+        self.mobile_controls_enabled()
+    }
+    #[cfg(not(target_os = "android"))]
+    fn touch_engine(&self) -> bool {
+        false
     }
     fn touch_playing(&self) -> bool {
         self.screen == Screen::Playing
@@ -600,11 +609,12 @@ impl Game<'_> {
     /// Tap to interact has no crosshair, and outlines a block only while a finger aims at it.
     pub(super) fn touch_hides_crosshair(&self) -> bool {
         self.touch_taps()
-            && !self
-                .held()
-                .into_iter()
-                .chain(self.offhand.as_ref())
-                .any(|s| horizon_client::android_controls::projectile_crosshair(&s.item))
+            && !(self.touch_engine()
+                && self
+                    .held()
+                    .into_iter()
+                    .chain(self.offhand.as_ref())
+                    .any(|s| horizon_client::android_controls::projectile_crosshair(&s.item)))
     }
     pub(super) fn touch_hides_outline(&self) -> bool {
         self.touch_taps() && self.touch_aim_point().is_none()
@@ -614,7 +624,11 @@ impl Game<'_> {
     /// items"): while the touch screen plays and the layout leaves vibration on.
     pub(super) fn touch_vibrate(&self, millis: u32) {
         #[cfg(target_os = "android")]
-        let on = self.mobile.controls.settings.vibrate;
+        let on = if self.mobile_controls_enabled() {
+            self.mobile.controls.settings.vibrate
+        } else {
+            self.touch.config.as_ref().is_none_or(|c| c.vibrate)
+        };
         #[cfg(not(target_os = "android"))]
         let on = self.touch.config.as_ref().is_none_or(|c| c.vibrate);
         if !on || !self.has_touch() {
@@ -631,10 +645,18 @@ impl Game<'_> {
     /// mouse's would (`Entity.turn`).
     pub(in crate::game) fn touch_gyro(&mut self) {
         #[cfg(target_os = "android")]
-        let wanted = self.touch.live
-            && self.mobile.controls.editor.is_none()
-            && self.has_touch()
-            && self.mobile.controls.settings.gyroscope;
+        let wanted = if self.mobile_controls_enabled() {
+            self.touch.live
+                && self.mobile.controls.editor.is_none()
+                && self.has_touch()
+                && self.mobile.controls.settings.gyroscope
+        } else {
+            self.touch.live
+                && self.touch.editor.is_none()
+                && self.has_touch()
+                && self.player.is_some()
+                && self.touch.config.as_ref().is_some_and(|c| c.gyro)
+        };
         #[cfg(not(target_os = "android"))]
         let wanted = self.touch.live
             && self.touch.editor.is_none()
@@ -642,7 +664,7 @@ impl Game<'_> {
             && self.player.is_some()
             && self.touch.config.as_ref().is_some_and(|c| c.gyro);
         #[cfg(target_os = "android")]
-        if self.mobile_controls_enabled() {
+        {
             if wanted != self.touch.gyro_on {
                 // A phone without a gyroscope says so; it is not asked again until the next change.
                 let started = crate::android::gyroscope(wanted);
@@ -657,8 +679,13 @@ impl Game<'_> {
             let Some([x, y, rotation]) = crate::android::take_gyro() else {
                 return;
             };
-            let [yaw, pitch] = touch::gyro_turn([x, y], rotation as i32)
-                .map(|v| v * self.mobile.controls.settings.gyro_sensitivity);
+            // Starling Classic's turn is the sensor's own.
+            let sensitivity = if self.mobile_controls_enabled() {
+                self.mobile.controls.settings.gyro_sensitivity
+            } else {
+                1.0
+            };
+            let [yaw, pitch] = touch::gyro_turn([x, y], rotation as i32).map(|v| v * sensitivity);
             if yaw == 0.0 && pitch == 0.0 {
                 return;
             }
@@ -832,7 +859,7 @@ impl Game<'_> {
     /// Android's back key: Escape (pause, close a screen), or Done in the layout editor.
     pub(super) fn touch_back_key(&mut self, event: &KeyEvent) -> bool {
         #[cfg(target_os = "android")]
-        if self.mobile_back_key(event) {
+        if self.mobile_controls_enabled() && self.mobile_back_key(event) {
             return true;
         }
         if event.logical_key != Key::Named(NamedKey::BrowserBack) {
@@ -853,7 +880,7 @@ impl Game<'_> {
     /// Once per loop iteration, before the pads are read.
     pub(super) fn touch_frame(&mut self, event_loop: &dyn EventLoopCtl) {
         #[cfg(target_os = "android")]
-        if self.mobile_controls_enabled() {
+        if self.mobile_engine_frame() {
             self.touch.live = self.touch_playing();
             self.mobile_frame(event_loop);
             self.touch_keyboard_frame();
@@ -1495,7 +1522,9 @@ impl Game<'_> {
     /// up a keyboard, a mouse or a controller).
     pub(super) fn touch_release_all(&mut self) {
         #[cfg(target_os = "android")]
-        self.android_release_touch_keys(true);
+        if self.mobile_controls_enabled() {
+            self.android_release_touch_keys(true);
+        }
         let actions = self.touch.controls.reset();
         self.touch_apply(actions);
         // No window events here: the screen gets them back when the app returns.

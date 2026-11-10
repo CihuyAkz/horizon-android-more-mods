@@ -136,6 +136,8 @@ pub enum InGameMenuAction {
     Close,
     OpenControlEditor,
     SetControlStyle(crate::android_controls::ControlStyle),
+    /// Play with Starling's own touch controls (`touch.rs`) instead of these.
+    StarlingClassic,
     SelectPreset(String),
     CopyPreset {
         source_id: String,
@@ -2422,11 +2424,16 @@ impl TouchUi {
                 // Tab 1: Controls
                 let mode_y = body_y + 18.0;
                 let half_w = (cw - 10.0) * 0.5;
-                if inside([cx, mode_y, half_w, 46.0]) {
+                let third_w = (cw - 20.0) / 3.0;
+                if inside([cx, mode_y, third_w, 46.0]) {
                     return Some(InGameMenuAction::SetControlStyle(ControlStyle::Mcpe));
                 }
-                if inside([cx + half_w + 10.0, mode_y, half_w, 46.0]) {
+                if inside([cx + third_w + 10.0, mode_y, third_w, 46.0]) {
                     return Some(InGameMenuAction::SetControlStyle(ControlStyle::GoyControl));
+                }
+                if inside([cx + 2.0 * (third_w + 10.0), mode_y, third_w, 46.0]) {
+                    self.floating_menu = false;
+                    return Some(InGameMenuAction::StarlingClassic);
                 }
 
                 // Customize Controls | Control Presets
@@ -3111,19 +3118,27 @@ impl TouchUi {
                 ui.text(Face::SemiBold, 10.2, cx, body_y, muted_c, "CONTROL MODE");
                 let mode_y = body_y + 18.0;
                 let half_w = (cw - 10.0) * 0.5;
+                // Starling Classic is the third choice: these controls are not drawn while it
+                // plays, so it is never the selected one here.
+                let third_w = (cw - 20.0) / 3.0;
                 let is_mcpe = settings.control_style == ControlStyle::Mcpe;
+                let classic = crate::lang::get("starling.controls.type.classic");
+                let classic_hint = crate::lang::get("starling.controls.type.classic_hint");
                 for (i, (title, sub, sel)) in [
                     ("MCPE (Default)", "Vanilla touch controls", is_mcpe),
                     ("GoyControl", "Custom layout & keybinds", !is_mcpe),
+                    (classic.as_str(), classic_hint.as_str(), false),
                 ]
                 .into_iter()
                 .enumerate()
                 {
-                    let rx = cx + i as f32 * (half_w + 10.0);
+                    let rx = cx + i as f32 * (third_w + 10.0);
+                    let title = ui.fit_text(Face::SemiBold, 11.0, title, third_w - 37.0);
+                    let sub = ui.fit_text(Face::Regular, 9.0, sub, third_w - 37.0);
                     ui.rounded(
                         rx,
                         mode_y,
-                        half_w,
+                        third_w,
                         46.0,
                         11.0,
                         if sel { card_sel } else { card_bg },
@@ -3131,7 +3146,7 @@ impl TouchUi {
                     ui.stroke_rounded(
                         rx,
                         mode_y,
-                        half_w,
+                        third_w,
                         46.0,
                         11.0,
                         if sel { 1.6 } else { 1.0 },
@@ -3151,8 +3166,15 @@ impl TouchUi {
                     if sel {
                         ui.rounded(rad_x + 3.5, rad_y + 3.5, 7.0, 7.0, 3.5, accent_hi);
                     }
-                    ui.text(Face::SemiBold, 11.0, rx + 31.0, mode_y + 7.0, text_c, title);
-                    ui.text(Face::Regular, 9.0, rx + 31.0, mode_y + 25.0, muted_c, sub);
+                    ui.text(
+                        Face::SemiBold,
+                        11.0,
+                        rx + 31.0,
+                        mode_y + 7.0,
+                        text_c,
+                        &title,
+                    );
+                    ui.text(Face::Regular, 9.0, rx + 31.0, mode_y + 25.0, muted_c, &sub);
                 }
 
                 // 2. Dynamic System Controls Section

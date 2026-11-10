@@ -137,6 +137,8 @@ impl CustomButton {
 #[derive(Clone, Debug)]
 pub struct Settings {
     pub touch: crate::android_controls::Settings,
+    /// Starling Classic or the controls above (starling-controls.json).
+    pub touch_choice: crate::android_controls::TouchChoice,
     pub keypad: crate::keypad::Settings,
     /// Degrees, 30..=110 (options.txt stores (fov - 70) / 40).
     pub fov: f32,
@@ -259,6 +261,7 @@ impl Default for Settings {
     fn default() -> Self {
         Self {
             touch: crate::android_controls::Settings::load(),
+            touch_choice: Default::default(),
             keypad: Default::default(),
             fov: 70.0,
             render_distance: 12,
@@ -401,10 +404,14 @@ impl Settings {
             .map(|dir| crate::mod_list::ModList::load(&crate::logging::shared_dir(dir)))
             .unwrap_or_default();
         let keypad = crate::keypad::Settings::load(&path.with_file_name("horizon-keypad.json"));
+        let touch_choice = crate::android_controls::TouchChoice::load(
+            &path.with_file_name(crate::android_controls::TouchChoice::FILE),
+        );
         let settings = match fs::read(path) {
             Ok(bytes) => Self {
                 horizon,
                 controller,
+                touch_choice,
                 keypad,
                 extras,
                 mods,
@@ -413,6 +420,7 @@ impl Settings {
             Err(_) => Self {
                 horizon,
                 controller,
+                touch_choice,
                 keypad,
                 extras,
                 mods,
@@ -478,6 +486,7 @@ impl Settings {
         }
         Self {
             touch: crate::android_controls::Settings::load(),
+            touch_choice: Default::default(),
             keypad: Default::default(),
             fov: f.int("fov") as f32,
             render_distance: f.int("renderDistance"),
@@ -698,6 +707,7 @@ impl Settings {
         Ok(Self {
             horizon: self.horizon.clone(),
             controller: self.controller.clone(),
+            touch_choice: self.touch_choice,
             keypad: self.keypad.clone(),
             extras: self.extras.clone(),
             mods: self.mods.clone(),
@@ -716,6 +726,9 @@ impl Settings {
             self.horizon.save(dir);
             self.controller.save(dir);
             let _ = self.keypad.save(&dir.join("horizon-keypad.json"));
+            let _ = self
+                .touch_choice
+                .save(&dir.join(crate::android_controls::TouchChoice::FILE));
             self.extras.save(dir);
             self.mods.save(&crate::logging::shared_dir(dir));
         }
@@ -775,6 +788,8 @@ impl Settings {
 /// One option instance.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Opt {
+    /// Starling Classic or the MCPE / GoyControl controls.
+    TouchControlType,
     TouchMode,
     TouchAnalog,
     TouchCircleSize,

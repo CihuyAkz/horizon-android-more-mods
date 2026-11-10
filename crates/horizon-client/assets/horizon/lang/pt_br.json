@@ -33,5 +33,12 @@
   "starling.diagnostics.hardware": "GPU: %s (%s)",
   "starling.diagnostics.last_error": "Último erro: %s",
   "starling.native_builds.arm64_only": "O serviço de compilação de mods nativos oferece suporte apenas a ARM64 no momento. A arquitetura deste aplicativo não pode usar essas compilações.",
-  "starling.native_builds.wrong_architecture": "Essa compilação nativa é para outra arquitetura."
+  "starling.native_builds.wrong_architecture": "Essa compilação nativa é para outra arquitetura.",
+  "starling.controls.type": "Controles de toque",
+  "starling.controls.type.classic": "Starling Clássico",
+  "starling.controls.type.mcpe": "MCPE",
+  "starling.controls.type.goycontrol": "GoyControl",
+  "starling.controls.type.classic_hint": "Os botões e o layout do Starling",
+  "starling.controls.classic_layout": "Editar layout de toque...",
+  "starling.controls.custom_buttons": "Botões personalizados..."
 }

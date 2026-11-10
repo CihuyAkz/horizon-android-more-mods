@@ -125,6 +125,31 @@ impl ControlStyle {
     }
 }
 
+/// Which touch controls the phone plays with: Starling's own (Starling Classic: `touch.rs` and
+/// its touch-layout.json) or these (MCPE or GoyControl). It has its own file because a preset
+/// replaces horizon-touch.json whole.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct TouchChoice {
+    pub starling_classic: bool,
+}
+impl TouchChoice {
+    pub const FILE: &'static str = "starling-controls.json";
+    pub fn load(path: &std::path::Path) -> Self {
+        std::fs::read(path)
+            .ok()
+            .and_then(|b| serde_json::from_slice(&b).ok())
+            .unwrap_or_default()
+    }
+    /// Written once it differs from the default, so a phone that never chose gains no file.
+    pub fn save(&self, path: &std::path::Path) -> std::io::Result<()> {
+        if *self == Self::default() && !path.exists() {
+            return Ok(());
+        }
+        std::fs::write(path, serde_json::to_vec_pretty(self)?)
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PresetMeta {
     pub id: String,
@@ -1970,6 +1995,25 @@ pub fn contains([x, y, w, h]: [f32; 4], p: [f32; 2]) -> bool {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn the_starling_classic_choice_survives_a_restart_and_a_phone_that_never_chose_has_no_file() {
+        let dir = std::env::temp_dir().join(format!("starling-choice-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join(super::TouchChoice::FILE);
+        let _ = std::fs::remove_file(&path);
+        assert!(!super::TouchChoice::load(&path).starling_classic);
+        super::TouchChoice::default().save(&path).unwrap();
+        assert!(!path.exists());
+        let classic = super::TouchChoice {
+            starling_classic: true,
+        };
+        classic.save(&path).unwrap();
+        assert_eq!(super::TouchChoice::load(&path), classic);
+        super::TouchChoice::default().save(&path).unwrap();
+        assert!(!super::TouchChoice::load(&path).starling_classic);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
     #[test]
     fn legacy_feedback_and_hub_preferences_migrate_and_roundtrip() {
         let mut legacy = serde_json::to_value(Settings::default()).unwrap();

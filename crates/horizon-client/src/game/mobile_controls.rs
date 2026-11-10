@@ -26,6 +26,8 @@ pub(super) struct MobileControls {
     pub loaded: bool,
     frame_at: Option<Instant>,
     was_in_menu: Option<bool>,
+    /// Whether these controls played last frame rather than Starling Classic.
+    engine: Option<bool>,
 }
 
 impl Game<'_> {
@@ -86,8 +88,28 @@ impl Game<'_> {
                             .is_some_and(super::remote::item_has_use)
                 })
     }
+    /// These controls (MCPE or GoyControl) play the touch screen, not Starling Classic.
     pub(in crate::game) fn mobile_controls_enabled(&self) -> bool {
-        cfg!(target_os = "android")
+        cfg!(target_os = "android") && !self.settings.touch_choice.starling_classic
+    }
+    /// Once a frame, first: whether these controls play. When the player switched between them
+    /// and Starling Classic (the hub's card, the Options row), the ones left let go of all they
+    /// held.
+    pub(in crate::game) fn mobile_engine_frame(&mut self) -> bool {
+        let engine = self.mobile_controls_enabled();
+        if self.mobile.engine.replace(engine) == Some(!engine) {
+            if !engine {
+                self.android_release_touch_keys(true);
+                self.android_set_virtual_mouse(false);
+                self.mobile.ui.floating_menu = false;
+                self.mobile.controls.editor = None;
+                self.mobile.touch_shield = false;
+                self.pad.set_touch_state(Default::default());
+            }
+            self.touch_release_all();
+            self.sync_toggle(0);
+        }
+        engine
     }
     pub(in crate::game) fn mobile_pad_end(&mut self, released: bool) {
         if released {
@@ -1213,6 +1235,11 @@ impl Game<'_> {
                 InGameMenuAction::OpenControlEditor => {
                     self.mobile.controls.open_editor();
                     self.android_sync_pointer();
+                }
+                // Saved now; the next frame hands the touch screen to Starling Classic.
+                InGameMenuAction::StarlingClassic => {
+                    self.settings.touch_choice.starling_classic = true;
+                    self.settings.save(&Self::options_path());
                 }
                 InGameMenuAction::SetControlStyle(style) => {
                     self.android_release_touch_keys(true);

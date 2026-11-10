@@ -180,7 +180,10 @@ pub const PACK_ICON_SLOTS: usize = 64;
 pub const PACK_ICON_SIZE: u32 = 128;
 // Bake the settings glyph into its plate: drawing a translucent glyph over
 // a translucent plate changes its effective alpha and darkens it twice.
-fn android_utility_sprites(images: &[PackedImage]) -> Vec<PackedImage> {
+// `builtin`: the touch sprites Starling drew itself, no pack's: their white
+// Pause and Inventory glyphs are dark on these copies only, so Starling
+// Classic keeps its own.
+fn android_utility_sprites(images: &[PackedImage], builtin: &HashSet<String>) -> Vec<PackedImage> {
     const GEAR: [&str; 13] = [
         ".....###.....",
         "..##.###.##..",
@@ -206,7 +209,7 @@ fn android_utility_sprites(images: &[PackedImage]) -> Vec<PackedImage> {
                 name
             };
             let key = format!("starling:gui/sprites/touch/{source}{suffix}");
-            let Some((_, w, h, pixels)) = images.iter().find(|i| i.0 == key).or_else(|| {
+            let Some((found, w, h, pixels)) = images.iter().find(|i| i.0 == key).or_else(|| {
                 images
                     .iter()
                     .find(|i| i.0 == format!("starling:gui/sprites/touch/{source}"))
@@ -214,6 +217,17 @@ fn android_utility_sprites(images: &[PackedImage]) -> Vec<PackedImage> {
                 continue;
             };
             let mut pixels = pixels.clone();
+            if matches!(
+                found.as_str(),
+                "starling:gui/sprites/touch/pause" | "starling:gui/sprites/touch/inventory"
+            ) && builtin.contains(found)
+            {
+                for pixel in pixels.as_chunks_mut::<4>().0 {
+                    if pixel[0] >= 245 && pixel[1] >= 245 && pixel[2] >= 245 {
+                        pixel[..3].copy_from_slice(&[32, 32, 32]);
+                    }
+                }
+            }
             if name == "settings" && *w >= 13 && *h >= 13 {
                 let ox = (*w - 13) / 2;
                 let oy = (*h - 13) / 2;
@@ -924,14 +938,7 @@ fn builtin_touch_sprites(images: &[PackedImage]) -> Vec<PackedImage> {
             if images.iter().any(|(k, ..)| *k == key) {
                 return None;
             }
-            let (w, h, mut pixels) = decode_bytes(png).ok()?;
-            if matches!(*name, "pause" | "inventory") {
-                for pixel in pixels.as_chunks_mut::<4>().0 {
-                    if pixel[0] >= 245 && pixel[1] >= 245 && pixel[2] >= 245 {
-                        pixel[..3].copy_from_slice(&[32, 32, 32]);
-                    }
-                }
-            }
+            let (w, h, pixels) = decode_bytes(png).ok()?;
             Some((key, w, h, pixels))
         })
         // A slot for each custom button's own images, whichever it has now.
@@ -1842,8 +1849,9 @@ impl HudAtlas {
         }
         // The menus' atlas too: the touch layout editor works before a world.
         let touch = builtin_touch_sprites(&images);
+        let builtin: HashSet<String> = touch.iter().map(|t| t.0.clone()).collect();
         images.extend(touch);
-        images.extend(android_utility_sprites(&images));
+        images.extend(android_utility_sprites(&images, &builtin));
         // The title screen's "JAVA EDITION" banner reads "RUST EDITION".
         if let Some(edition) = images
             .iter_mut()
@@ -4208,7 +4216,7 @@ texture=wide",
         for pixel in images[0].3.as_chunks_mut::<4>().0 {
             pixel[3] = 255;
         }
-        let baked = android_utility_sprites(&images);
+        let baked = android_utility_sprites(&images, &std::collections::HashSet::new());
         let gear = &baked
             .iter()
             .find(|i| i.0 == "starling:android-controls/settings")

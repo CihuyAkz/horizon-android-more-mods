@@ -39,6 +39,14 @@ folder; selecting an account does not select a control preset. Existing Starling
 `touch-layout.json` files are preserved, but are not imported into the new preset
 format automatically.
 
+**Starling Classic** brings back Starling's own touch controls (`touch.rs`, its
+layout editor and `touch-layout.json`, tap to interact, Custom Buttons). Pick it
+on the hub's Controls tab or with **Touch controls** in Controls > Touch
+Controls; the same row switches back to MCPE or GoyControl, whichever was active.
+The choice is kept in `starling-controls.json`, apart from `horizon-touch.json`,
+which presets replace whole. While it plays, every touch goes through the classic
+code; controllers, keyboards and the keypad profile work as above.
+
 See `THIRD_PARTY_NOTICES.md` for the MIT source attribution.
 
 Physical D-pad/keypad devices can select **Input profile: D-pad / keypad** in
