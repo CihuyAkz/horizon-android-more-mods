@@ -845,6 +845,7 @@ impl TouchUi {
             56.
         };
         if menu
+            && !self.goy_mode
             && self.keyboard_button
             && (3.0..23.0).contains(&p[1])
             && (right - 56.0..right).contains(&p[0])
@@ -852,6 +853,7 @@ impl TouchUi {
             return Some(Action::Keyboard);
         }
         if menu
+            && !self.goy_mode
             && self.virtual_mouse_available
             && (3.0..23.0).contains(&p[1])
             && (w - 112.0..w - 56.0).contains(&p[0])
@@ -906,7 +908,7 @@ impl TouchUi {
         None
     }
     pub fn draw(&self, b: &mut HudBatch, a: &HudAtlas, menu: bool) {
-        if menu && self.keyboard_button {
+        if menu && !self.goy_mode && self.keyboard_button {
             let right = b.width
                 - if self.virtual_mouse_available {
                     115.
@@ -915,7 +917,7 @@ impl TouchUi {
                 };
             button(b, a, "Keys", right - 56., 3., 56.);
         }
-        if menu && self.virtual_mouse_available {
+        if menu && !self.goy_mode && self.virtual_mouse_available {
             button(
                 b,
                 a,

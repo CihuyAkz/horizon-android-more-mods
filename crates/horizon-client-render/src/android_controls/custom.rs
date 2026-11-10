@@ -273,7 +273,8 @@ impl TouchControls {
             return true;
         }
         if self.settings.custom_buttons[index].key == "mouse.virtual.toggle"
-            && (in_menu || !self.settings.virtual_mouse_enabled)
+            && (!self.settings.virtual_mouse_enabled
+                || in_menu && self.settings.control_style == super::ControlStyle::Mcpe)
         {
             return false;
         }
