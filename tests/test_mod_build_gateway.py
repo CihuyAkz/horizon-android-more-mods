@@ -501,6 +501,31 @@ class OnGitHub(unittest.TestCase):
         self.assertEqual(len(self.github.dispatched), 1)
         self.assertEqual(self.fake.asked, 0)
 
+    def test_a_version_github_builds_goes_there_from_the_plain_compile(self):
+        self.env["GITHUB_VERSIONS"] = "0.8.0, 0.8.1"
+        self.start_gateway()
+        status, data = self.ask(via="")
+        self.assertEqual(status, 200)
+        self.gateway.github_round()
+        self.assertEqual(len(self.github.dispatched), 1)
+        self.assertEqual(self.finished_run(data["job"])["state"], "done")
+        # Use GitHub asks for the same build, and the machine never woke.
+        self.assertEqual(self.ask()[1]["job"], data["job"])
+        self.assertEqual(len(self.github.dispatched), 1)
+        self.assertEqual(self.fake.asked, 0)
+        self.gateway.power.assert_not_called()
+
+    def test_with_no_build_machine_another_version_is_told_to_update(self):
+        self.env.update(GITHUB_VERSIONS="0.8.0", BUILD_VM="")
+        self.start_gateway()
+        status, data = self.call("POST", "/v1/build?version=0.2.3", b"mods")
+        self.assertEqual(status, 429)
+        self.assertIn("update Starling", json.loads(data)["error"])
+        self.assertEqual(self.fake.asked, 0)
+        self.gateway.power.assert_not_called()
+        # The version GitHub builds still compiles.
+        self.assertEqual(self.ask(via="")[0], 200)
+
     def test_asking_twice_while_it_builds_is_one_build(self):
         job = self.ask()[1]["job"]
         self.gateway.github_round()

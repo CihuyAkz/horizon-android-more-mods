@@ -11,7 +11,10 @@ gateway keeps the request's mods for the runner to fetch, runs the mod-builds re
 brings the library here when it ends, so it is served as any other.
 
     BUILD_BACKEND          http://host:8787
-    BUILD_VM               the VM's Azure resource id
+    BUILD_VM               the VM's Azure resource id; empty once there is none, and then only the
+                           versions GitHub builds are compiled
+    GITHUB_VERSIONS        versions always built on GitHub's machines, Compile or Use GitHub alike
+                           (comma-separated, the ones mod-builds' versions.json has)
     GATEWAY_PORT           default 8788
     STATE_DIRECTORY        where results stay (systemd's StateDirectory); without it nothing stays
     STORE_BYTES            how much of them, default 10 GiB
@@ -35,7 +38,7 @@ import urllib.request
 import zipfile
 
 BACKEND = urllib.parse.urlparse(os.environ["BUILD_BACKEND"])
-VM = os.environ["BUILD_VM"]
+VM = os.environ.get("BUILD_VM", "")
 PORT = int(os.environ.get("GATEWAY_PORT", "8788"))
 ARM = "https://management.azure.com"
 IDENTITY = (
@@ -78,6 +81,13 @@ GITHUB_LINE = 24
 # GitHub's machines cost nothing, but a repository that keeps them busy all day may be asked to stop.
 GITHUB_PER_ADDRESS = 32
 GITHUB_PER_DAY = int(os.environ.get("GITHUB_BUILDS_PER_DAY", "300"))
+# Versions whose builds go to GitHub's machines however they are asked for: the build machine is
+# never woken for them.
+GITHUB_VERSIONS = {v.strip() for v in os.environ.get("GITHUB_VERSIONS", "").split(",") if v.strip()}
+# Asked for a version GitHub doesn't build, with no build machine left.
+NO_MACHINE = (
+    "This version of Starling can't compile native mods anymore: update Starling, then compile again."
+)
 GITHUB_LOOK_SECONDS = 20
 # Asked for and no run after this, or a run this old: it isn't coming.
 GITHUB_NO_RUN_SECONDS = 15 * 60
@@ -753,7 +763,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         body = self.rfile.read(size)
         query = urllib.parse.parse_qs(url.query)
         version = query.get("version", [""])[0]
-        github = query.get("via", [""])[0] == "github"
+        github = query.get("via", [""])[0] == "github" or version in GITHUB_VERSIONS
         # The same mods on the same game, whichever machine is asked: what one built, the other has.
         asked = f"{url.path}?version={version}" if github else self.path
         request = hashlib.sha256(asked.encode() + body).hexdigest()
@@ -766,6 +776,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 print(f"refused: {refused}", flush=True)
                 return self.answer(429, {"error": refused})
             return self.answer(200, {"job": job})
+        if not VM:
+            print(f"refused: {NO_MACHINE}", flush=True)
+            return self.answer(429, {"error": NO_MACHINE})
         refused = refusal(self.address(), request)
         if refused:
             print(f"refused: {refused}", flush=True)
