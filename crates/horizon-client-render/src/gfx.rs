@@ -1726,8 +1726,23 @@ async fn open_device(
     layers: u32,
 ) -> Result<Opened> {
     let wgpu_backend = std::env::var_os("WGPU_BACKEND").is_some();
+    let mut api = api.with_env();
+    if api == GraphicsApi::Auto
+        && !wgpu_backend
+        && cfg!(target_os = "android")
+        && let Some(gpu) = vulkan_gpu_name(window)
+            .await
+            .filter(|name| rogue_vulkan_crashes(name))
+    {
+        log::warn!(
+            "Horizon renderer: {gpu}'s Vulkan driver crashes in its first frame (GE8320 drivers \
+             1.15 and 24.2) or draws terrain in pieces (#326); Auto uses OpenGL ES here, and \
+             Video Settings can still choose Vulkan"
+        );
+        api = GraphicsApi::OpenGl;
+    }
     let mut first = None;
-    for (order, allow_cpu) in device_search(api.with_env(), std::env::consts::OS, wgpu_backend) {
+    for (order, allow_cpu) in device_search(api, std::env::consts::OS, wgpu_backend) {
         match open_device_with(window, offscreen, &order, layers, allow_cpu).await {
             Ok(opened) => {
                 if let Some(first) = &first {
@@ -1748,6 +1763,32 @@ async fn open_device(
         }
     }
     Err(first.unwrap_or_else(|| NO_GPU_DRIVER.into()))
+}
+/// The name of the GPU Vulkan would give, asked before any device exists: no surface, no
+/// device, so nothing reaches the driver's queue.
+async fn vulkan_gpu_name(window: &Arc<Window>) -> Option<String> {
+    let instance = wgpu::Instance::new(instance_descriptor(
+        wgpu::Backends::VULKAN,
+        Some(window),
+        false,
+    ));
+    let adapter = instance
+        .request_adapter(&wgpu::RequestAdapterOptions {
+            power_preference: wgpu::PowerPreference::HighPerformance,
+            force_fallback_adapter: false,
+            ..Default::default()
+        })
+        .await
+        .ok()?;
+    Some(adapter.get_info().name)
+}
+/// PowerVR Rogue (GE8320, GE8322, GE8300...) on Vulkan. Diagnostic reports from 0.8.0: the
+/// GE8320's driver 1.15 (an HONOR GFY-LX2) and 24.2 (a Xiaomi 23129RN51X) die with SIGSEGV
+/// inside `vkQueueSubmit` on the very first submission, `clear_surface`'s black frame, every
+/// start; 1.13 (a vivo 1901) gets past it but draws terrain in patches with broken water,
+/// which OpenGL ES doesn't (#326, #327). The B-Series (BXM) is not Rogue and keeps Vulkan.
+fn rogue_vulkan_crashes(gpu: &str) -> bool {
+    gpu.contains("PowerVR Rogue")
 }
 /// The tries `open_device` makes, in turn: the chosen API's backends (`backend_order`) on a
 /// real GPU; when the player chose one API, the other backends `Auto` would try, on a real
@@ -10559,6 +10600,18 @@ mod tests {
         assert!(!is_software(wgpu::DeviceType::DiscreteGpu));
         assert!(!is_software(wgpu::DeviceType::IntegratedGpu));
         assert!(!is_software(wgpu::DeviceType::VirtualGpu));
+    }
+    #[test]
+    fn auto_leaves_vulkan_on_powervr_rogue_only() {
+        use super::rogue_vulkan_crashes;
+        assert!(rogue_vulkan_crashes("PowerVR Rogue GE8320"));
+        assert!(rogue_vulkan_crashes("PowerVR Rogue GE8322"));
+        assert!(
+            !rogue_vulkan_crashes("PowerVR BXM-8-256"),
+            "the B-Series keeps Vulkan"
+        );
+        assert!(!rogue_vulkan_crashes("Mali-G57 MC2"));
+        assert!(!rogue_vulkan_crashes("Adreno (TM) 610"));
     }
     #[test]
     fn auto_tries_vulkan_then_directx_12_then_opengl() {
