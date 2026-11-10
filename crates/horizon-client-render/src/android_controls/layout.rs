@@ -672,7 +672,7 @@ impl Default for Settings {
             inventory_controls: false,
             virtual_mouse_enabled: false,
             keyboard_button: false,
-            virtual_mouse_hidden: false,
+            virtual_mouse_hidden: true,
             disable_game_animations: false,
             resolution_scale_percent: default_res_scale(),
             virtual_mouse_sensitivity: 1.0,

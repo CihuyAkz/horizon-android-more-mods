@@ -175,7 +175,10 @@ impl Game<'_> {
             horizon_client::android_control_theme::set_android_dpi(w.scale_factor() as f32);
         }
         self.mobile.controls.settings = self.settings.touch.clone();
-        self.mobile.ui.menu_direct_pointer = self.settings.touch.virtual_mouse_hidden;
+        self.settings.touch.virtual_mouse_hidden = true;
+        self.mobile.controls.settings.virtual_mouse_hidden = true;
+        self.mobile.ui.menu_direct_pointer = true;
+        self.mobile.ui.goy_in_game_mouse = false;
         self.mobile
             .ui
             .refresh_presets_cache(self.mobile.controls.settings.control_style);
@@ -822,6 +825,7 @@ impl Game<'_> {
                     let _ = self.mobile.controls.settings.save();
                 } else {
                     self.mobile.ui.goy_in_game_mouse ^= true;
+                    self.mobile.ui.menu_direct_pointer = !self.mobile.ui.goy_in_game_mouse;
                 }
                 self.android_sync_pointer();
                 self.android_touch_haptic(14);
@@ -1415,9 +1419,9 @@ impl Game<'_> {
                     let next = !self.mobile.controls.settings.virtual_mouse_enabled;
                     self.mobile.controls.settings.virtual_mouse_enabled = next;
                     self.mobile.ui.pointer_off = !next;
-                    if !next {
-                        self.mobile.ui.goy_in_game_mouse = false;
-                    }
+                    self.mobile.ui.menu_direct_pointer = true;
+                    self.mobile.controls.settings.virtual_mouse_hidden = true;
+                    self.mobile.ui.goy_in_game_mouse = false;
                     let _ = self.mobile.controls.settings.save();
                     self.android_sync_pointer();
                 }

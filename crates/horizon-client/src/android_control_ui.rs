@@ -112,7 +112,7 @@ impl Default for TouchUi {
             virtual_mouse: false,
             virtual_mouse_available: false,
             keyboard_button: false,
-            menu_direct_pointer: false,
+            menu_direct_pointer: true,
             pointer_off: false,
             cursor_initialized: false,
             last_viewport: None,
@@ -538,9 +538,9 @@ impl TouchUi {
         &mut self,
         controls: &crate::android_controls::TouchControls,
         in_menu: bool,
-        hide_gui: bool,
-        touch_active: bool,
-        captured: bool,
+        _hide_gui: bool,
+        _touch_active: bool,
+        _captured: bool,
     ) -> bool {
         self.pointer_off = !controls.settings.virtual_mouse_enabled;
         self.virtual_mouse_available = controls.settings.virtual_mouse_enabled;
@@ -567,16 +567,9 @@ impl TouchUi {
         if in_menu {
             return true;
         }
-        match controls.settings.control_style {
-            crate::android_controls::ControlStyle::Mcpe => {
-                if in_menu {
-                    return true;
-                }
-                let mcpe_visible = controls.mcpe_controls_visible(false, hide_gui, touch_active);
-                !mcpe_visible || !captured || self.goy_in_game_mouse
-            }
-            crate::android_controls::ControlStyle::GoyControl => in_menu || self.goy_in_game_mouse,
-        }
+        // Gameplay requires an explicit press too. Losing capture or hiding the HUD
+        // must never resurrect a menu cursor.
+        self.goy_in_game_mouse
     }
 
     /// Captures a physical or soft-keyboard `KeyCode` when the `Send Custom Input` picker modal is open.
@@ -8249,10 +8242,12 @@ mod tests {
         assert!(!ui.compute_virtual_mouse_visibility(&controls, true, false, true, false));
         controls.settings.virtual_mouse_enabled = true;
 
-        // MCPE mode: hidden when MCPE gameplay controls are visible, visible when hidden (menus / F1)
+        // The button enables availability; opening a menu or hiding the HUD does not activate it.
         assert!(!ui.compute_virtual_mouse_visibility(&controls, false, false, true, true));
+        assert!(!ui.compute_virtual_mouse_visibility(&controls, true, false, true, false));
+        ui.menu_direct_pointer = false;
         assert!(ui.compute_virtual_mouse_visibility(&controls, true, false, true, false));
-        assert!(ui.compute_virtual_mouse_visibility(&controls, false, true, true, true));
+        assert!(!ui.compute_virtual_mouse_visibility(&controls, false, true, true, true));
 
         // Control Editor open: game cursor is ALWAYS hidden over the Control Editor
         controls.open_editor();
@@ -8308,7 +8303,10 @@ mod tests {
     }
     #[test]
     fn menu_pointer_can_be_hidden_and_restored_without_disabling_virtual_mouse() {
-        let mut ui = TouchUi::default();
+        let mut ui = TouchUi {
+            menu_direct_pointer: false,
+            ..Default::default()
+        };
         let mut controls = crate::android_controls::TouchControls::default();
         controls.settings.virtual_mouse_enabled = true;
         assert!(ui.compute_virtual_mouse_visibility(&controls, true, false, true, false));
