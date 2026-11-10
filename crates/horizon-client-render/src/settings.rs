@@ -784,6 +784,8 @@ pub enum Opt {
     TouchSensitivity,
     TouchSensitivityHorizontal,
     TouchSensitivityVertical,
+    TouchMouseButton,
+    TouchKeyboardButton,
     TouchOffhand,
     TouchShield,
     TouchButtonScale,

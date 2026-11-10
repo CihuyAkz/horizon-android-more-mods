@@ -272,6 +272,11 @@ impl TouchControls {
         if self.editor.is_some() {
             return true;
         }
+        if self.settings.custom_buttons[index].key == "mouse.virtual.toggle"
+            && (in_menu || !self.settings.virtual_mouse_enabled)
+        {
+            return false;
+        }
         if in_menu {
             p.visible_in_menu
         } else {

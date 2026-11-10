@@ -811,18 +811,18 @@ impl Game<'_> {
         }
         if name == "mouse.virtual.toggle" {
             if down {
-                if self.pad_in_menu() || !self.mobile.controls.settings.virtual_mouse_enabled {
-                    self.mobile.controls.settings.virtual_mouse_enabled =
-                        !self.mobile.controls.settings.virtual_mouse_enabled;
-                    self.mobile.ui.pointer_off =
-                        !self.mobile.controls.settings.virtual_mouse_enabled;
-                    self.mobile.ui.goy_in_game_mouse =
-                        self.mobile.controls.settings.virtual_mouse_enabled && !self.pad_in_menu();
+                if !self.mobile.controls.settings.virtual_mouse_enabled {
+                    return;
+                }
+                if self.pad_in_menu() {
+                    self.mobile.controls.settings.virtual_mouse_hidden ^= true;
+                    self.mobile.ui.menu_direct_pointer =
+                        self.mobile.controls.settings.virtual_mouse_hidden;
+                    self.settings.touch = self.mobile.controls.settings.clone();
                     let _ = self.mobile.controls.settings.save();
                 } else {
-                    self.mobile.ui.goy_in_game_mouse = !self.mobile.ui.goy_in_game_mouse;
+                    self.mobile.ui.goy_in_game_mouse ^= true;
                 }
-                self.settings.touch = self.mobile.controls.settings.clone();
                 self.android_sync_pointer();
                 self.android_touch_haptic(14);
             }

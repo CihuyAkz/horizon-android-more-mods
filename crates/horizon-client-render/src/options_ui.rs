@@ -227,6 +227,8 @@ impl Opt {
             Opt::TouchSensitivity => "Touch sensitivity",
             Opt::TouchSensitivityHorizontal => "Horizontal sensitivity",
             Opt::TouchSensitivityVertical => "Vertical sensitivity",
+            Opt::TouchMouseButton => "Virtual Mouse Button",
+            Opt::TouchKeyboardButton => "Keyboard Button",
             Opt::TouchOffhand => "Swap hands button",
             Opt::TouchShield => "Raise shield with",
             Opt::TouchButtonScale => "Control button size",
@@ -569,6 +571,17 @@ impl Opt {
             }
             Opt::TouchSensitivityVertical => {
                 Some(format!("{:.0}%", s.touch.sensitivity_vertical * 100.0))
+            }
+            Opt::TouchMouseButton => Some(
+                if s.touch.virtual_mouse_enabled {
+                    "On"
+                } else {
+                    "Off"
+                }
+                .into(),
+            ),
+            Opt::TouchKeyboardButton => {
+                Some(if s.touch.keyboard_button { "On" } else { "Off" }.into())
             }
             Opt::TouchOffhand => Some(if s.touch.offhand_button { "On" } else { "Off" }.into()),
             Opt::TouchShield => Some(
@@ -1151,6 +1164,8 @@ impl Opt {
             Opt::AndroidGyroscope => s.touch.gyroscope ^= true,
             Opt::TouchAnalog => s.touch.analog_movement ^= true,
             Opt::TouchInteract => s.touch.contextual_interact ^= true,
+            Opt::TouchMouseButton => s.touch.virtual_mouse_enabled ^= true,
+            Opt::TouchKeyboardButton => s.touch.keyboard_button ^= true,
             Opt::TouchOffhand => s.touch.offhand_button ^= true,
             Opt::TouchShield => s.touch.shield_button ^= true,
             Opt::TouchLeftHand => s.touch.left_handed ^= true,
@@ -3872,6 +3887,8 @@ impl OptionsUi {
                 ]));
                 rows.push(Row::Header("HUD Buttons & Layout"));
                 rows.extend(pairs(&[
+                    Opt::TouchMouseButton,
+                    Opt::TouchKeyboardButton,
                     Opt::TouchOffhand,
                     Opt::TouchShield,
                     Opt::TouchButtonScale,

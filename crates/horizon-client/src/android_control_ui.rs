@@ -2282,7 +2282,7 @@ impl TouchUi {
                         Some((id, p, InGameMenuAction::SetTouchSensitivity(sens)));
                     return Some(InGameMenuAction::Close);
                 }
-                let spd_card_y = body_y + 230.0;
+                let spd_card_y = body_y + 284.0;
                 if inside([cx, spd_card_y, cw, 50.0]) {
                     self.mouse_speed_dragging = true;
                     let sl_x = cx + 14.0;
@@ -2417,14 +2417,17 @@ impl TouchUi {
                 if inside([cx, vmouse_y, cw, 46.0]) {
                     return Some(InGameMenuAction::ToggleVirtualMouse);
                 }
-                let spd_y = body_y + 230.0;
+                if inside([cx, body_y + 230., cw, 46.]) {
+                    return Some(InGameMenuAction::ToggleKeyboardButton);
+                }
+                let spd_y = body_y + 284.0;
                 if inside([cx, spd_y, cw, 50.0]) {
                     let sl_x = cx + 14.0;
                     let sl_w = (cw - 28.0).max(40.0);
                     let t = ((p[0] - sl_x) / sl_w).clamp(0.0, 1.0);
                     return Some(InGameMenuAction::SetVirtualMouseSpeed(0.25 + t * 2.75));
                 }
-                let act_y = body_y + 288.0;
+                let act_y = body_y + 342.0;
                 let half_w = (cw - 10.0) * 0.5;
                 if inside([cx, act_y, half_w, 44.0]) {
                     let next_style = if settings.control_style == ControlStyle::Mcpe {
@@ -2438,7 +2441,7 @@ impl TouchUi {
                     self.floating_menu = false;
                     return Some(InGameMenuAction::OpenControlEditor);
                 }
-                let anim_y = body_y + 340.0;
+                let anim_y = body_y + 394.0;
                 if inside([cx, anim_y, cw, 46.0]) {
                     return Some(InGameMenuAction::ToggleGameAnimations);
                 }
@@ -2543,9 +2546,6 @@ impl TouchUi {
                 }
             }
             3 => {
-                if inside([cx, body_y + 342., cw, 46.]) {
-                    return Some(InGameMenuAction::ToggleKeyboardButton);
-                }
                 if inside([cx, body_y + 234., cw, 46.]) {
                     return Some(InGameMenuAction::ToggleOffhandButton);
                 }
@@ -2860,10 +2860,10 @@ impl TouchUi {
         // Scrollable Right Content Panel with scissor clip and tab transition slide
         let tab_slide = (1.0 - tab_ease) * 14.0;
         let content_height = match self.hub_tab {
-            0 => 394.0,
+            0 => 448.0,
             1 => 430.0,
             2 => 470.0,
-            3 => 404.0,
+            3 => 350.0,
             _ => 340.0,
         };
         let max_scroll = (content_height - body_h).max(0.0);
@@ -3046,13 +3046,21 @@ impl TouchUi {
                 draw_toggle_row(
                     &mut ui,
                     body_y + 176.0,
-                    "Virtual Mouse Pointer",
+                    "Virtual Mouse Button",
                     "Off by default; enable for desktop pointer in menus & inventory",
                     Some(settings.virtual_mouse_enabled),
                     None,
                 );
 
-                let spd_y = body_y + 230.0;
+                draw_toggle_row(
+                    &mut ui,
+                    body_y + 230.,
+                    "Keyboard Button",
+                    "Show Keys beside Back; fields still open the keyboard automatically",
+                    Some(settings.keyboard_button),
+                    None,
+                );
+                let spd_y = body_y + 284.0;
                 ui.rounded(cx, spd_y, cw, 50.0, 11.0, card_bg);
                 ui.border(cx, spd_y, cw, 50.0, 11.0, border_c);
                 ui.text(
@@ -3102,7 +3110,7 @@ impl TouchUi {
                 );
                 ui.border(spd_thumb_x - 7.0, spd_sl_y - 4.0, 14.0, 14.0, 7.0, text_c);
 
-                let act_y = body_y + 288.0;
+                let act_y = body_y + 342.0;
                 let half_w = (cw - 10.0) * 0.5;
                 let sys_sub = format!("Active: {}", settings.control_style.label());
                 for (i, (ic, title, sub)) in [
@@ -3127,7 +3135,7 @@ impl TouchUi {
 
                 draw_toggle_row(
                     &mut ui,
-                    body_y + 340.0,
+                    body_y + 394.0,
                     "In-Game Animations",
                     "Animated block textures, view bobbing, FOV transitions & menu motion",
                     Some(!settings.disable_game_animations),
@@ -3285,7 +3293,7 @@ impl TouchUi {
                 draw_toggle_row(
                     &mut ui,
                     body_y + 206.0,
-                    "Virtual Mouse Pointer",
+                    "Virtual Mouse Button",
                     "Windows 11 pointer; auto-shows when MCPE controls are hidden",
                     Some(settings.virtual_mouse_enabled),
                     None,
@@ -3363,7 +3371,7 @@ impl TouchUi {
                 draw_toggle_row(
                     &mut ui,
                     body_y + 18.0 + step * 2.0,
-                    "Virtual Mouse Pointer",
+                    "Virtual Mouse Button",
                     "Authoritative toggle for MCPE and GoyControl menus",
                     Some(settings.virtual_mouse_enabled),
                     None,
@@ -3572,14 +3580,6 @@ impl TouchUi {
                 ui.border(gyro_thumb_x - 7.0, gyro_sl_y - 4.0, 14.0, 14.0, 7.0, text_c);
             }
             3 => {
-                draw_toggle_row(
-                    &mut ui,
-                    body_y + 342.,
-                    "Keyboard Button",
-                    "Show Keys beside Back; fields still open the keyboard automatically",
-                    Some(settings.keyboard_button),
-                    None,
-                );
                 draw_toggle_row(
                     &mut ui,
                     body_y + 234.,
