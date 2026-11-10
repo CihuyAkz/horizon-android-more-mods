@@ -239,7 +239,7 @@ impl Game<'_> {
         );
         let flying = self.player.as_ref().is_some_and(|p| p.flying);
         if shown && flying && !tc.vertical_movement {
-            self.toggles.0[0].set_down(false, false);
+            self.toggles.0[0] = horizon_client::keymapping::KeyState::toggle(true, true);
             self.keys.remove(&KeyCode::ShiftLeft);
         }
         tc.set_vertical_movement(flying);
@@ -558,8 +558,7 @@ impl Game<'_> {
                 &dlg.name_input
             });
         } else {
-            self.touch.wanted = true;
-            self.android_keyboard(true);
+            self.touch_request_keyboard();
         }
     }
     fn mobile_osk_output(&mut self, out: Output) {
@@ -1156,6 +1155,9 @@ impl Game<'_> {
                     },
                 },
             );
+            if !right && !down && self.on_text_field() == Some(true) {
+                self.android_show_keyboard();
+            }
             Ok(())
         }
     }
@@ -1767,6 +1769,7 @@ impl Game<'_> {
                     InputOrigin::User,
                 );
             }
+            self.keyboard_after_tap(t, [t.location.x as f32, t.location.y as f32]);
             self.android_menu_touch_release(t.phase);
             return;
         }
@@ -1795,6 +1798,7 @@ impl Game<'_> {
                         InputOrigin::User,
                     );
                 }
+                self.keyboard_after_tap(t, [t.location.x as f32, t.location.y as f32]);
                 if field || self.sign_edit.is_some() {
                     self.android_show_keyboard();
                 }
@@ -1902,6 +1906,9 @@ impl Game<'_> {
                     InputOrigin::User,
                 );
             }
+        }
+        if !right && self.on_text_field() == Some(true) {
+            self.android_show_keyboard();
         }
     }
 }

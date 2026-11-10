@@ -363,7 +363,7 @@ impl Game<'_> {
             }
             #[cfg(target_os = "android")]
             "key.sneak" if self.touch_shown() && self.mobile.controls.vertical_movement => {
-                self.toggles.0[SNEAK].set_down(down, false);
+                self.toggles.0[SNEAK].is_down = down;
                 self.sync_toggle(SNEAK);
                 if down {
                     self.key_pressed(KeyCode::ShiftLeft)?;

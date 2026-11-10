@@ -984,7 +984,7 @@ impl Game<'_> {
 
     /// A tap decides the keyboard wherever it landed, a slot too: on the text field it comes up,
     /// beside it it goes away. A finger that moved (a list scrolling) leaves it as it is.
-    fn keyboard_after_tap(&mut self, t: &winit::event::Touch, p: [f32; 2]) {
+    pub(super) fn keyboard_after_tap(&mut self, t: &winit::event::Touch, p: [f32; 2]) {
         if t.phase != TouchPhase::Ended {
             return;
         }
@@ -1037,7 +1037,14 @@ impl Game<'_> {
         self.touch.context == Some(context) && !self.touch.wanted
     }
 
-    fn text_context(&mut self) -> Option<&'static str> {
+    #[cfg(target_os = "android")]
+    pub(super) fn touch_request_keyboard(&mut self) {
+        self.touch.context = self.text_context();
+        self.touch.wanted = true;
+        self.android_keyboard(true);
+    }
+
+    pub(super) fn text_context(&mut self) -> Option<&'static str> {
         #[cfg(target_os = "android")]
         if self.catalog_typing() {
             return Some("catalog");
@@ -1074,7 +1081,7 @@ impl Game<'_> {
 
     /// Whether the cursor (where a tap just landed) is on the text field shown now; None where
     /// the field's place is not known.
-    fn on_text_field(&mut self) -> Option<bool> {
+    pub(super) fn on_text_field(&mut self) -> Option<bool> {
         let (size, cursor) = (self.gui_size(), self.cursor);
         let inside = |r: [f32; 4]| {
             cursor.0 >= r[0] && cursor.0 < r[0] + r[2] && cursor.1 >= r[1] && cursor.1 < r[1] + r[3]
