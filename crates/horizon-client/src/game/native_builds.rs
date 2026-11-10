@@ -787,25 +787,15 @@ impl Game<'_> {
                 tr("starling.mods.native.show_compile", &[]),
                 NativeGameAct::ShowCompile,
             ));
-        } else if !wanted.is_empty() && (old.is_some() || wanted != in_next) {
-            if old.is_none() {
-                let key = if next_loads.is_some() {
-                    "starling.mods.native.differs"
-                } else {
-                    "starling.mods.native.not_in_game"
-                };
-                game.lines.push((tr(key, &[]), false));
-            }
-            game.buttons.push((
-                tr("starling.mods.native.compile", &[]),
-                NativeGameAct::Compile,
-            ));
-            if custom_server().is_none() {
-                game.buttons.push((
-                    tr("starling.mods.native.use_github", &[]),
-                    NativeGameAct::CompileOnGithub,
-                ));
-            }
+        } else if !wanted.is_empty() && old.is_none() && wanted != in_next {
+            // Compile is the native mod's own button beside its row; its card offers GitHub and
+            // the build server, so the top only says why.
+            let key = if next_loads.is_some() {
+                "starling.mods.native.differs"
+            } else {
+                "starling.mods.native.not_in_game"
+            };
+            game.lines.push((tr(key, &[]), false));
         }
         if next_loads != now {
             game.buttons.push((
@@ -819,10 +809,6 @@ impl Game<'_> {
                 NativeGameAct::PlayWithout,
             ));
         }
-        game.buttons.push((
-            tr("starling.mods.native.build_server", &[]),
-            NativeGameAct::BuildServer,
-        ));
         Some(game)
     }
 
