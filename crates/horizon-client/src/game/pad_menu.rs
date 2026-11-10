@@ -127,10 +127,7 @@ impl Game<'_> {
     /// A menu, a screen, the title, a sign or a book is open: the pad drives
     /// it instead of the player.
     pub(super) fn pad_in_menu(&self) -> bool {
-        self.title.is_some()
-            || self.screen != Screen::Playing
-            || self.sign_edit.is_some()
-            || self.book.is_some()
+        self.title.is_some() || self.screen != Screen::Playing || self.screen_over_playing()
     }
 
     pub(super) fn gui_scale(&self) -> Option<HudBatch> {
