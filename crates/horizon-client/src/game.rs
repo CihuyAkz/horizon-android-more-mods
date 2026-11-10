@@ -22046,6 +22046,7 @@ pub fn run_with() -> Result<()> {
     // or this one's if they come before its GUI atlas.
     #[cfg(target_os = "android")]
     if options.execution_role.is_client()
+        && vanilla_root.join("horizon-resources.json").is_file()
         && let Err(e) = horizon_client::android_control_assets::fetch(&vanilla_root, |_, _| {})
     {
         log::warn!("Original Android control textures: {e}");

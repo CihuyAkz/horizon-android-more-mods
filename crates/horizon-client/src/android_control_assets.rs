@@ -68,3 +68,33 @@ pub fn fetch(root: &Path, progress: impl Fn(u64, u64)) -> Result<()> {
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    #[ignore = "downloads the pinned control textures from Mojang"]
+    fn fresh_resources_receive_the_complete_verified_overlay() {
+        let root =
+            std::env::temp_dir().join(format!("starling-fresh-controls-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        fetch(&root, |_, _| {}).unwrap();
+        let manifest: serde_json::Value = serde_json::from_str(include_str!(
+            "../../../packaging/android/bedrock-controls.json"
+        ))
+        .unwrap();
+        for entry in manifest["files"].as_array().unwrap() {
+            let path = root
+                .join("assets/minecraft/textures/gui/bedrock")
+                .join(entry["path"].as_str().unwrap());
+            assert_eq!(
+                fs::metadata(path).unwrap().len(),
+                entry["size"].as_u64().unwrap()
+            );
+        }
+        // A restart uses the already verified local files.
+        fetch(&root, |_, _| {}).unwrap();
+        fs::remove_dir_all(root).unwrap();
+    }
+}
