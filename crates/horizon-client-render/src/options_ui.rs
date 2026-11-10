@@ -1854,6 +1854,9 @@ enum Act {
     PickSkin,
     OpenSkinFolder,
     ElyBySkins,
+    /// The chosen skin to the Microsoft account's profile; an Ely.by account's skin page.
+    UploadSkin,
+    ElySkinSite,
     /// AI Agent: start or stop the repro recording.
     ToggleRecording,
     /// AI Agent: write the repro bundle now.
@@ -1986,6 +1989,8 @@ pub enum Event {
     OpenCatalog(CatalogShelf),
     /// The Shader Packs page opened: list `shaderpacks/` into `shader_packs`.
     ListShaderPacks,
+    /// The Mods page opened: the native mods folder read again, for a mod copied in meanwhile.
+    ListMods,
     /// A shader pack or its profile was picked, or the pack turned off: save and apply it.
     ShaderPack,
     /// The Shader Packs page's folder (on a phone without the Starling folder, its offer).
@@ -2060,6 +2065,10 @@ pub enum SkinAction {
     PickFile,
     /// Ely.by Skins turned on or off (`elyby`): keep it.
     ElyBy(bool),
+    /// This skin to the playing Microsoft account's profile, for every server to show.
+    Upload(crate::own_skin::SkinChoice),
+    /// Ely.by's page where the playing Ely.by account changes its skin.
+    ElySite,
 }
 /// `SliderableValueSet.applyValueImmediately`: these apply 600 ms after
 /// the last change (`OptionInstanceSliderButton.delayedApplyAt`).
@@ -2175,6 +2184,11 @@ pub struct OptionsUi {
     pub skin_page: bool,
     /// A profile selected by the host: names are managed in Accounts, not the legacy alias box.
     pub profile_name: Option<String>,
+    /// That profile's key (`accounts::player_key`), under which its own skin is kept
+    /// (`own_skin::SkinChoice::for_profile`).
+    pub profile_key: Option<String>,
+    /// Where that profile's skin can go besides this game, set by the game every frame.
+    pub skin_cloud: crate::own_skin::Cloud,
     /// Whether the Mods, Resource Packs and Shader Packs pages have their Catalog button: the
     /// game's options on a phone (`offer_catalog`). The menus before the game can't show it.
     catalog_buttons: bool,
@@ -2274,6 +2288,8 @@ impl Default for OptionsUi {
             shader_profiles: Vec::new(),
             skin_page: false,
             profile_name: None,
+            profile_key: None,
+            skin_cloud: Default::default(),
             catalog_buttons: false,
             skin: SkinPage::default(),
         }
@@ -2695,6 +2711,20 @@ fn pairs(opts: &[Opt]) -> Vec<Row> {
         .map(|c| Row::Pair(c[0], c.get(1).copied()))
         .collect()
 }
+/// The focused text field as the on-screen keyboard's editor on Android mirrors it
+/// (`OptionsUi::focused_text`).
+pub struct FocusedText {
+    /// Which field: 0 the language search, 1 the settings search, 2 the pack search, 3 Skin
+    /// Customization's name, 4 a custom button's text.
+    pub index: usize,
+    /// It searches a list.
+    pub search: bool,
+    pub value: String,
+    /// The cursor and the selection's other end, in characters.
+    pub selection: (usize, usize),
+    /// The most characters it takes.
+    pub max: usize,
+}
 impl OptionsUi {
     /// A switch of `horizon-extras.txt` as the Extras page draws it: "Caption: On".
     fn extra_button(&self, s: &Settings, item: crate::extras::Item) -> Widget {
@@ -2732,6 +2762,75 @@ impl OptionsUi {
             _ => self.settings_search_active() && on(&self.settings_search),
         }
     }
+    /// The text field that has the focus (`text_focused`), for the on-screen keyboard's editor
+    /// on Android.
+    pub fn focused_text(&self) -> Option<FocusedText> {
+        if !self.text_focused() {
+            return None;
+        }
+        let edit = |e: &ui::EditBox| (e.value.clone(), (e.cursor, e.highlight), e.max_length);
+        let (index, (value, selection, max)) = match self.page() {
+            Page::Language => (0, edit(&self.language_search)),
+            Page::Packs => {
+                let s = self.pack_screen.as_ref()?.search_field();
+                (2, (s.value.clone(), (s.cursor, s.highlight), s.max_length))
+            }
+            Page::Skin => (3, edit(&self.skin.name)),
+            Page::CustomButton(_) => (4, edit(&self.custom_send)),
+            _ => (1, edit(&self.settings_search)),
+        };
+        Some(FocusedText {
+            index,
+            search: index <= 2,
+            value,
+            selection,
+            max,
+        })
+    }
+    /// The on-screen keyboard's editor's text and selection on the focused field (Android),
+    /// through the field's filter and limit as typing would leave them: a position after a
+    /// character the filter drops moves back with it. A search's list goes back to its top
+    /// when its text changed, as after a typed key.
+    pub fn set_focused_text(&mut self, atlas: &HudAtlas, text: &str, cursor: usize, anchor: usize) {
+        if !self.text_focused() {
+            return;
+        }
+        let kept = |pos: usize| {
+            let before: String = text.chars().take(pos).collect();
+            crate::clipboard::filter_text(&before, false)
+                .chars()
+                .count()
+        };
+        let (cursor, anchor) = (kept(cursor), kept(anchor));
+        let value = crate::clipboard::filter_text(text, false);
+        let page = self.page();
+        let edit = match page {
+            Page::Packs => {
+                if let Some(p) = &mut self.pack_screen {
+                    p.set_search(
+                        &crate::screen_draw::Measure(&atlas.font),
+                        &value,
+                        cursor,
+                        anchor,
+                    );
+                }
+                return;
+            }
+            Page::Language => &mut self.language_search,
+            Page::Skin => &mut self.skin.name,
+            Page::CustomButton(_) => &mut self.custom_send,
+            _ => &mut self.settings_search,
+        };
+        let changed = value != edit.value;
+        if changed {
+            edit.set_value(&value);
+        }
+        edit.set_cursor(anchor, false);
+        edit.set_cursor(cursor, true);
+        if changed && !matches!(page, Page::Skin | Page::CustomButton(_)) {
+            self.scroll = 0.0;
+        }
+    }
     /// Read the Skin Customization page's name, skins and choice again (it opened, or a skin
     /// came through the import inbox).
     pub fn refresh_skin_page(&mut self) {
@@ -2746,7 +2845,7 @@ impl OptionsUi {
         }
         page.account = crate::auth::current().map(|a| a.name.clone());
         page.files = crate::own_skin::list(&dir.join(crate::own_skin::DIR));
-        page.choice = crate::own_skin::SkinChoice::load(&dir);
+        page.choice = crate::own_skin::SkinChoice::for_profile(&dir, self.profile_key.as_deref());
         page.elyby = crate::elyby::enabled(&dir);
         page.warning = None;
         if !page.name.focused {
@@ -2760,6 +2859,57 @@ impl OptionsUi {
     /// What Skin Customization asked of the game since the last call.
     pub fn take_skin_actions(&mut self) -> Vec<SkinAction> {
         std::mem::take(&mut self.skin.actions)
+    }
+    /// What the skin button calls no file of `skins/`: an account's own skin, else the default.
+    fn skin_default_name(&self) -> String {
+        lang::get(match self.skin_cloud {
+            crate::own_skin::Cloud::Local => "starling.skin.default",
+            _ => "starling.skin.account",
+        })
+    }
+    /// Skin Customization's rows for the playing profile's account, as Horizon Android's wardrobe
+    /// has them: a Microsoft account's upload of the chosen skin to its profile, and how the last
+    /// one went; an Ely.by account's page on ely.by, where its skin is changed.
+    fn skin_cloud_rows(&self) -> Vec<Row> {
+        use crate::own_skin::{Cloud, Upload};
+        let chosen = self.skin.choice.file.is_some();
+        match &self.skin_cloud {
+            Cloud::Local => Vec::new(),
+            Cloud::Ely => vec![
+                Row::Buttons(
+                    button(
+                        0.0,
+                        0.0,
+                        310.0,
+                        tr("starling.skin.ely_site"),
+                        Act::ElySkinSite,
+                    ),
+                    None,
+                ),
+                Row::Note(lang::get("starling.skin.ely_hint")),
+            ],
+            Cloud::Microsoft(upload) => {
+                let sending = *upload == Upload::Sending;
+                let label = tr(if sending {
+                    "starling.skin.uploading"
+                } else {
+                    "starling.skin.upload"
+                });
+                let upload_button = button(0.0, 0.0, 310.0, label, Act::UploadSkin);
+                let upload_button = if chosen && !sending {
+                    upload_button
+                } else {
+                    inactive(upload_button)
+                };
+                let note = match upload {
+                    Upload::Failed(why) => Row::Warning(lang::get_or(why, why)),
+                    Upload::Sent => Row::Note(lang::get("starling.skin.uploaded")),
+                    _ if !chosen => Row::Note(lang::get("starling.skin.upload_choose")),
+                    _ => Row::Note(lang::get("starling.skin.upload_hint")),
+                };
+                vec![Row::Buttons(upload_button, None), note]
+            }
+        }
     }
     /// The name box loses the focus: a changed name is kept when it is one, else refused and
     /// the old one back in the box.
@@ -3337,11 +3487,12 @@ impl OptionsUi {
                         ),
                     });
                 }
+                let default = self.skin_default_name();
                 let skin = page
                     .choice
                     .file
                     .as_deref()
-                    .map_or("Default", crate::own_skin::shown_name);
+                    .map_or(default.as_str(), crate::own_skin::shown_name);
                 let skin = button(
                     0.0,
                     0.0,
@@ -3364,6 +3515,7 @@ impl OptionsUi {
                     inactive(model)
                 };
                 rows.push(Row::Buttons(skin, Some(model)));
+                rows.extend(self.skin_cloud_rows());
                 let elyby = |width: f32| {
                     let on = if page.elyby { "ON" } else { "OFF" };
                     button(
@@ -4281,19 +4433,25 @@ impl OptionsUi {
                 let y = (33.0 + 30.0f32).min(h - 33.0 - 76.0);
                 let x = cx - 105.0;
                 if ON_A_PHONE {
-                    out.push(Widget {
-                        x: 0.0,
-                        y: y - 14.0,
-                        w,
-                        h: 9.0,
-                        kind: WKind::Text {
-                            text: tr("starling.credits.founders"),
-                            color: u32::MAX,
-                            centered: true,
-                        },
-                        list: false,
-                        row: 0,
-                    });
+                    // Starling's founders, then the game it is built on (THIRD_PARTY_NOTICES.md).
+                    for (i, key) in ["starling.credits.founders", "starling.credits.horizon"]
+                        .into_iter()
+                        .enumerate()
+                    {
+                        out.push(Widget {
+                            x: 0.0,
+                            y: y - 26.0 + 12.0 * i as f32,
+                            w,
+                            h: 9.0,
+                            kind: WKind::Text {
+                                text: tr(key),
+                                color: u32::MAX,
+                                centered: true,
+                            },
+                            list: false,
+                            row: 0,
+                        });
+                    }
                 }
                 out.push(button(
                     x,
@@ -5704,6 +5862,9 @@ impl OptionsUi {
                                 events.push(Event::ListShaderPacks);
                                 self.refresh_shader_profiles(s);
                             }
+                            if p == Page::Mods {
+                                events.push(Event::ListMods);
+                            }
                             if p == Page::Music {
                                 events.push(Event::ListMusicTracks);
                             }
@@ -5983,6 +6144,12 @@ impl OptionsUi {
                             page.actions.push(SkinAction::ElyBy(page.elyby));
                         }
                         Act::OpenSkinFolder => self.skin.actions.push(SkinAction::OpenFolder),
+                        Act::UploadSkin => {
+                            let page = &mut self.skin;
+                            page.warning = None;
+                            page.actions.push(SkinAction::Upload(page.choice.clone()));
+                        }
+                        Act::ElySkinSite => self.skin.actions.push(SkinAction::ElySite),
                         Act::ToggleRecording => events.push(Event::ToggleRecording),
                         Act::DiagnosticsExport => events.push(Event::DiagnosticsExport),
                         Act::DiagnosticsOpen => events.push(Event::DiagnosticsOpen),
@@ -6209,6 +6376,32 @@ impl OptionsUi {
             }
             _ => self.scroll(s, size, amount),
         }
+    }
+    /// Whether `cursor` is on a button that a finger moving from it should scroll past rather than
+    /// press (touch.rs, `prefer_scroll`): any active button or language row, and on Video Settings
+    /// any row but a slider's. Sliders keep their sideways drag, and the pages with drags of their
+    /// own (packs, the canvas, calibration, split screen) are left as they are.
+    pub fn list_button_at(&mut self, s: &Settings, size: (f32, f32), cursor: (f32, f32)) -> bool {
+        if self.resource_error.is_some() || self.painting() {
+            return false;
+        }
+        if Self::graphics_page(self.page()).is_some() {
+            return self.graphics.row_button_at(s, size, cursor);
+        }
+        if matches!(
+            self.page(),
+            Page::Packs | Page::SplitSetup | Page::SplitProfiles | Page::HdrCalibration
+        ) {
+            return false;
+        }
+        let (widgets, top, bottom, _) = self.layout(s, size.0, size.1);
+        widgets.iter().any(|wd| {
+            matches!(
+                wd.kind,
+                WKind::Button { active: true, .. } | WKind::LanguageRow { .. }
+            ) && ui::hovered(cursor, wd.x, wd.y, wd.w, wd.h)
+                && !(wd.list && (cursor.1 < top || cursor.1 >= bottom))
+        })
     }
     /// `VideoSettingsScreen.mouseScrolled`: with Ctrl held the wheel steps the GUI scale
     /// (auto counts as one past the maximum) and the list goes back to the top.
@@ -6905,6 +7098,9 @@ impl OptionsUi {
                             if p == Page::ShaderPacks {
                                 events.push(Event::ListShaderPacks);
                             }
+                            if p == Page::Mods {
+                                events.push(Event::ListMods);
+                            }
                             if p == Page::Music {
                                 events.push(Event::ListMusicTracks);
                             }
@@ -7090,7 +7286,9 @@ impl OptionsUi {
                         | Act::SkinModel
                         | Act::PickSkin
                         | Act::OpenSkinFolder
-                        | Act::ElyBySkins => {}
+                        | Act::ElyBySkins
+                        | Act::UploadSkin
+                        | Act::ElySkinSite => {}
                         Act::None => {}
                     }
                     return events;
@@ -9370,6 +9568,73 @@ mod tests {
     }
 
     #[test]
+    fn an_account_profile_sends_its_skin_where_its_account_keeps_it() {
+        use crate::own_skin::{Cloud, SkinChoice, Upload};
+        let atlas = atlas();
+        let mut s = Settings::default();
+        let mut ui = OptionsUi {
+            skin_page: true,
+            profile_name: Some("Notch".into()),
+            skin_cloud: Cloud::Microsoft(Upload::None),
+            ..Default::default()
+        };
+        ui.stack.push(Page::Skin);
+        ui.skin.files = vec!["alex.png".into()];
+        let size = (427.0, 240.0);
+        let buttons = |ui: &mut OptionsUi| {
+            let (widgets, ..) = ui.layout(&Settings::default(), size.0, size.1);
+            widgets
+                .iter()
+                .filter_map(|w| match &w.kind {
+                    WKind::Button { act, active, .. } => {
+                        Some((act.clone(), (w.x + 2.0, w.y + 2.0), *active))
+                    }
+                    _ => None,
+                })
+                .collect::<Vec<_>>()
+        };
+        let find = |ui: &mut OptionsUi, wanted: Act| {
+            buttons(ui)
+                .into_iter()
+                .find(|(act, ..)| *act == wanted)
+                .map(|(_, at, active)| (at, active))
+        };
+        // The account's own skin is nothing to upload.
+        assert_eq!(find(&mut ui, Act::UploadSkin).map(|b| b.1), Some(false));
+        ui.skin.choice = SkinChoice {
+            file: Some("alex.png".into()),
+            slim: true,
+        };
+        let (at, active) = find(&mut ui, Act::UploadSkin).unwrap();
+        assert!(active);
+        ui.click(&mut s, &atlas, at.0, at.1, size, [1281, 720], false, false);
+        assert_eq!(
+            ui.take_skin_actions(),
+            [SkinAction::Upload(ui.skin.choice.clone())]
+        );
+        // One upload at a time; a refusal shows in red.
+        ui.skin_cloud = Cloud::Microsoft(Upload::Sending);
+        assert_eq!(find(&mut ui, Act::UploadSkin).map(|b| b.1), Some(false));
+        ui.skin_cloud = Cloud::Microsoft(Upload::Failed("Mojang said no".into()));
+        assert!(
+            ui.list_rows(&s)
+                .iter()
+                .any(|r| matches!(r, Row::Warning(w) if w == "Mojang said no"))
+        );
+        // Ely.by takes no uploads: its page instead.
+        ui.skin_cloud = Cloud::Ely;
+        assert_eq!(find(&mut ui, Act::UploadSkin), None);
+        let (at, active) = find(&mut ui, Act::ElySkinSite).unwrap();
+        assert!(active);
+        ui.click(&mut s, &atlas, at.0, at.1, size, [1281, 720], false, false);
+        assert_eq!(ui.take_skin_actions(), [SkinAction::ElySite]);
+        // An offline profile's skin stays in this game.
+        ui.skin_cloud = Cloud::Local;
+        let acts: Vec<Act> = buttons(&mut ui).into_iter().map(|b| b.0).collect();
+        assert!(!acts.contains(&Act::UploadSkin) && !acts.contains(&Act::ElySkinSite));
+    }
+
+    #[test]
     fn sound_device_button_in_sound_page_and_cycles() {
         let mut s = Settings::default();
         let mut ui = OptionsUi::default();
@@ -9519,6 +9784,45 @@ mod tests {
         let events = ui.wheel(&mut s, size, cursor, [854, 480], 1.0);
         assert_eq!(s.master_volume, 0.5);
         assert!(!events.iter().any(|e| matches!(e, Event::Volume(0, _))));
+    }
+
+    #[test]
+    fn a_finger_scrolls_from_a_cycle_button_and_drags_a_slider() {
+        let s = Settings::default();
+        let mut ui = OptionsUi::default();
+        let size = (480.0, 600.0);
+        ui.show(Page::Extras);
+        let (widgets, _, _, _) = ui.layout(&s, size.0, size.1);
+        let sort = widgets
+            .iter()
+            .find(|w| {
+                matches!(
+                    w.kind,
+                    WKind::Button {
+                        act: Act::Extra(crate::extras::Item::Sort),
+                        ..
+                    }
+                )
+            })
+            .unwrap();
+        let on_sort = (sort.x + 5.0, sort.y + 5.0);
+        assert!(ui.list_button_at(&s, size, on_sort));
+        ui.show(Page::Sound);
+        let (widgets, _, _, _) = ui.layout(&s, size.0, size.1);
+        let master = widgets
+            .iter()
+            .find(|w| {
+                matches!(
+                    w.kind,
+                    WKind::Slider {
+                        opt: Opt::Volume(0),
+                        ..
+                    }
+                )
+            })
+            .unwrap();
+        let on_master = (master.x + 10.0, master.y + 10.0);
+        assert!(!ui.list_button_at(&s, size, on_master));
     }
 
     #[test]

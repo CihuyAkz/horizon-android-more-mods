@@ -798,9 +798,15 @@ impl Game<'_> {
         // The mouse finger stays the mouse until it lifts, even if the screen closed under it.
         if !self.touch_playing() || self.touch.pointer.owns(t.id) {
             let slop = touch::slop(layout.width, layout.height);
-            // A finger on a scrollbar drags it, as the mouse would.
+            // A finger on a scrollbar drags it, as the mouse would. One on an option's button
+            // scrolls the list whichever way it moves: only a tap presses the button.
             if t.phase == TouchPhase::Started && self.on_scrollbar(p) {
                 self.touch.pointer.prefer_drag();
+            } else if t.phase == TouchPhase::Started
+                && !self.touch.pointer.down()
+                && self.on_options_button(p)
+            {
+                self.touch.pointer.prefer_scroll();
             }
             // Lists follow the finger one to one at this GUI scale.
             let gui_scale = HudBatch::new(self.touch_size()).scale;
@@ -885,6 +891,9 @@ impl Game<'_> {
             self.touch.faces = faces;
         }
         if let Some(id) = self.window.as_ref().map(|w| w.id()) {
+            self.touch.pointer.set_hold_presses(
+                self.title.is_none() && matches!(self.screen, Screen::Inventory | Screen::Creative),
+            );
             for mouse in self.touch.pointer.frame_events(now) {
                 self.handle_window_event(event_loop, id, mouse, InputOrigin::User);
             }
@@ -1033,6 +1042,10 @@ impl Game<'_> {
         if self.catalog_typing() {
             return Some("catalog");
         }
+        // A server's dialog takes the input over whatever is under it (`text_field_focused`).
+        if self.dialog_open() {
+            return self.dialog_typing().then_some("dialog");
+        }
         if self.screen == Screen::Chat {
             Some("chat")
         } else if self.sign_edit.is_some() {
@@ -1071,6 +1084,7 @@ impl Game<'_> {
             "options" => Some(self.ui.options.text_field_at(cursor.0, cursor.1)),
             // The tap's click focused the box under it, or none.
             "world" => Some(self.world_options_typing()),
+            "dialog" => Some(self.dialog_typing()),
             context => self.text_field_rect(context).map(inside),
         }
     }
@@ -1119,6 +1133,23 @@ impl Game<'_> {
             return self.creative_screen.inside_scrollbar(x - ox, y - oy);
         }
         false
+    }
+
+    /// Whether a finger landing at window pixel `p` is on a button of the options (a cycle button,
+    /// a row of Video Settings), which a drag starting sideways would press: it only scrolls.
+    fn on_options_button(&mut self, p: [f32; 2]) -> bool {
+        if self.screen != Screen::Options {
+            return false;
+        }
+        let size = self
+            .renderer
+            .as_ref()
+            .map_or([1280, 720], |r| [r.config.width, r.config.height]);
+        let batch = HudBatch::new(size);
+        let cursor = (p[0] / batch.scale, p[1] / batch.scale);
+        self.ui
+            .options
+            .list_button_at(&self.settings, (batch.width, batch.height), cursor)
     }
 
     fn touch_apply(&mut self, actions: Vec<Action>) {

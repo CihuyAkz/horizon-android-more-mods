@@ -31,16 +31,18 @@ fn catalog_shelf(shelf: horizon_client::options_ui::CatalogShelf) -> starling_ca
 }
 
 impl Game<'_> {
-    /// One of the game's folders (packs, shader packs, mods) in the file manager. On a phone that
-    /// keeps the game in the app's private files, which no file manager opens, the offer of the
-    /// Starling folder instead.
+    /// One of the game's folders (packs, shader packs, mods) in the file manager. On a phone the
+    /// Files app shows it through Starling's own provider, wherever the game keeps it. A folder it
+    /// can't show from the app's private files gets the offer of the Starling folder instead.
     fn open_game_folder(&mut self, dir: &std::path::Path) {
         let _ = std::fs::create_dir_all(dir);
         #[cfg(target_os = "android")]
-        if horizon_client::logging::game_home() == horizon_client::logging::private_home() {
+        if horizon_client::platform::open_folder(dir) != Some(true)
+            && horizon_client::logging::game_home() == horizon_client::logging::private_home()
+        {
             self.ask_files_offer();
-            return;
         }
+        #[cfg(not(target_os = "android"))]
         super::packs::open_folder(dir);
     }
 
@@ -206,6 +208,8 @@ impl Game<'_> {
         // The game puts the skin on (game/own_skin.rs).
         ui.skin_page = true;
         ui.profile_name = horizon_client::accounts::player_name();
+        ui.profile_key = horizon_client::accounts::player_key();
+        ui.skin_cloud = horizon_client::accounts::skin_cloud();
         ui.offer_catalog();
         ui.open_at(!from_title && self.title.is_none(), page);
         ui.minecart_improvements = minecart_improvements;
@@ -256,6 +260,7 @@ impl Game<'_> {
     pub(super) fn draw_options(&mut self, batch: &mut HudBatch) {
         self.watch_pack_folder();
         self.poll_diagnostics();
+        self.show_skin_cloud();
         let mut ui = std::mem::take(&mut self.ui.options);
         ui.draw(&self.settings, batch, &self.gui.atlas, self.cursor);
         self.ui.options = ui;
@@ -368,7 +373,10 @@ impl Game<'_> {
             .options
             .shortcut(&self.gui.atlas, shortcut, &mut self.clipboard)
     }
-    pub(super) fn options_scroll(&mut self, amount: f32) -> Result<()> {
+    /// The wheel on the options. A finger's scroll (`finger`) only scrolls: a list moved by a
+    /// finger that landed on a cycle button must not cycle it at each step, as a mouse wheel over it
+    /// does (`CycleButton.mouseScrolled`).
+    pub(super) fn options_scroll(&mut self, amount: f32, finger: bool) -> Result<()> {
         let framebuffer = self.renderer.as_ref().map_or([1280, 720], |r| {
             [r.config.width as i32, r.config.height as i32]
         });
@@ -380,6 +388,12 @@ impl Game<'_> {
             return self.handle_option_events(events);
         }
         let size = self.gui_size();
+        if finger {
+            self.ui
+                .options
+                .scroll_at(&self.settings, size, self.cursor, amount);
+            return Ok(());
+        }
         let events =
             self.ui
                 .options
@@ -484,6 +498,7 @@ impl Game<'_> {
                     self.settings.shader_packs =
                         horizon_client::shader_pack_list::scan(&Self::shader_packs_dir());
                 }
+                Event::ListMods => self.list_copied_native_mods(),
                 // Saved; the next frame's `shader_pack_inputs` loads the pick.
                 Event::ShaderPack => self.settings.save(&Self::options_path()),
                 Event::OpenCustomButtons => self.open_custom_buttons(),
@@ -525,6 +540,8 @@ impl Game<'_> {
                 SkinAction::OpenFolder => self.open_game_folder(&Self::skins_dir()),
                 SkinAction::PickFile => self.pick_skin_file(),
                 SkinAction::ElyBy(on) => self.keep_elyby(on),
+                SkinAction::Upload(choice) => self.upload_own_skin(choice),
+                SkinAction::ElySite => self.open_ely_skins(),
             }
         }
         Ok(())
