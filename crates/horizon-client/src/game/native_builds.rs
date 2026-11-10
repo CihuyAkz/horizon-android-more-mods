@@ -903,20 +903,10 @@ impl Game<'_> {
             self.open_native_builds();
             return true;
         }
+        // A row's Compile: the mods that are on, as the page's top Compile (one under way comes
+        // back).
         if row.problem.as_deref() == Some(horizon_client::mod_list::NOT_BUILT) {
-            let id = row.id.clone();
-            let card = &mut self.native_builds;
-            // One under way (its card hidden) comes back; its warning was read.
-            let compiling = card
-                .shared
-                .lock()
-                .unwrap_or_else(PoisonError::into_inner)
-                .compiling;
-            card.stage = Some(if compiling {
-                Stage::Compiling
-            } else {
-                Stage::Warn(id)
-            });
+            self.native_game_act(NativeGameAct::Compile);
             return true;
         }
         false

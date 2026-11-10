@@ -263,6 +263,8 @@
   "starling.mods.native.minutes_ago": "%s мин назад",
   "starling.mods.native.hours_ago": "%s ч назад",
   "starling.mods.native.days_ago": "%s дн. назад",
+  "horizon.mods.not_built_tip": "Установлен, но не встроен в эту игру: соберите игру с ним в лаунчере (Настройки > Нативные моды) и играйте в экземпляр с этой сборкой.",
+  "starling.mods.native.not_built_tip": "Установлен, но ещё не в игре: «Собрать» соберёт игру с ним на сервере сборки Starling.",
   "starling.account.title": "Аккаунты",
   "starling.account.active": "Выбран профиль: %s",
   "starling.account.offline": "Офлайн",

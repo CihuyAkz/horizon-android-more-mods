@@ -260,7 +260,8 @@ impl Game<'_> {
         self.poll_diagnostics();
         self.show_skin_cloud();
         let mut ui = std::mem::take(&mut self.ui.options);
-        ui.draw(&self.settings, batch, &self.gui.atlas, self.cursor);
+        let cursor = self.options_pointer(&mut ui);
+        ui.draw(&self.settings, batch, &self.gui.atlas, cursor);
         self.ui.options = ui;
         self.show_calibration(batch.height);
     }

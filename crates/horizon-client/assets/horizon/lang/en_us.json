@@ -534,6 +534,8 @@
   "starling.mods.native.minutes_ago": "%s min ago",
   "starling.mods.native.hours_ago": "%s h ago",
   "starling.mods.native.days_ago": "%s days ago",
+  "horizon.mods.not_built_tip": "Installed, not built into this game: build the game with it in the launcher (Settings > Native mods), then play the instance that build is in.",
+  "starling.mods.native.not_built_tip": "Installed, not in this game yet: Compile builds the game with it on Starling's build server.",
   "starling.account.title": "Accounts",
   "starling.account.active": "Playing as %s",
   "starling.account.offline": "Offline",
