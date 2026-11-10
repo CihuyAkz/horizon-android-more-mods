@@ -361,6 +361,15 @@ impl Game<'_> {
                 }
                 Ok(())
             }
+            #[cfg(target_os = "android")]
+            "key.sneak" if self.touch_shown() && self.mobile.controls.vertical_movement => {
+                self.toggles.0[SNEAK].set_down(down, false);
+                self.sync_toggle(SNEAK);
+                if down {
+                    self.key_pressed(KeyCode::ShiftLeft)?;
+                }
+                Ok(())
+            }
             "key.sneak"
                 if self.settings.controller.toggle_sneak && !self.settings.toggle_crouch =>
             {

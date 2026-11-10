@@ -237,7 +237,12 @@ impl Game<'_> {
             self.window.as_ref().map_or(1, |w| w.inner_size().width),
             self.window.as_ref().map_or(1, |w| w.inner_size().height),
         );
-        tc.vertical_movement = self.player.as_ref().is_some_and(|p| p.flying);
+        let flying = self.player.as_ref().is_some_and(|p| p.flying);
+        if shown && flying && !tc.vertical_movement {
+            self.toggles.0[0].set_down(false, false);
+            self.keys.remove(&KeyCode::ShiftLeft);
+        }
+        tc.set_vertical_movement(flying);
         tc.swimming = self.player.as_ref().is_some_and(|p| p.swimming);
         tc.mounted = self.riding.is_some();
         tc.sneaking = self.keys.contains(&KeyCode::ShiftLeft);
@@ -1765,11 +1770,17 @@ impl Game<'_> {
             self.android_menu_touch_release(t.phase);
             return;
         }
-        match self
-            .mobile
-            .ui
-            .gesture(t.id, [t.location.x as f32, t.location.y as f32], t.phase)
-        {
+        let gesture =
+            self.mobile
+                .ui
+                .gesture(t.id, [t.location.x as f32, t.location.y as f32], t.phase);
+        // Gesture deltas are physical pixels / 30; lists scroll 18 GUI pixels
+        // per wheel step. Convert once, independent of display GUI scale.
+        let gesture = match gesture {
+            Gesture::Scroll(y) => Gesture::Scroll(y * 30. / (b.scale * 18.)),
+            other => other,
+        };
+        match gesture {
             Gesture::Tap => {
                 let field = mobile_platform::field_at(p);
                 for state in [ElementState::Pressed, ElementState::Released] {
@@ -1791,14 +1802,17 @@ impl Game<'_> {
             Gesture::Scroll(y) if self.screen == Screen::Options => {
                 self.ui
                     .options
-                    .scroll(&self.settings, (b.width, b.height), y);
+                    .scroll_at(&self.settings, (b.width, b.height), (p[0], p[1]), y);
             }
             Gesture::Scroll(y) => self.handle_window_event(
                 events,
                 id,
                 WindowEvent::MouseWheel {
                     device_id: t.device_id,
-                    delta: MouseScrollDelta::LineDelta(0.0, y),
+                    delta: MouseScrollDelta::PixelDelta(winit::dpi::PhysicalPosition::new(
+                        0.,
+                        f64::from(y * 30. / self.settings.mouse_wheel_sensitivity.max(0.01)),
+                    )),
                     phase: TouchPhase::Moved,
                 },
                 InputOrigin::User,

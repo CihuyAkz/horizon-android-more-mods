@@ -284,6 +284,14 @@ impl Default for TouchControls {
 }
 
 impl TouchControls {
+    /// Flight uses hold-to-descend, even with a saved toggleable layout.
+    pub fn set_vertical_movement(&mut self, flying: bool) {
+        if flying && !self.vertical_movement {
+            self.latched_controls &= !(1 << (Control::Sneak as u16));
+            self.last_sneak_tap = None;
+        }
+        self.vertical_movement = flying;
+    }
     pub fn crosshair(&self) -> bool {
         self.force_crosshair || self.settings.crosshair()
     }
@@ -1026,6 +1034,7 @@ impl TouchControls {
                     self.sprint_latched = !self.sprint_latched;
                     Role::Ignore
                 }
+                Some(Control::Sneak) if self.vertical_movement => Role::Button(Button::RightStick),
                 Some(c) if self.placement(c).toggleable => {
                     self.latched_controls ^= 1 << (c as u16);
                     Role::Ignore
@@ -2784,6 +2793,32 @@ mod tests {
             );
             t.clear();
             assert!(!t.poll_state().held(Button::RightStick));
+        }
+    }
+    #[test]
+    fn flight_clears_ground_latch_and_descends_only_until_release() {
+        let mut t = TouchControls::default();
+        for mode in [Mode::Tap, Mode::Crosshair, Mode::Dpad] {
+            t.settings.mode = mode;
+            let mut placement = t.settings.placement(Control::Sneak);
+            placement.toggleable = true;
+            t.settings.layouts[mode.index()][t.settings.slot(Control::Sneak)] = placement;
+            let point = placement.center;
+            t.toggle_crouch = false;
+            t.update(1, point, true, false);
+            t.update(1, point, false, true);
+            assert!(t.state().held(Button::RightStick));
+            t.set_vertical_movement(true);
+            assert!(!t.state().held(Button::RightStick));
+            t.update(2, point, true, false);
+            assert!(t.poll_state().held(Button::RightStick));
+            t.update(2, point, false, true);
+            assert!(!t.poll_state().held(Button::RightStick));
+            t.set_vertical_movement(false);
+            t.update(3, point, true, false);
+            t.update(3, point, false, true);
+            assert!(t.state().held(Button::RightStick));
+            t.clear();
         }
     }
     #[test]
