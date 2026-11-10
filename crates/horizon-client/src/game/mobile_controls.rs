@@ -64,6 +64,24 @@ impl Game<'_> {
             .key(key, event.state == ElementState::Pressed)
     }
 
+    fn mobile_rocket_boost(&self) -> bool {
+        self.player.as_ref().is_some_and(|p| p.fall_flying)
+            && self
+                .held()
+                .into_iter()
+                .chain(self.offhand.as_ref())
+                .any(|s| s.item.as_ref() == "minecraft:firework_rocket")
+    }
+    fn mobile_hold_uses_item(&self) -> bool {
+        self.mobile_rocket_boost()
+            || self.held().is_some_and(|s| {
+                !horizon_client::android_controls::item_uses_on_tap(&s.item)
+                    && self
+                        .items()
+                        .get(&s.item)
+                        .is_some_and(super::remote::item_has_use)
+            })
+    }
     pub(in crate::game) fn mobile_controls_enabled(&self) -> bool {
         cfg!(target_os = "android")
     }
@@ -194,14 +212,8 @@ impl Game<'_> {
         }
         let shown = self.touch_shown() || self.settings.keypad.enabled;
         let context_use = self.touch_context_use();
-        let item_use = self.held().is_some_and(|s| {
-            s.item.as_ref() == "minecraft:firework_rocket"
-                || !horizon_client::android_controls::item_uses_on_tap(&s.item)
-                    && self
-                        .items()
-                        .get(&s.item)
-                        .is_some_and(super::remote::item_has_use)
-        });
+        let rocket_boost = self.mobile_rocket_boost();
+        let item_use = self.mobile_hold_uses_item();
         let entity_use = self.touch_entity_accepts_use();
         let shield_available = self
             .held()
@@ -261,11 +273,7 @@ impl Game<'_> {
                 && self.screen == Screen::Playing
             {
                 self.remote_start_attack();
-            } else if !held_use
-                && !self
-                    .held()
-                    .is_some_and(|s| s.item.as_ref() == "minecraft:firework_rocket")
-            {
+            } else if !held_use && !rocket_boost {
                 state.triggers[0] = 1.;
             }
         }
@@ -466,14 +474,7 @@ impl Game<'_> {
         self.mobile.controls.projectile_crosshair = self
             .held()
             .is_some_and(|s| horizon_client::android_controls::projectile_crosshair(&s.item));
-        self.mobile.controls.hold_uses_item = self.held().is_some_and(|s| {
-            s.item.as_ref() == "minecraft:firework_rocket"
-                || !horizon_client::android_controls::item_uses_on_tap(&s.item)
-                    && self
-                        .items()
-                        .get(&s.item)
-                        .is_some_and(super::remote::item_has_use)
-        });
+        self.mobile.controls.hold_uses_item = self.mobile_hold_uses_item();
         let delta = self.mobile.controls.update(
             t.id,
             n,
