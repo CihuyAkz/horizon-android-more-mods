@@ -600,6 +600,9 @@ impl Game<'_> {
     /// Tap to interact has no crosshair, and outlines a block only while a finger aims at it.
     pub(super) fn touch_hides_crosshair(&self) -> bool {
         self.touch_taps()
+            && !self
+                .held()
+                .is_some_and(|s| horizon_client::android_controls::projectile_crosshair(&s.item))
     }
     pub(super) fn touch_hides_outline(&self) -> bool {
         self.touch_taps() && self.touch_aim_point().is_none()

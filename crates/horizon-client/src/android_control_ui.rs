@@ -25,6 +25,7 @@ pub struct PresetDialogState {
 pub struct TouchUi {
     /// GUI-space offset below the title screen account button; zero in game.
     pub utility_offset_y: f32,
+    pub hub_visible: bool,
     pub expanded: bool,
     pub floating_menu: bool,
     pub floating_drag: Option<(u64, [f32; 2], bool)>,
@@ -84,6 +85,7 @@ impl Default for TouchUi {
     fn default() -> Self {
         Self {
             utility_offset_y: 0.,
+            hub_visible: true,
             expanded: false,
             floating_menu: false,
             floating_drag: None,
@@ -155,6 +157,8 @@ pub enum InGameMenuAction {
     ToggleInteractionLook,
     ToggleInvertY,
     ToggleLeftHanded,
+    ToggleOffhandButton,
+    ToggleShieldButton,
     ToggleGyro,
     ToggleVirtualMouse,
     ToggleSprintMode,
@@ -850,7 +854,10 @@ impl TouchUi {
                 return Some(Action::Key(KeyCode::Escape));
             }
         }
-        let p = [p[0], p[1] - self.utility_offset_y];
+        let p = [
+            p[0] + if self.hub_visible { 0. } else { 36. },
+            p[1] - self.utility_offset_y,
+        ];
         if (self.expanded || !self.goy_mode) && (3.0..23.0).contains(&p[1]) {
             if (39.0..72.0).contains(&p[0]) {
                 return Some(Action::More);
@@ -868,6 +875,7 @@ impl TouchUi {
                 return Some(Action::Keyboard);
             }
         }
+        let p = [p[0] - if self.hub_visible { 0. } else { 36. }, p[1]];
         if self.expanded && (3.0..203.0).contains(&p[0]) && (27.0..219.0).contains(&p[1]) {
             let i = ((p[1] - 27.0) / 24.0) as usize * 4 + ((p[0] - 3.0) / 50.0) as usize;
             if i == 28 {
@@ -906,7 +914,14 @@ impl TouchUi {
         }
         if !self.expanded {
             if !self.goy_mode && crate::android_controls::current_hud_opacity_scale() > 0.01 {
-                button(b, a, "...", 39.0, 3.0 + self.utility_offset_y, 33.0);
+                button(
+                    b,
+                    a,
+                    "...",
+                    if self.hub_visible { 39. } else { 3. },
+                    3.0 + self.utility_offset_y,
+                    33.0,
+                );
             }
             return;
         }
@@ -925,7 +940,7 @@ impl TouchUi {
                 } else {
                     label
                 },
-                x,
+                x - if self.hub_visible { 0. } else { 36. },
                 3.0 + self.utility_offset_y,
                 width,
             );
@@ -2503,6 +2518,12 @@ impl TouchUi {
                 }
             }
             3 => {
+                if inside([cx, body_y + 234., cw, 46.]) {
+                    return Some(InGameMenuAction::ToggleOffhandButton);
+                }
+                if inside([cx, body_y + 288., cw, 46.]) {
+                    return Some(InGameMenuAction::ToggleShieldButton);
+                }
                 // Tab 3: Buttons & Layout Options
                 let row_h = 46.0;
                 let step = 54.0;
@@ -2814,7 +2835,7 @@ impl TouchUi {
             0 => 394.0,
             1 => 430.0,
             2 => 470.0,
-            3 => 242.0,
+            3 => 350.0,
             _ => 340.0,
         };
         let max_scroll = (content_height - body_h).max(0.0);
@@ -3523,6 +3544,22 @@ impl TouchUi {
                 ui.border(gyro_thumb_x - 7.0, gyro_sl_y - 4.0, 14.0, 14.0, 7.0, text_c);
             }
             3 => {
+                draw_toggle_row(
+                    &mut ui,
+                    body_y + 234.,
+                    "Offhand Button",
+                    "Show the swap-hands button",
+                    Some(settings.offhand_button),
+                    None,
+                );
+                draw_toggle_row(
+                    &mut ui,
+                    body_y + 288.,
+                    "Separate Shield Button",
+                    "Off uses crouching to raise the shield",
+                    Some(settings.shield_button),
+                    None,
+                );
                 // Tab 3: Buttons & Layout Options
                 ui.text(
                     Face::SemiBold,
@@ -8187,6 +8224,23 @@ mod tests {
         assert_eq!(ui.release_mouse(3), None);
         ui.virtual_mouse = false;
         assert!(ui.action(427.0, 267.0, [399.0, 226.0], true).is_none());
+    }
+    #[test]
+    fn more_moves_into_hidden_hub_space() {
+        let mut ui = TouchUi {
+            hub_visible: false,
+            ..Default::default()
+        };
+        assert!(matches!(
+            ui.action(427., 267., [18., 13.], false),
+            Some(Action::More)
+        ));
+        assert!(ui.action(427., 267., [55., 13.], false).is_none());
+        ui.expanded = true;
+        assert!(matches!(
+            ui.action(427., 267., [55., 13.], false),
+            Some(Action::Key(KeyCode::F3))
+        ));
     }
     #[test]
     fn menu_pointer_can_be_hidden_and_restored_without_disabling_virtual_mouse() {

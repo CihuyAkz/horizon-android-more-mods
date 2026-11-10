@@ -163,6 +163,7 @@ impl Game<'_> {
     }
     pub(in crate::game) fn mobile_frame(&mut self, events: &dyn super::event_loop::EventLoopCtl) {
         self.mobile_init();
+        self.mobile.ui.hub_visible = self.mobile.controls.settings.show_control_hub;
         self.mobile.ui.utility_offset_y = if self.screen == Screen::Playing
             && horizon_client::accounts::in_game()
             && self
@@ -194,11 +195,12 @@ impl Game<'_> {
         let shown = self.touch_shown() || self.settings.keypad.enabled;
         let context_use = self.touch_context_use();
         let item_use = self.held().is_some_and(|s| {
-            !horizon_client::android_controls::item_uses_on_tap(&s.item)
-                && self
-                    .items()
-                    .get(&s.item)
-                    .is_some_and(super::remote::item_has_use)
+            s.item.as_ref() == "minecraft:firework_rocket"
+                || !horizon_client::android_controls::item_uses_on_tap(&s.item)
+                    && self
+                        .items()
+                        .get(&s.item)
+                        .is_some_and(super::remote::item_has_use)
         });
         let entity_use = self.touch_entity_accepts_use();
         let shield_available = self
@@ -259,7 +261,11 @@ impl Game<'_> {
                 && self.screen == Screen::Playing
             {
                 self.remote_start_attack();
-            } else if !held_use {
+            } else if !held_use
+                && !self
+                    .held()
+                    .is_some_and(|s| s.item.as_ref() == "minecraft:firework_rocket")
+            {
                 state.triggers[0] = 1.;
             }
         }
@@ -461,11 +467,12 @@ impl Game<'_> {
             .held()
             .is_some_and(|s| horizon_client::android_controls::projectile_crosshair(&s.item));
         self.mobile.controls.hold_uses_item = self.held().is_some_and(|s| {
-            !horizon_client::android_controls::item_uses_on_tap(&s.item)
-                && self
-                    .items()
-                    .get(&s.item)
-                    .is_some_and(super::remote::item_has_use)
+            s.item.as_ref() == "minecraft:firework_rocket"
+                || !horizon_client::android_controls::item_uses_on_tap(&s.item)
+                    && self
+                        .items()
+                        .get(&s.item)
+                        .is_some_and(super::remote::item_has_use)
         });
         let delta = self.mobile.controls.update(
             t.id,
@@ -1363,6 +1370,14 @@ impl Game<'_> {
                     }
                     let _ = self.mobile.controls.settings.save();
                     self.settings.save(&Self::options_path());
+                }
+                InGameMenuAction::ToggleOffhandButton => {
+                    self.mobile.controls.settings.offhand_button ^= true;
+                    self.mobile.controls.settings.save()?;
+                }
+                InGameMenuAction::ToggleShieldButton => {
+                    self.mobile.controls.settings.shield_button ^= true;
+                    self.mobile.controls.settings.save()?;
                 }
                 InGameMenuAction::ToggleGyro => {
                     self.mobile.controls.settings.gyroscope =
