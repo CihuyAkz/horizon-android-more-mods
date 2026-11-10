@@ -119,5 +119,12 @@
   "starling.account.setup.ely_title": "Entrar no Ely.by",
   "starling.account.setup.offline_title": "Jogar offline",
   "starling.account.setup.import": "Arquivos de um computador",
-  "starling.account.setup.preparing": "Login feito. Preparando os arquivos do jogo…"
+  "starling.account.setup.preparing": "Login feito. Preparando os arquivos do jogo…",
+  "starling.controls.type": "Controles de toque",
+  "starling.controls.type.classic": "Starling Clássico",
+  "starling.controls.type.mcpe": "MCPE",
+  "starling.controls.type.goycontrol": "GoyControl",
+  "starling.controls.type.classic_hint": "Os botões e o layout do Starling",
+  "starling.controls.classic_layout": "Editar layout de toque...",
+  "starling.controls.custom_buttons": "Botões personalizados..."
 }

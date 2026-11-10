@@ -38,6 +38,7 @@ pub use editor::{Editor, EditorDragKind, PickerStep};
 pub mod layout;
 pub use layout::{
     Control, ControlStyle, JoystickMoveArea, JoystickStyle, Mode, Placement, PresetMeta, Settings,
+    TouchChoice,
 };
 /// Entity-placement items retain short-tap placement, like building blocks.
 pub fn item_places_entity_on_tap(item: &str) -> bool {

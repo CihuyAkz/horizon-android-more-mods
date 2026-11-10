@@ -211,6 +211,7 @@ impl Opt {
 
     pub(crate) fn caption(self) -> &'static str {
         match self {
+            Opt::TouchControlType => "starling.controls.type",
             Opt::AndroidInputSelection => "Input device",
             Opt::TouchMode => "Control scheme",
             Opt::TouchCrosshairGestures => "Touch gestures",
@@ -531,6 +532,16 @@ impl Opt {
     /// The widget message (OptionInstance.toString / CycleButton full name).
     pub fn label(self, s: &Settings) -> Text {
         let c = self.caption();
+        if self == Opt::TouchControlType {
+            let value = if s.touch_choice.starling_classic {
+                "starling.controls.type.classic"
+            } else if s.touch.control_style == crate::android_controls::ControlStyle::GoyControl {
+                "starling.controls.type.goycontrol"
+            } else {
+                "starling.controls.type.mcpe"
+            };
+            return tr(c).append(Text::literal(": ")).append(tr(value));
+        }
         let touch_value = match self {
             Opt::TouchMode => Some(
                 crate::android_controls::Mode::SCHEMES
@@ -1129,6 +1140,8 @@ impl Opt {
             }
         };
         match self {
+            // Starling Classic, or back to the MCPE or GoyControl controls the player had.
+            Opt::TouchControlType => s.touch_choice.starling_classic ^= true,
             Opt::TouchMode => {
                 let i = crate::android_controls::Mode::SCHEMES
                     .iter()
@@ -3764,8 +3777,11 @@ impl OptionsUi {
                 }
                 let mut controls = vanilla_control_options();
                 if android {
-                    let at = controls.iter().position(|o| *o == Opt::AutoJump).unwrap() + 1;
-                    controls.insert(at, Opt::TouchAutoSprint);
+                    // Auto Sprint is the MCPE / GoyControl joystick's; Starling Classic has its own.
+                    if !s.touch_choice.starling_classic {
+                        let at = controls.iter().position(|o| *o == Opt::AutoJump).unwrap() + 1;
+                        controls.insert(at, Opt::TouchAutoSprint);
+                    }
                     controls.retain(|o| *o != Opt::OperatorItemsTab);
                 }
                 rows.extend(pairs(&controls));
@@ -3792,7 +3808,29 @@ impl OptionsUi {
                 self.filter_option_rows(rows)
             }
             Page::Touch => {
-                let mut rows = vec![Row::Header("Movement & Look Sensitivity")];
+                let mut rows = vec![Row::Big(Opt::TouchControlType)];
+                // Starling Classic: its layout editor (a long press on pause too) and its own
+                // buttons, as the Controls page had them before the MCPE and GoyControl controls.
+                if s.touch_choice.starling_classic {
+                    rows.push(Row::Buttons(
+                        button(
+                            0.0,
+                            0.0,
+                            150.0,
+                            tr("starling.controls.classic_layout"),
+                            Act::TouchLayout,
+                        ),
+                        Some(button(
+                            0.0,
+                            0.0,
+                            150.0,
+                            tr("starling.controls.custom_buttons"),
+                            Act::CustomButtons,
+                        )),
+                    ));
+                    return self.filter_option_rows(rows);
+                }
+                rows.push(Row::Header("Movement & Look Sensitivity"));
                 rows.push(Row::Big(Opt::TouchMode));
                 rows.extend(pairs(&[
                     Opt::TouchCrosshairGestures,
