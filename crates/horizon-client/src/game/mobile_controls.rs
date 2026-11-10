@@ -74,13 +74,17 @@ impl Game<'_> {
     }
     fn mobile_hold_uses_item(&self) -> bool {
         self.mobile_rocket_boost()
-            || self.held().is_some_and(|s| {
-                !horizon_client::android_controls::item_uses_on_tap(&s.item)
-                    && self
-                        .items()
-                        .get(&s.item)
-                        .is_some_and(super::remote::item_has_use)
-            })
+            || self
+                .held()
+                .into_iter()
+                .chain(self.offhand.as_ref())
+                .any(|s| {
+                    !horizon_client::android_controls::item_uses_on_tap(&s.item)
+                        && self
+                            .items()
+                            .get(&s.item)
+                            .is_some_and(super::remote::item_has_use)
+                })
     }
     pub(in crate::game) fn mobile_controls_enabled(&self) -> bool {
         cfg!(target_os = "android")
@@ -473,7 +477,9 @@ impl Game<'_> {
         }
         self.mobile.controls.projectile_crosshair = self
             .held()
-            .is_some_and(|s| horizon_client::android_controls::projectile_crosshair(&s.item));
+            .into_iter()
+            .chain(self.offhand.as_ref())
+            .any(|s| horizon_client::android_controls::projectile_crosshair(&s.item));
         self.mobile.controls.hold_uses_item = self.mobile_hold_uses_item();
         let delta = self.mobile.controls.update(
             t.id,

@@ -602,7 +602,9 @@ impl Game<'_> {
         self.touch_taps()
             && !self
                 .held()
-                .is_some_and(|s| horizon_client::android_controls::projectile_crosshair(&s.item))
+                .into_iter()
+                .chain(self.offhand.as_ref())
+                .any(|s| horizon_client::android_controls::projectile_crosshair(&s.item))
     }
     pub(super) fn touch_hides_outline(&self) -> bool {
         self.touch_taps() && self.touch_aim_point().is_none()
