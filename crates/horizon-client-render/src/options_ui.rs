@@ -4578,7 +4578,7 @@ impl OptionsUi {
                     row: 0,
                 });
                 let keypad = s.keypad.enabled;
-                if cfg!(target_os = "android") || keypad {
+                if ON_A_PHONE || keypad {
                     top = 64.0;
                     out.push(button(
                         cx - 150.0,

@@ -7744,8 +7744,7 @@ impl Game<'_> {
     /// A key event after rebinding, as the default key of its mapping (the
     /// keyboard and controllers both end here).
     fn mapped_key(&mut self, key: KeyCode, pressed: bool, repeat: bool) -> Result<()> {
-        #[cfg(target_os = "android")]
-        if !pressed && self.android_custom_key_held(key) {
+        if self.mobile_holds_key(key, pressed) {
             return Ok(());
         }
         // Sneak and sprint are ToggleKeyMappings: a press (or a key
@@ -8408,7 +8407,10 @@ impl Game<'_> {
             self.draw_spyglass(&mut batch);
             // Hud.extractCrosshair / extractItemHotbar / extractPlayerHealth /
             // extractVehicleHealth and the experience bar, laid out by hud_layout.
-            let indicator = self.settings.attack_indicator;
+            let indicator = horizon_client::android_controls::attack_indicator(
+                self.settings.attack_indicator,
+                !self.touch_hides_crosshair(),
+            );
             let delay = horizon_client::attack_strength::delay(self.main_hand_attack_speed());
             let strength = self.hand_strength.scale(0.0, self.main_hand_attack_speed());
             // The 3D crosshair (F3) takes the 2D one's place.
@@ -8447,7 +8449,12 @@ impl Game<'_> {
                         offhand_pop: (f32::from(g.hotbar_pop[9]) - partial).max(0.0),
                         attack: (indicator == 2).then_some(strength),
                     };
-                    let draws = hud_layout::hotbar(wi, hi, &inputs);
+                    let draws = hud_layout::hotbar_with_attack_side(
+                        wi,
+                        hi,
+                        &inputs,
+                        MOBILE_PLATFORM.then_some(g.settings.touch.attack_indicator_left),
+                    );
                     hud_layout::paint(batch, &g.gui.atlas, &draws);
                     for d in &draws {
                         if let hud_layout::GuiDraw::Item { slot, x, y, .. } = *d {
@@ -10317,16 +10324,14 @@ impl Game<'_> {
     /// and a sneak the key no longer held: #4166's in-game report), so a
     /// cached key set is not vanilla's answer.
     pub(super) fn has_shift_down(&self) -> bool {
-        #[cfg(target_os = "android")]
-        if self.mobile_shift_down() {
+        if self.platform_shift_down() {
             return true;
         }
         self.modifiers.shift_key()
     }
     /// The same live word for Control (`InputWithModifiers.hasControlDown`).
     pub(super) fn has_control_down(&self) -> bool {
-        #[cfg(target_os = "android")]
-        if self.mobile_control_down() {
+        if self.platform_control_down() {
             return true;
         }
         self.modifiers.control_key()
@@ -16582,8 +16587,7 @@ impl Game<'_> {
     }
     /// A mouse button while playing (window or control socket).
     fn play_mouse(&mut self, button: MouseButton, pressed: bool) -> Result<()> {
-        #[cfg(target_os = "android")]
-        if !pressed && self.android_custom_mouse_held(button) {
+        if self.mobile_holds_mouse(button, pressed) {
             return Ok(());
         }
         if self.sleeping.is_some() {
@@ -17224,7 +17228,7 @@ impl Game<'_> {
             && self.right_click_emulation.is_right_click(
                 *state == ElementState::Pressed,
                 self.modifiers.control_key(),
-                cfg!(target_os = "macos") && self.settings.ctrl_click_emulates_right_click,
+                MACOS_PLATFORM && self.settings.ctrl_click_emulates_right_click,
             )
         {
             *button = MouseButton::Right;
@@ -17273,16 +17277,8 @@ impl Game<'_> {
         }
     }
     fn handle_window_event_inner(&mut self, event_loop: &dyn EventLoopCtl, mut event: WindowEvent) {
-        #[cfg(target_os = "android")]
-        if let WindowEvent::KeyboardInput { event: key, .. } = &mut event {
-            if let Some(code) =
-                horizon_client::keypad::resolve_key(key.physical_key, &key.logical_key)
-            {
-                key.physical_key = PhysicalKey::Code(code);
-            }
-            if self.mobile_keypad_key(event_loop, key) {
-                return;
-            }
+        if self.platform_keypad_event(event_loop, &mut event) {
+            return;
         }
 
         if let WindowEvent::Focused(false) = &event {
@@ -17332,13 +17328,7 @@ impl Game<'_> {
             return;
         }
         // Android's winit sends no ModifiersChanged: the held keys make them.
-        #[cfg(target_os = "android")]
-        if matches!(
-            &event,
-            WindowEvent::KeyboardInput { .. } | WindowEvent::Focused(false)
-        ) {
-            self.modifiers = horizon_client::input_mode::held_modifiers(&self.physical_keys);
-        }
+        self.platform_held_modifiers(&event);
         // Fullscreen is a window shortcut, before screens consume keyboard input.
         if let WindowEvent::KeyboardInput { event, .. } = &event
             && event.state == ElementState::Pressed
@@ -17744,8 +17734,8 @@ impl Game<'_> {
                     };
                     // MouseHandler.onScroll: discrete scrolling and the wheel sensitivity. A
                     // phone's pixel scrolls are a finger's (touch.rs), which follow it instead.
-                    let finger = cfg!(target_os = "android")
-                        && matches!(delta, MouseScrollDelta::PixelDelta(_));
+                    let finger =
+                        MOBILE_PLATFORM && matches!(delta, MouseScrollDelta::PixelDelta(_));
                     let discrete = self.settings.discrete_scroll && !finger;
                     let wheel_sensitivity = f64::from(self.settings.mouse_wheel_sensitivity);
                     let scaled = |v: f64| {
@@ -18614,17 +18604,13 @@ impl Game<'_> {
                             }
                         }
                         r.gpu_times.clear();
-                        #[cfg(target_os = "android")]
-                        if rendered {
-                            crate::android::frame_hint(cpu, self.framerate_limit());
-                        }
+                        self.platform_frame_hint(rendered, cpu);
                     }
                     if let Some(sample) = diagnostic_sample {
                         let context = self.diagnostic_context();
                         crate::performance::submit(sample, context);
                     }
-                    #[cfg(target_os = "android")]
-                    self.diagnostic_heartbeat();
+                    self.platform_diagnostic_heartbeat();
                     horizon_client::ram_limit::frame();
                     self.limit_frame();
                     self.pause = self.pauses_game();
@@ -18692,8 +18678,7 @@ impl Game<'_> {
                                 self.started.elapsed().as_millis()
                             );
                             // Runs that skip the loading screen show the window here.
-                            #[cfg(target_os = "android")]
-                            crate::android::first_frame_shown();
+                            self.platform_first_frame();
                         }
                         if self.title.is_some() {
                             self.perf.title_shown();
@@ -23078,3 +23063,82 @@ fn write_level_for_role(
         level.write_without_player(dir)
     }
 }
+
+const MOBILE_PLATFORM: bool = cfg!(target_os = "android");
+impl Game<'_> {
+    fn mobile_holds_key(&self, _value: KeyCode, _pressed: bool) -> bool {
+        #[cfg(target_os = "android")]
+        {
+            !_pressed && self.android_custom_key_held(_value)
+        }
+        #[cfg(not(target_os = "android"))]
+        false
+    }
+    fn mobile_holds_mouse(&self, _value: MouseButton, _pressed: bool) -> bool {
+        #[cfg(target_os = "android")]
+        {
+            !_pressed && self.android_custom_mouse_held(_value)
+        }
+        #[cfg(not(target_os = "android"))]
+        false
+    }
+    fn platform_shift_down(&self) -> bool {
+        #[cfg(target_os = "android")]
+        {
+            self.mobile_shift_down()
+        }
+        #[cfg(not(target_os = "android"))]
+        false
+    }
+    fn platform_control_down(&self) -> bool {
+        #[cfg(target_os = "android")]
+        {
+            self.mobile_control_down()
+        }
+        #[cfg(not(target_os = "android"))]
+        false
+    }
+    fn platform_keypad_event(
+        &mut self,
+        _events: &dyn EventLoopCtl,
+        _event: &mut WindowEvent,
+    ) -> bool {
+        #[cfg(target_os = "android")]
+        if let WindowEvent::KeyboardInput { event: key, .. } = _event {
+            if let Some(code) =
+                horizon_client::keypad::resolve_key(key.physical_key, &key.logical_key)
+            {
+                key.physical_key = PhysicalKey::Code(code);
+            }
+            if self.mobile_keypad_key(_events, key) {
+                return true;
+            }
+        }
+        false
+    }
+    fn platform_held_modifiers(&mut self, _event: &WindowEvent) {
+        #[cfg(target_os = "android")]
+        if matches!(
+            _event,
+            WindowEvent::KeyboardInput { .. } | WindowEvent::Focused(false)
+        ) {
+            self.modifiers = horizon_client::input_mode::held_modifiers(&self.physical_keys);
+        }
+    }
+    fn platform_frame_hint(&self, _rendered: bool, _cpu: Duration) {
+        #[cfg(target_os = "android")]
+        if _rendered {
+            crate::android::frame_hint(_cpu, self.framerate_limit());
+        }
+    }
+    fn platform_diagnostic_heartbeat(&mut self) {
+        #[cfg(target_os = "android")]
+        self.diagnostic_heartbeat();
+    }
+    fn platform_first_frame(&self) {
+        #[cfg(target_os = "android")]
+        crate::android::first_frame_shown();
+    }
+}
+
+const MACOS_PLATFORM: bool = cfg!(target_os = "macos");
