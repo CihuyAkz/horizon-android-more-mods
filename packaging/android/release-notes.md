@@ -105,7 +105,7 @@ Open an [issue](https://github.com/JuanLuci/starling/issues/new/choose): the for
 
 ## Not sure which APK to install?
 
-Take a screenshot of this page on your phone and send it to an AI assistant, like ChatGPT: it will tell you which APK fits your phone.
+Take a screenshot of this page on your phone and send it to an AI assistant, like ChatGPT, asking it to look up your phone's model: it will tell you which APK fits your phone.
 
 ---
 
