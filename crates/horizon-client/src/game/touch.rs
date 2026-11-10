@@ -1074,6 +1074,11 @@ impl Game<'_> {
         } else if self.screen == Screen::WorldOptions && self.world_options_typing() {
             // The open world's game rules and the LAN port: boxes of digits.
             Some("world")
+        } else if self.text_field_focused() {
+            // TextMirror supports richer selection sync for known fields.
+            // All other fields supported by the normal IME path use the
+            // native keyboard without adding a per-screen allowlist here.
+            Some("native-field")
         } else {
             None
         }
@@ -1092,6 +1097,7 @@ impl Game<'_> {
             // The tap's click focused the box under it, or none.
             "world" => Some(self.world_options_typing()),
             "dialog" => Some(self.dialog_typing()),
+            "native-field" => Some(self.text_field_focused()),
             context => self.text_field_rect(context).map(inside),
         }
     }

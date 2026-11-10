@@ -57,3 +57,11 @@ Starling's custom Bedrock Inventory. These custom inventory workflows are not
 provided by copying the control layout and must be checked separately from the
 vanilla inventory. The Shift modifier routes slot taps through the normal
 quick-move handler; scrollbar tracks retain direct dragging.
+
+Text input uses Starling's shared focused-field/IME route. Fields with a
+TextMirror adapter retain full text/selection synchronization; other fields
+already supported by `text_field_focused` and `ime_commit` use the native Android
+keyboard without a separate touch-screen allowlist. Custom mod interfaces must
+expose text focus and handle text events; painting a box alone does not register
+a text input. Back belongs to an open server dialog, including dialogs that
+disallow closing, and cannot open the pause menu underneath it.

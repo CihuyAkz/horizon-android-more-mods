@@ -107,6 +107,12 @@ impl Game<'_> {
                 mobile_platform::hide();
                 return true;
             }
+            if self.dialog_open() {
+                if let Err(e) = self.dialog_key(KeyCode::Escape, None, None) {
+                    log::warn!("Dialog Back: {e}");
+                }
+                return true;
+            }
             if self.mobile.controls.editor.is_some() {
                 self.mobile.controls.request_editor_back();
                 return true;
