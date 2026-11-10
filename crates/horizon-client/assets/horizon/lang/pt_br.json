@@ -61,6 +61,7 @@
   "starling.mods.native.compiling": "Compilando seus mods nativos...",
   "starling.mods.native.show_compile": "Ver a compilação",
   "starling.mods.native.compile": "Compilar",
+  "starling.mods.native.not_compiled": "Não compilado",
   "starling.mods.native.use_github": "Usar GitHub (mais lento)",
   "starling.mods.native.restart": "Reiniciar agora",
   "starling.mods.native.play_without": "Jogar sem mods nativos",

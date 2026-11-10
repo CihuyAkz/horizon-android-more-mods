@@ -3713,11 +3713,17 @@ impl OptionsUi {
                     let on = s.mods.is_on(i);
                     let not_built =
                         installed.problem.as_deref() == Some(crate::mod_list::NOT_BUILT);
-                    // Android: a native mod not in this game is compiled from its row, whose
-                    // button says so; on and off are said once.
+                    // Android: a native mod is chosen for the next build (the page's top Compile),
+                    // so its row is a box ticked or not; one chosen and not in this game says so
+                    // beside it.
                     let compiled_here = not_built && installed.native.is_some();
-                    let mut label =
-                        Text::literal(format!("{}: ", installed.title)).append(on_off(on));
+                    let chosen_box = installed.native.is_some() && !installed.id.is_empty();
+                    let mut label = if chosen_box {
+                        let tick = if on { '\u{2611}' } else { '\u{2610}' };
+                        Text::literal(format!("{tick} {}", installed.title))
+                    } else {
+                        Text::literal(format!("{}: ", installed.title)).append(on_off(on))
+                    };
                     if not_built {
                         if !compiled_here {
                             label = label.append(tr("horizon.mods.not_built"));
@@ -3728,12 +3734,16 @@ impl OptionsUi {
                         label = label.append(tr("horizon.mods.dev"));
                     }
                     let dead = installed.dev || installed.id.is_empty();
-                    // The second button: Compile for a native mod that is on and not in this
-                    // game, Settings for one in it that has settings.
+                    // Beside it: a warning, as Java's, for a native mod chosen and not in this
+                    // game (nothing to press: Compile is the page's), Settings for one in it that
+                    // has settings.
                     let side = if compiled_here {
                         on.then(|| {
-                            let compile = tr("starling.mods.native.compile");
-                            button(0.0, 0.0, 150.0, compile, Act::NativeButton(i, 0))
+                            let warning = Text::literal(format!(
+                                "\u{a7}e\u{26a0} {}",
+                                lang::get("starling.mods.native.not_compiled")
+                            ));
+                            inactive(button(0.0, 0.0, 150.0, warning, Act::NativeButton(i, 0)))
                         })
                     } else {
                         installed
@@ -7741,8 +7751,9 @@ mod tests {
             events.last(),
             Some(&Event::NativeGame(NativeGameAct::PlayWithout))
         );
-        // Above the mods. The mod is on and not in this game: its row says On once, without
-        // "(Not built)" after it, and its button beside compiles.
+        // Above the mods. The mod is chosen and not in this game: its row is a ticked box, without
+        // "(Not built)" after it, and beside it a warning that presses nothing (Compile is the
+        // page's, at the top).
         // The row's toggle (where, how wide, its label) and the button beside it, if any.
         let row = |widgets: &[Widget]| {
             let toggle = widgets
@@ -7765,27 +7776,29 @@ mod tests {
             });
             (toggle, side)
         };
-        let ((toggle, label), compile) = row(&widgets);
+        let ((toggle, label), warning) = row(&widgets);
         assert!(toggle[1] > without.y);
+        assert!(label.starts_with('\u{2611}'), "{label}");
         assert!(
             !label.contains(&tr("horizon.mods.not_built").plain()),
             "{label}"
         );
-        let compile = compile.expect("Compile beside the row");
+        let warning = warning.expect("the warning beside the row");
         assert_eq!(
-            (toggle[2], compile[2], compile[1]),
+            (toggle[2], warning[2], warning[1]),
             (150.0, 150.0, toggle[1])
         );
-        let (x, y) = (compile[0] + 1.0, compile[1] + 1.0);
+        let (x, y) = (warning[0] + 1.0, warning[1] + 1.0);
         let events = ui.click(&mut s, &atlas, x, y, size, [480, 400], false, false);
-        assert_eq!(events.last(), Some(&Event::NativeButton(0, 0)));
-        // Off, it has nothing to compile: the row is the toggle alone.
+        assert!(!events.contains(&Event::NativeButton(0, 0)), "{events:?}");
+        // Not chosen, it has nothing to compile: the row is the box alone.
         let (x, y) = (toggle[0] + 1.0, toggle[1] + 1.0);
         ui.click(&mut s, &atlas, x, y, size, [480, 400], false, false);
         assert!(!s.mods.is_on(0));
         let (widgets, ..) = ui.layout(&s, size.0, size.1);
-        let ((toggle, _), compile) = row(&widgets);
-        assert!(compile.is_none());
+        let ((toggle, label), warning) = row(&widgets);
+        assert!(label.starts_with('\u{2610}'), "{label}");
+        assert!(warning.is_none());
         assert_eq!(toggle[2], 310.0);
     }
 

@@ -527,6 +527,7 @@
   "starling.mods.native.compiling": "Compiling your native mods...",
   "starling.mods.native.show_compile": "See the build",
   "starling.mods.native.compile": "Compile",
+  "starling.mods.native.not_compiled": "Not compiled",
   "starling.mods.native.use_github": "Use GitHub (slower)",
   "starling.mods.native.restart": "Restart now",
   "starling.mods.native.play_without": "Play without native mods",

@@ -256,6 +256,7 @@
   "starling.mods.native.compiling": "Идёт сборка нативных модов...",
   "starling.mods.native.show_compile": "Показать сборку",
   "starling.mods.native.compile": "Собрать",
+  "starling.mods.native.not_compiled": "Не собран",
   "starling.mods.native.use_github": "Через GitHub (медленнее)",
   "starling.mods.native.restart": "Перезапустить",
   "starling.mods.native.play_without": "Играть без нативных модов",
