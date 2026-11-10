@@ -373,6 +373,20 @@ class Stored(unittest.TestCase):
         self.assertEqual(gateway.copying, {})
 
 
+class KeptAwake(unittest.TestCase):
+    def test_the_machine_stays_on_until_the_time_asked(self):
+        with tempfile.TemporaryDirectory() as store:
+            gateway = load(STATE_DIRECTORY=store)
+            self.assertFalse(gateway.kept_awake(1000.0))
+            path = Path(store) / "keep-awake"
+            path.write_text("2000\n")
+            self.assertTrue(gateway.kept_awake(1000.0))
+            self.assertFalse(gateway.kept_awake(2000.0))
+            path.write_text("soon")
+            self.assertFalse(gateway.kept_awake(1000.0))
+        self.assertFalse(load().kept_awake(1000.0))
+
+
 class OnGitHub(unittest.TestCase):
     """Through real sockets: the gateway between a fake service, which must stay out of it, and a
     fake GitHub."""

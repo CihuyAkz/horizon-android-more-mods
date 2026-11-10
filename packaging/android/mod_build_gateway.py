@@ -171,10 +171,23 @@ def wake():
     return False
 
 
+def kept_awake(now):
+    """Whether someone asked for the machine to stay on until a later time: `keep-awake` in the store
+    holds that time (Unix seconds). Work of ours the service doesn't see (a worker compiling there)
+    keeps it on this way, and the asking runs out by itself."""
+    if not STORE:
+        return False
+    try:
+        with open(os.path.join(STORE, "keep-awake")) as f:
+            return now < float(f.read().strip())
+    except (OSError, ValueError):
+        return False
+
+
 def sleeper():
     """Puts back to sleep what this started, when it has been idle. A machine someone else started
     is left alone, and so is one whose service answered and then stopped: someone is working on it,
-    or it is already off."""
+    or it is already off. One asked to stay on (`kept_awake`) stays on until the time asked."""
     global started_at
     answered = False
     while True:
@@ -201,7 +214,7 @@ def sleeper():
                 and now - active > IDLE_SECONDS
                 and now - started > IDLE_SECONDS
             )
-        if give_up and power("deallocate"):
+        if give_up and not kept_awake(now) and power("deallocate"):
             with lock:
                 started_at = None
 
