@@ -60,8 +60,19 @@ quick-move handler; scrollbar tracks retain direct dragging.
 
 Text input uses Starling's shared focused-field/IME route. Fields with a
 TextMirror adapter retain full text/selection synchronization; other fields
-already supported by `text_field_focused` and `ime_commit` use the native Android
-keyboard without a separate touch-screen allowlist. Custom mod interfaces must
+use the native Android
+keyboard through focused-widget reports and the regular text event handlers. Custom mod interfaces must
 expose text focus and handle text events; painting a box alone does not register
 a text input. Back belongs to an open server dialog, including dialogs that
 disallow closing, and cannot open the pause menu underneath it.
+
+Android text fields reopen the keyboard on each explicit tap, including floating
+keyboards hidden with Back. `EditBox` reports its focused bounds through
+`preedit::report_field`; custom widgets can use that same contract and handle
+normal screen text events, without adding their screen to a touch allowlist.
+The focus report expires every frame. Full TextMirror adapters still provide
+selection and composition synchronization for supported fields.
+
+**H > Buttons > Keyboard Button** optionally adds **Keys** beside Mouse/Back in
+menus (off by default). It is a manual shortcut; automatic field activation does
+not depend on it.

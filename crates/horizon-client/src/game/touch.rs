@@ -118,6 +118,11 @@ pub(super) struct Touch {
     context: Option<&'static str>,
     /// Where the last finger landed: lifted about there, it was a tap (`keyboard_after_tap`).
     tap_from: Option<[f32; 2]>,
+    /// A tap checked after drawing, when even an unknown screen has reported its focused box.
+    field_tap: Option<[f32; 2]>,
+    focused_field: Option<[f32; 4]>,
+    /// Reissue an explicit show request: floating IMEs can hide without changing their height.
+    pub(super) keyboard_request: bool,
     /// The keyboard has shown since it was asked for: its height falling to 0 then means the
     /// player put it away (the back key), which the game is not told otherwise.
     ime_seen: bool,
@@ -997,10 +1002,13 @@ impl Game<'_> {
             return;
         }
         let Some(context) = self.text_context() else {
+            let batch = HudBatch::new(self.touch_size());
+            self.touch.field_tap = Some([p[0] / batch.scale, p[1] / batch.scale]);
             return;
         };
         let batch = HudBatch::new(self.touch_size());
         let gui = (p[0] / batch.scale, p[1] / batch.scale);
+        self.touch.field_tap = Some([gui.0, gui.1]);
         let cursor = std::mem::replace(&mut self.cursor, gui);
         let on = self.on_text_field();
         self.cursor = cursor;
@@ -1020,6 +1028,7 @@ impl Game<'_> {
         // must not take it for a new screen's and put the keyboard away.
         if wanted {
             self.touch.context = Some(context);
+            self.touch.keyboard_request = true;
         }
     }
 
@@ -1039,9 +1048,35 @@ impl Game<'_> {
 
     #[cfg(target_os = "android")]
     pub(super) fn touch_request_keyboard(&mut self) {
-        self.touch.context = self.text_context();
+        self.touch.context = self.text_context().or(Some("manual"));
         self.touch.wanted = true;
+        self.touch.keyboard_request = true;
         self.android_keyboard(true);
+    }
+
+    #[cfg(target_os = "android")]
+    pub(super) fn touch_field_click(&mut self) {
+        self.touch.field_tap = Some([self.cursor.0, self.cursor.1]);
+    }
+
+    /// Use the widget's focus report, not a list of screen names. Called after GUI drawing,
+    /// so the very tap that focused a mod's EditBox can open the keyboard too.
+    pub(super) fn touch_text_field(&mut self, field: Option<[f32; 4]>) {
+        self.touch.focused_field = field;
+        if let Some([px, py]) = self.touch.field_tap.take()
+            && let Some([x, y, w, h]) = field
+            && px >= x
+            && px < x + w
+            && py >= y
+            && py < y + h
+        {
+            #[cfg(target_os = "android")]
+            self.touch_request_keyboard();
+        }
+    }
+
+    pub(super) fn widget_text_focused(&self) -> bool {
+        self.touch.focused_field.is_some()
     }
 
     pub(super) fn text_context(&mut self) -> Option<&'static str> {
@@ -1079,6 +1114,9 @@ impl Game<'_> {
             // All other fields supported by the normal IME path use the
             // native keyboard without adding a per-screen allowlist here.
             Some("native-field")
+        } else if self.touch.context == Some("manual") && self.pad_in_menu() {
+            // The optional Keys shortcut can request the native keyboard before a field is known.
+            Some("manual")
         } else {
             None
         }
@@ -1097,7 +1135,10 @@ impl Game<'_> {
             // The tap's click focused the box under it, or none.
             "world" => Some(self.world_options_typing()),
             "dialog" => Some(self.dialog_typing()),
-            "native-field" => Some(self.text_field_focused()),
+            "native-field" => Some(match self.touch.focused_field {
+                Some(rect) => inside(rect),
+                None => self.text_field_focused(),
+            }),
             context => self.text_field_rect(context).map(inside),
         }
     }

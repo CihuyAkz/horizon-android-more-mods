@@ -507,6 +507,9 @@ pub struct Settings {
     pub inventory_controls: bool,
     #[serde(default)]
     pub virtual_mouse_enabled: bool,
+    /// Optional keyboard shortcut beside Mouse and Back in menus.
+    #[serde(default)]
+    pub keyboard_button: bool,
     /// Explicit Mouse-button hide override, retained across launches.
     pub virtual_mouse_hidden: bool,
     #[serde(default)]
@@ -668,6 +671,7 @@ impl Default for Settings {
             toggle_sprint: false,
             inventory_controls: false,
             virtual_mouse_enabled: false,
+            keyboard_button: false,
             virtual_mouse_hidden: false,
             disable_game_animations: false,
             resolution_scale_percent: default_res_scale(),
@@ -1314,6 +1318,7 @@ impl Settings {
         loaded.floating_menu_pos = prev_floating;
         loaded.invert_y = prev_invert_y;
         loaded.virtual_mouse_enabled = prev_vm_enabled;
+        loaded.keyboard_button = self.keyboard_button;
         loaded.virtual_mouse_sensitivity = prev_vm_sens;
         loaded.virtual_mouse_pointer_scale = prev_pointer_scale;
         loaded.vibrate = prev_vibrate;
@@ -1364,6 +1369,7 @@ impl Settings {
         loaded.floating_menu_pos = prev_floating;
         loaded.invert_y = prev_invert_y;
         loaded.virtual_mouse_enabled = prev_vm_enabled;
+        loaded.keyboard_button = self.keyboard_button;
         loaded.virtual_mouse_sensitivity = prev_vm_sens;
         loaded.virtual_mouse_pointer_scale = prev_pointer_scale;
         loaded.vibrate = prev_vibrate;
@@ -1831,6 +1837,7 @@ impl Settings {
             let prev_floating = self.floating_menu_pos;
             let prev_invert_y = self.invert_y;
             let prev_vm_enabled = self.virtual_mouse_enabled;
+            let keyboard_button = self.keyboard_button;
             let prev_vm_sens = self.virtual_mouse_sensitivity;
             let prev_pointer_scale = self.virtual_mouse_pointer_scale;
             let prev_vibrate = self.vibrate;
@@ -1843,6 +1850,7 @@ impl Settings {
             self.floating_menu_pos = prev_floating;
             self.invert_y = prev_invert_y;
             self.virtual_mouse_enabled = prev_vm_enabled;
+            self.keyboard_button = keyboard_button;
             self.virtual_mouse_sensitivity = prev_vm_sens;
             self.virtual_mouse_pointer_scale = prev_pointer_scale;
             self.vibrate = prev_vibrate;
@@ -1880,6 +1888,7 @@ impl Settings {
         loaded.floating_menu_pos = active.floating_menu_pos;
         loaded.invert_y = active.invert_y;
         loaded.virtual_mouse_enabled = active.virtual_mouse_enabled;
+        loaded.keyboard_button = active.keyboard_button;
         loaded.virtual_mouse_sensitivity = active.virtual_mouse_sensitivity;
         loaded.virtual_mouse_pointer_scale = active.virtual_mouse_pointer_scale;
         loaded.vibrate = active.vibrate;

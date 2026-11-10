@@ -58,6 +58,7 @@ pub struct TouchUi {
     pub goy_mode: bool,
     pub virtual_mouse: bool,
     pub virtual_mouse_available: bool,
+    pub keyboard_button: bool,
     pub menu_direct_pointer: bool,
     /// Mirror of `!settings.virtual_mouse_enabled` for legacy callers; authoritative state lives in `touch::Settings::virtual_mouse_enabled`.
     pub pointer_off: bool,
@@ -110,6 +111,7 @@ impl Default for TouchUi {
             goy_mode: false,
             virtual_mouse: false,
             virtual_mouse_available: false,
+            keyboard_button: false,
             menu_direct_pointer: false,
             pointer_off: false,
             cursor_initialized: false,
@@ -157,6 +159,7 @@ pub enum InGameMenuAction {
     ToggleInteractionLook,
     ToggleInvertY,
     ToggleLeftHanded,
+    ToggleKeyboardButton,
     ToggleOffhandButton,
     ToggleShieldButton,
     ToggleGyro,
@@ -541,6 +544,7 @@ impl TouchUi {
     ) -> bool {
         self.pointer_off = !controls.settings.virtual_mouse_enabled;
         self.virtual_mouse_available = controls.settings.virtual_mouse_enabled;
+        self.keyboard_button = controls.settings.keyboard_button;
         if controls.editor.is_some() {
             return false;
         }
@@ -835,6 +839,18 @@ impl TouchUi {
         }
     }
     pub fn action(&self, w: f32, h: f32, p: [f32; 2], menu: bool) -> Option<Action> {
+        let right = w - if self.virtual_mouse_available {
+            115.
+        } else {
+            56.
+        };
+        if menu
+            && self.keyboard_button
+            && (3.0..23.0).contains(&p[1])
+            && (right - 56.0..right).contains(&p[0])
+        {
+            return Some(Action::Keyboard);
+        }
         if menu
             && self.virtual_mouse_available
             && (3.0..23.0).contains(&p[1])
@@ -890,6 +906,15 @@ impl TouchUi {
         None
     }
     pub fn draw(&self, b: &mut HudBatch, a: &HudAtlas, menu: bool) {
+        if menu && self.keyboard_button {
+            let right = b.width
+                - if self.virtual_mouse_available {
+                    115.
+                } else {
+                    56.
+                };
+            button(b, a, "Keys", right - 56., 3., 56.);
+        }
         if menu && self.virtual_mouse_available {
             button(
                 b,
@@ -2518,6 +2543,9 @@ impl TouchUi {
                 }
             }
             3 => {
+                if inside([cx, body_y + 342., cw, 46.]) {
+                    return Some(InGameMenuAction::ToggleKeyboardButton);
+                }
                 if inside([cx, body_y + 234., cw, 46.]) {
                     return Some(InGameMenuAction::ToggleOffhandButton);
                 }
@@ -2835,7 +2863,7 @@ impl TouchUi {
             0 => 394.0,
             1 => 430.0,
             2 => 470.0,
-            3 => 350.0,
+            3 => 404.0,
             _ => 340.0,
         };
         let max_scroll = (content_height - body_h).max(0.0);
@@ -3544,6 +3572,14 @@ impl TouchUi {
                 ui.border(gyro_thumb_x - 7.0, gyro_sl_y - 4.0, 14.0, 14.0, 7.0, text_c);
             }
             3 => {
+                draw_toggle_row(
+                    &mut ui,
+                    body_y + 342.,
+                    "Keyboard Button",
+                    "Show Keys beside Back; fields still open the keyboard automatically",
+                    Some(settings.keyboard_button),
+                    None,
+                );
                 draw_toggle_row(
                     &mut ui,
                     body_y + 234.,
@@ -8017,6 +8053,32 @@ pub fn touch_hud_editor(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn keyboard_shortcut_keeps_mouse_and_back_hit_targets_separate() {
+        let mut ui = TouchUi {
+            keyboard_button: true,
+            ..Default::default()
+        };
+        assert!(matches!(
+            ui.action(427., 267., [330., 13.], true),
+            Some(Action::Keyboard)
+        ));
+        assert!(matches!(
+            ui.action(427., 267., [400., 13.], true),
+            Some(Action::Key(KeyCode::Escape))
+        ));
+        ui.virtual_mouse_available = true;
+        assert!(matches!(
+            ui.action(427., 267., [280., 13.], true),
+            Some(Action::Keyboard)
+        ));
+        assert!(matches!(
+            ui.action(427., 267., [340., 13.], true),
+            Some(Action::VirtualMouse)
+        ));
+        assert!(ui.action(427., 267., [280., 13.], false).is_none());
+    }
+
     #[test]
     fn slider_vertical_swipe_scrolls_without_changing_its_value() {
         let atlas = HudAtlas::boot();

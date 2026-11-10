@@ -1161,8 +1161,11 @@ impl Game<'_> {
                     },
                 },
             );
-            if !right && !down && self.on_text_field() == Some(true) {
-                self.android_show_keyboard();
+            if !right && !down {
+                self.touch_field_click();
+                if self.on_text_field() == Some(true) {
+                    self.android_show_keyboard();
+                }
             }
             Ok(())
         }
@@ -1390,6 +1393,10 @@ impl Game<'_> {
                     }
                     let _ = self.mobile.controls.settings.save();
                     self.settings.save(&Self::options_path());
+                }
+                InGameMenuAction::ToggleKeyboardButton => {
+                    self.mobile.controls.settings.keyboard_button ^= true;
+                    self.mobile.controls.settings.save()?;
                 }
                 InGameMenuAction::ToggleOffhandButton => {
                     self.mobile.controls.settings.offhand_button ^= true;
@@ -1913,8 +1920,11 @@ impl Game<'_> {
                 );
             }
         }
-        if !right && self.on_text_field() == Some(true) {
-            self.android_show_keyboard();
+        if !right {
+            self.touch_field_click();
+            if self.on_text_field() == Some(true) {
+                self.android_show_keyboard();
+            }
         }
     }
 }
