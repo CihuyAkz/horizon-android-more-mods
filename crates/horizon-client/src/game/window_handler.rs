@@ -21,17 +21,7 @@ impl Game<'_> {
         if !ours {
             return;
         }
-        // The focus goes first when the game leaves the screen (home, the recent apps, a call),
-        // before the window, and the system may end the process from then on: the world is saved
-        // at once, as Bedrock does.
-        #[cfg(target_os = "android")]
-        if let WindowEvent::Focused(focused) = &event {
-            if *focused {
-                self.saved_for_background = false;
-            } else {
-                self.save_for_background();
-            }
-        }
+        self.save_when_focus_leaves(&event);
         if self.touch_event(event_loop, id, &event) {
             return;
         }
@@ -47,7 +37,7 @@ impl Game<'_> {
             && self.right_click_emulation.is_right_click(
                 *state == ElementState::Pressed,
                 self.modifiers.control_key(),
-                cfg!(target_os = "macos") && self.settings.ctrl_click_emulates_right_click,
+                MACOS_PLATFORM && self.settings.ctrl_click_emulates_right_click,
             )
         {
             *button = MouseButton::Right;
@@ -191,6 +181,7 @@ impl Game<'_> {
             self.poll_files_offer();
             self.poll_update_offer();
             self.poll_native_builds();
+            self.poll_catalog();
         }
         horizon_client::spans::time("pads", || self.poll_pads(event_loop));
         self.pause_if_inactive();

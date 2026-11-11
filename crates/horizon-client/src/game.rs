@@ -17231,8 +17231,7 @@ impl Game<'_> {
                         let context = self.diagnostic_context();
                         crate::performance::submit(sample, context);
                     }
-                    #[cfg(target_os = "android")]
-                    self.diagnostic_heartbeat();
+                    self.platform_diagnostic_heartbeat();
                     self.limit_frame();
                     self.pause = self.pauses_game();
                     if let Some(server) = &self.integrated {

@@ -181,6 +181,9 @@ impl Game<'_> {
         raw: KeyCode,
         source: Source,
     ) -> Result<()> {
+        if self.mobile_holds_key(key, pressed) {
+            return Ok(());
+        }
         if self.screen == Screen::Playing && self.studio_replay.is_some() {
             if !pressed {
                 self.keys.release(&key, source);
@@ -377,6 +380,9 @@ impl Game<'_> {
     }
     /// A mouse button while playing (window or control socket).
     pub(super) fn play_mouse(&mut self, button: MouseButton, pressed: bool) -> Result<()> {
+        if self.mobile_holds_mouse(button, pressed) {
+            return Ok(());
+        }
         if pressed {
             self.pvp_click(button);
         }
