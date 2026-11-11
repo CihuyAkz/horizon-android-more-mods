@@ -183,13 +183,13 @@ impl BuildMining {
             text = "Tap the blocks beside the way in to dig".to_owned();
         }
         let width = ui.measure(Face::Regular, 13.0, &text) + 24.0;
-        ui.rounded((w - width) / 2.0, h - 36.0, width, 26.0, 8.0, color::BG);
-        ui.text_centered(Face::Regular, 13.0, w / 2.0, h - 32.0, color::TEXT, &text);
+        ui.rounded((w - width) / 2.0, h - 36.0, width, 26.0, 8.0, color::bg());
+        ui.text_centered(Face::Regular, 13.0, w / 2.0, h - 32.0, color::text(), &text);
         if let Some((said, at)) = &self.said
             && now.duration_since(*at) < SAID
         {
             let width = ui.measure(Face::Semibold, 15.0, said) + 28.0;
-            ui.rounded((w - width) / 2.0, h - 72.0, width, 30.0, 8.0, color::BG);
+            ui.rounded((w - width) / 2.0, h - 72.0, width, 30.0, 8.0, color::bg());
             ui.text_centered(Face::Semibold, 15.0, w / 2.0, h - 66.0, color::ACCENT, said);
         }
     }

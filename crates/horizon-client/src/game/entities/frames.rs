@@ -290,7 +290,7 @@ impl Game<'_> {
         })
     }
     /// Nearer than the targeted block?
-    pub(super) fn before_block(&self, distance: f64) -> bool {
+    pub(in crate::game) fn before_block(&self, distance: f64) -> bool {
         self.block_distance().is_none_or(|block| block > distance)
     }
     /// `ItemFrame.interact` for the frame under the crosshair, or the one a

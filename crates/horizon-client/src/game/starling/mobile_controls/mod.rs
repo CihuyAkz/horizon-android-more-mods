@@ -255,7 +255,7 @@ impl Game<'_> {
         tc.set_vertical_movement(flying);
         tc.swimming = self.player.as_ref().is_some_and(|p| p.swimming);
         tc.mounted = self.riding.is_some();
-        tc.sneaking = self.keys.contains(&KeyCode::ShiftLeft);
+        tc.sneaking = self.keys.raw(&KeyCode::ShiftLeft);
         tc.toggle_crouch = self.settings.toggle_crouch;
         tc.update_visibility(shown, dt);
         let editing = tc.editor.is_some() || self.mobile.ui.floating_menu;
@@ -375,7 +375,7 @@ impl Game<'_> {
     ) {
         self.mobile_init();
         let [w, h] = self.touch_size();
-        let mut b = HudBatch::new([w, h]);
+        let mut b = HudBatch::new([w, h], horizon_client::hud::GuiScale { requested: 0, unicode: false });
         let p = [t.location.x as f32 / b.scale, t.location.y as f32 / b.scale];
         let n = [
             t.location.x as f32 / w.max(1) as f32,
@@ -579,7 +579,7 @@ impl Game<'_> {
             Output::Enter => self.pad_osk_output(O::Enter),
             Output::Close => self.pad_osk_output(O::Close),
             Output::Key(k) => {
-                let _ = self.control_key_down(k);
+                let _ = self.control_key_down(k, k);
                 self.keys.remove(&k);
                 self.physical_keys.remove(&k);
             }
@@ -778,7 +778,7 @@ impl Game<'_> {
             }
             let default = horizon_client::keybinds::KeyBinds::default_of(mapping);
             let result = if let Some(key) = horizon_client::keybinds::key_code(default) {
-                self.mapped_key(key, down, false)
+                self.mapped_key(key, down, false, key, horizon_client::held::Source::Keyboard)
             } else if let Some(button) = horizon_client::keybinds::mouse_button(default) {
                 self.android_custom_mouse(button, down)
             } else {
@@ -861,8 +861,7 @@ impl Game<'_> {
         if self.debug_key(key, action) {
             return;
         }
-        self.native_key_event(key, down, false);
-        self.native_key_event(key, down, false);
+        self.native_panel_key_event(key, down, false);
         if self.screen == Screen::Options {
             if down {
                 let _ = self.options_key(key, None);
@@ -901,7 +900,7 @@ impl Game<'_> {
                                 | KeyCode::ControlRight
                         ) =>
                     {
-                        let _ = self.mapped_key(code, down, false);
+                        let _ = self.mapped_key(code, down, false, code, horizon_client::held::Source::Keyboard);
                     }
                     Err(button) => {
                         let _ = self.android_custom_mouse(button, down);
@@ -965,12 +964,12 @@ impl Game<'_> {
         let translated = self.settings.keys.translate_all(key);
         if translated.is_empty() {
             if down && matches!(self.screen, Screen::Inventory | Screen::Creative) {
-                let _ = self.key_pressed(key);
+                let _ = self.key_pressed(key, key);
             }
         } else {
             for mapped in translated {
                 let result = match mapped {
-                    Ok(code) => self.mapped_key(code, down, false),
+                    Ok(code) => self.mapped_key(code, down, false, code, horizon_client::held::Source::Keyboard),
                     Err(button) => self.android_custom_mouse(button, down),
                 };
                 if let Err(error) = result {
@@ -1081,7 +1080,7 @@ impl Game<'_> {
             for item in mapped {
                 match item {
                     Err(b) => self.play_mouse(b, down)?,
-                    Ok(k) => self.mapped_key(k, down, false)?,
+                    Ok(k) => self.mapped_key(k, down, false, k, horizon_client::held::Source::Keyboard)?,
                 }
             }
             return Ok(());
@@ -1209,7 +1208,7 @@ impl Game<'_> {
         } else {
             return Ok(false);
         };
-        let mut b = HudBatch::new([size.width, size.height]);
+        let mut b = HudBatch::new([size.width, size.height], horizon_client::hud::GuiScale { requested: 0, unicode: false });
         let p = [t.location.x as f32 / b.scale, t.location.y as f32 / b.scale];
         if !self.mobile.ui.owns_relative(t.id)
             && !self.mobile.ui.owns_gesture(t.id)
@@ -1474,7 +1473,7 @@ impl Game<'_> {
                 }
                 InGameMenuAction::TriggerKey(key) => {
                     if !self.debug_key(key, KeyAction::Press) {
-                        self.key_pressed(key)?;
+                        self.key_pressed(key, key)?;
                     }
                     self.debug_key(key, KeyAction::Release);
                     if matches!(key, KeyCode::KeyT | KeyCode::Slash) && self.screen == Screen::Chat
@@ -1520,6 +1519,7 @@ impl Game<'_> {
                             self.settings.horizon.fxaa,
                             self.settings.horizon.taa,
                             self.settings.horizon.upscaling.ratio(),
+                            self.settings.horizon.upscaling_sharpness as f32 / 100.0,
                         );
                     }
                     if changed {
@@ -1647,7 +1647,7 @@ impl Game<'_> {
                                 self.mobile.ui.toggle_modifier(key)
                             };
                             if !self.pad_in_menu() {
-                                self.mapped_key(key, down, false)?;
+                                self.mapped_key(key, down, false, key, horizon_client::held::Source::Keyboard)?;
                             }
                         } else {
                             if !self.mobile.ui.key_down(t.id, key) {
@@ -1655,7 +1655,7 @@ impl Game<'_> {
                             }
                             self.physical_keys.insert(key);
                             if !self.debug_key(key, KeyAction::Press) {
-                                self.key_pressed(key)?;
+                                self.key_pressed(key, key)?;
                             }
                             if matches!(key, KeyCode::KeyT | KeyCode::Slash)
                                 && self.screen == Screen::Chat
@@ -1941,7 +1941,7 @@ impl super::event_loop::EventLoopCtl for SyntheticLoop {
 }
 
 impl Game<'_> {
-    pub(super) fn touch_entity_accepts_use(&self) -> bool {
+    pub(super) fn touch_entity_accepts_use(&mut self) -> bool {
         if [
             self.boat_hit().map(|h| h.1),
             self.cart_hit().map(|h| h.1),
@@ -1955,13 +1955,13 @@ impl Game<'_> {
             return true;
         }
         self.mob_hit()
-            .filter(|(_, distance)| self.before_block(*distance))
-            .is_some_and(|(i, _)| {
-                self.remote_mob_takes(i, horizon_client::first_person::Hand::Main)
-                    || self.remote_mob_takes(i, horizon_client::first_person::Hand::Off)
+            .filter(|(_, distance, _)| self.before_block(*distance))
+            .is_some_and(|(i, _, _)| {
+                self.remote_mob_would_take(i, horizon_client::first_person::Hand::Main)
+                    || self.remote_mob_would_take(i, horizon_client::first_person::Hand::Off)
             })
     }
-    pub(super) fn touch_context_use(&self) -> bool {
+    pub(super) fn touch_context_use(&mut self) -> bool {
         if self.touch_entity_accepts_use()
             || [
                 self.boat_hit().map(|h| h.1),

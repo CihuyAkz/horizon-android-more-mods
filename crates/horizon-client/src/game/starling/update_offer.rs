@@ -292,7 +292,7 @@ impl Game<'_> {
         };
         let mut ui = Ui::new(&self.gui.atlas, batch, (-1.0, -1.0));
         let (w, h) = (ui.w, ui.h);
-        ui.fill(0.0, 0.0, w, h, color::with_alpha(color::BG, 0.72));
+        ui.fill(0.0, 0.0, w, h, color::with_alpha(color::bg(), 0.72));
         let card_w = (w - 48.0).min(470.0);
         let pad = 22.0;
         let mut lines = Vec::new();
@@ -321,9 +321,9 @@ impl Game<'_> {
             + button_h
             + pad;
         let (x, y) = ((w - card_w) / 2.0, ((h - card_h) / 2.0).max(8.0));
-        ui.rounded(x, y, card_w, card_h, 14.0, color::BG);
-        ui.border(x, y, card_w, card_h, 14.0, color::BORDER);
-        ui.text(Face::Semibold, 18.0, x + pad, y + pad, color::TEXT, &title);
+        ui.rounded(x, y, card_w, card_h, 14.0, color::bg());
+        ui.border(x, y, card_w, card_h, 14.0, color::border());
+        ui.text(Face::Semibold, 18.0, x + pad, y + pad, color::text(), &title);
         let mut ty = y + pad + 26.0 + 12.0;
         for line in &lines {
             ui.text(Face::Regular, 14.0, x + pad, ty, color::MUTED, line);
@@ -336,7 +336,7 @@ impl Game<'_> {
             } else {
                 0.0
             };
-            ui.rounded(x + pad, ty + 6.0, bw, 8.0, 4.0, color::RAISED);
+            ui.rounded(x + pad, ty + 6.0, bw, 8.0, 4.0, color::raised());
             ui.rounded(
                 x + pad,
                 ty + 6.0,
@@ -358,7 +358,7 @@ impl Game<'_> {
             let (fill, ink) = if i == 0 && buttons.len() > 1 {
                 (color::ACCENT, color::ON_ACCENT)
             } else {
-                (color::RAISED, color::TEXT)
+                (color::raised(), color::text())
             };
             ui.rounded(rect[0], rect[1], rect[2], rect[3], 10.0, fill);
             ui.text_centered(

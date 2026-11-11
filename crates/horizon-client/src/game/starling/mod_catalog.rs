@@ -171,7 +171,7 @@ fn plate(ui: &mut Ui<'_>, rect: [f32; 4], text: &str, lit: bool) {
     let (fill, ink) = if lit {
         (color::ACCENT, color::ON_ACCENT)
     } else {
-        (color::RAISED, color::TEXT)
+        (color::raised(), color::text())
     };
     ui.rounded(rect[0], rect[1], rect[2], rect[3], 10.0, fill);
     label(ui, rect, ink, text);
@@ -236,8 +236,8 @@ fn draw_confirm(ui: &mut Ui<'_>, title: &str, drawn: &mut Vec<([f32; 4], Act)>) 
     ui.fill(0.0, 0.0, w, h, color::hex(0x00_00_00, 190));
     let width = CONFIRM_W.min(w - 2.0 * MARGIN);
     let panel = [(w - width) / 2.0, (h - CONFIRM_H) / 2.0, width, CONFIRM_H];
-    ui.rounded(panel[0], panel[1], panel[2], panel[3], 14.0, color::BG);
-    ui.rounded(panel[0], panel[1], panel[2], panel[3], 14.0, color::RAISED);
+    ui.rounded(panel[0], panel[1], panel[2], panel[3], 14.0, color::bg());
+    ui.rounded(panel[0], panel[1], panel[2], panel[3], 14.0, color::raised());
     let inner = width - 48.0;
     let head = fitted(
         ui,
@@ -251,7 +251,7 @@ fn draw_confirm(ui: &mut Ui<'_>, title: &str, drawn: &mut Vec<([f32; 4], Act)>) 
         TITLE_TEXT,
         panel[0] + 24.0,
         panel[1] + 20.0,
-        color::TEXT,
+        color::text(),
         &head,
     );
     let body = "This deletes its file from your game folder. You can install it again from here.";
@@ -288,7 +288,7 @@ fn draw_confirm(ui: &mut Ui<'_>, title: &str, drawn: &mut Vec<([f32; 4], Act)>) 
         10.0,
         color::DANGER,
     );
-    label(ui, remove, color::TEXT, "Remove");
+    label(ui, remove, color::text(), "Remove");
     drawn.push((remove, Act::ConfirmRemove));
     plate(ui, cancel, "Cancel", false);
     drawn.push((cancel, Act::CancelRemove));
@@ -329,7 +329,7 @@ fn draw_list(
         let project = &rows[i];
         let y = top + i as f32 * ROW_H - scrolled;
         let row = ROW_H - ROW_GAP;
-        ui.rounded(MARGIN, y, row_w, row, 12.0, color::RAISED);
+        ui.rounded(MARGIN, y, row_w, row, 12.0, color::raised());
         let title = if starling_catalog::is_native_mod(project) {
             format!("{} (native mod)", project.title)
         } else {
@@ -341,7 +341,7 @@ fn draw_list(
             TITLE_TEXT,
             MARGIN + 14.0,
             y + 8.0,
-            color::TEXT,
+            color::text(),
             &title,
         );
         let about = starling_catalog::caution(project).unwrap_or_else(|| project.summary.clone());
@@ -374,9 +374,9 @@ fn draw_list(
                 remove[2],
                 remove[3],
                 10.0,
-                color::HOVER,
+                color::hover(),
             );
-            label(ui, remove, color::TEXT, "Remove");
+            label(ui, remove, color::text(), "Remove");
             if let Some(part) = list::shown_part(remove, top, bottom) {
                 drawn.push((part, Act::Remove(i)));
             }
@@ -397,7 +397,7 @@ fn draw_list(
         Tail::More => (loading_line(card.shelf, false), color::MUTED),
         Tail::End if rows.is_empty() => ("Nothing found.".to_owned(), color::MUTED),
         Tail::End => ("That's all of them.".to_owned(), color::MUTED),
-        Tail::Failed(why) => (why.clone(), color::TEXT),
+        Tail::Failed(why) => (why.clone(), color::text()),
     };
     let lines = fitted_lines(ui, Face::Regular, BODY_TEXT, text_w, 2, &line);
     let mut line_y = y + (END_H - lines.len() as f32 * BODY_LINE) / 2.0;
@@ -427,7 +427,7 @@ fn draw_head(ui: &mut Ui<'_>, card: &Catalog, edge: f32, drawn: &mut Vec<([f32; 
         62.0,
         MARGIN,
         8.0,
-        color::TEXT,
+        color::text(),
         "Catalog",
     );
     button(
@@ -461,7 +461,7 @@ fn draw_head(ui: &mut Ui<'_>, card: &Catalog, edge: f32, drawn: &mut Vec<([f32; 
         search[2],
         search[3],
         10.0,
-        color::RAISED,
+        color::raised(),
     );
     if card.typing {
         ui.border(
@@ -476,7 +476,7 @@ fn draw_head(ui: &mut Ui<'_>, card: &Catalog, edge: f32, drawn: &mut Vec<([f32; 
     let (typed, ink) = if card.query.is_empty() && !card.typing {
         ("Search...", color::MUTED)
     } else {
-        (card.query.as_str(), color::TEXT)
+        (card.query.as_str(), color::text())
     };
     let typed = fitted(
         ui,
@@ -542,12 +542,12 @@ fn draw_foot(
     let status_w = (right - MARGIN).max(0.0);
     if shared.installing.is_some() {
         let line = fitted(ui, Face::Regular, BODY_TEXT, status_w, &shared.line);
-        ui.text(Face::Regular, BODY_TEXT, MARGIN, foot, color::TEXT, &line);
-        ui.rounded(MARGIN, foot + 38.0, status_w, 12.0, 6.0, color::RAISED);
+        ui.text(Face::Regular, BODY_TEXT, MARGIN, foot, color::text(), &line);
+        ui.rounded(MARGIN, foot + 38.0, status_w, 12.0, 6.0, color::raised());
         let done = (status_w * shared.fraction.clamp(0.0, 1.0)).max(12.0);
         ui.rounded(MARGIN, foot + 38.0, done, 12.0, 6.0, color::ACCENT);
     } else if let Some((notice, failed)) = &card.notice {
-        let ink = if *failed { color::DANGER } else { color::TEXT };
+        let ink = if *failed { color::DANGER } else { color::text() };
         let mut y = foot;
         for line in fitted_lines(ui, Face::Regular, BODY_TEXT, status_w, 2, notice) {
             ui.text(Face::Regular, BODY_TEXT, MARGIN, y, ink, &line);
@@ -660,8 +660,7 @@ impl Game<'_> {
         match entry.kind {
             Kind::Shader => self.after_shader_pack_removed(&entry.file),
             Kind::ResourcePack => {
-                let infos =
-                    super::packs::pack_infos(&self.vanilla_root(), &self.server_packs.active);
+                let infos = self.resource_pack_infos();
                 self.ui.options.update_pack_infos(infos);
             }
             _ => {
@@ -833,10 +832,7 @@ impl Game<'_> {
                     // folder watcher only sees what changes with the page open. A selection
                     // made on the page and not yet applied stays.
                     Done::ResourcePack => {
-                        let infos = super::packs::pack_infos(
-                            &self.vanilla_root(),
-                            &self.server_packs.active,
-                        );
+                        let infos = self.resource_pack_infos();
                         self.ui.options.update_pack_infos(infos);
                     }
                     // The Mods page lists what was found when the game started.
@@ -907,11 +903,11 @@ impl Game<'_> {
         let (w, h) = (ui.w, ui.h);
         let edge = w - MARGIN - if card.typing { w * NAV_BAR_SHARE } else { 0.0 };
         let mut drawn = Vec::new();
-        ui.fill(0.0, 0.0, w, h, color::BG);
+        ui.fill(0.0, 0.0, w, h, color::bg());
         draw_list(&mut ui, card, &shared, edge, &mut drawn);
         // The rows go under these two.
-        ui.fill(0.0, 0.0, w, HEAD_H, color::BG);
-        ui.fill(0.0, h - FOOT_H, w, FOOT_H, color::BG);
+        ui.fill(0.0, 0.0, w, HEAD_H, color::bg());
+        ui.fill(0.0, h - FOOT_H, w, FOOT_H, color::bg());
         draw_head(&mut ui, card, edge, &mut drawn);
         draw_foot(&mut ui, card, &shared, edge, &mut drawn);
         if let Some(project) = &card.removing {

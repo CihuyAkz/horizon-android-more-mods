@@ -1143,7 +1143,7 @@ impl Game<'_> {
         acts.push(("Close".into(), Act::Close));
         let mut ui = Ui::new(&self.gui.atlas, batch, (-1.0, -1.0));
         let (w, h) = (ui.w, ui.h);
-        ui.fill(0.0, 0.0, w, h, color::with_alpha(color::BG, 0.72));
+        ui.fill(0.0, 0.0, w, h, color::with_alpha(color::bg(), 0.72));
         let card_w = (w - 48.0).min(470.0);
         let pad = 20.0;
         let lines = wrapped(&ui, Face::Regular, 13.0, card_w - 2.0 * pad, &body);
@@ -1168,9 +1168,9 @@ impl Game<'_> {
             - gap
             + pad;
         let (x, y) = ((w - card_w) / 2.0, ((h - card_h) / 2.0).max(4.0));
-        ui.rounded(x, y, card_w, card_h, 14.0, color::BG);
-        ui.border(x, y, card_w, card_h, 14.0, color::BORDER);
-        ui.text(Face::Semibold, 17.0, x + pad, y + pad, color::TEXT, &title);
+        ui.rounded(x, y, card_w, card_h, 14.0, color::bg());
+        ui.border(x, y, card_w, card_h, 14.0, color::border());
+        ui.text(Face::Semibold, 17.0, x + pad, y + pad, color::text(), &title);
         let mut ty = y + pad + 24.0 + 10.0;
         for line in &danger_lines {
             ui.text(Face::Semibold, 14.0, x + pad, ty, color::DANGER, line);
@@ -1190,7 +1190,7 @@ impl Game<'_> {
             } else {
                 0.0
             };
-            ui.rounded(x + pad, ty + 6.0, bw, 8.0, 4.0, color::RAISED);
+            ui.rounded(x + pad, ty + 6.0, bw, 8.0, 4.0, color::raised());
             ui.rounded(
                 x + pad,
                 ty + 6.0,
@@ -1208,7 +1208,7 @@ impl Game<'_> {
             let (fill, ink) = if i == 0 && !matches!(act, Act::Close | Act::Server) {
                 (color::ACCENT, color::ON_ACCENT)
             } else {
-                (color::RAISED, color::TEXT)
+                (color::raised(), color::text())
             };
             ui.rounded(rect[0], rect[1], rect[2], rect[3], 10.0, fill);
             ui.text_centered(
@@ -1253,33 +1253,33 @@ impl Game<'_> {
             card.fishing.draw(&mut ui, w, h, h - 58.0, now);
         }
         let (pad, bar_h, hide_w) = (16.0, 44.0, 84.0);
-        ui.rounded(pad, pad, w - 2.0 * pad, bar_h, 12.0, color::BG);
+        ui.rounded(pad, pad, w - 2.0 * pad, bar_h, 12.0, color::bg());
         ui.text(
             Face::Regular,
             14.0,
             pad + 14.0,
             pad + 13.0,
-            color::TEXT,
+            color::text(),
             &status,
         );
         let rect = [w - pad - hide_w - 6.0, pad + 6.0, hide_w, bar_h - 12.0];
-        ui.rounded(rect[0], rect[1], rect[2], rect[3], 8.0, color::RAISED);
+        ui.rounded(rect[0], rect[1], rect[2], rect[3], 8.0, color::raised());
         ui.text_centered(
             Face::Semibold,
             13.0,
             rect[0] + rect[2] / 2.0,
             rect[1] + (rect[3] - 13.0) / 2.0 - 2.0,
-            color::TEXT,
+            color::text(),
             "Hide",
         );
         let other = [rect[0] - hide_w - 8.0, rect[1], hide_w, rect[3]];
-        ui.rounded(other[0], other[1], other[2], other[3], 8.0, color::RAISED);
+        ui.rounded(other[0], other[1], other[2], other[3], 8.0, color::raised());
         ui.text_centered(
             Face::Semibold,
             13.0,
             other[0] + other[2] / 2.0,
             other[1] + (other[3] - 13.0) / 2.0 - 2.0,
-            color::TEXT,
+            color::text(),
             if card.digging { "Fish" } else { "Mine" },
         );
         ui.finish();

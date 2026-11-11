@@ -1,4 +1,3 @@
-// game-module-cfg: not(target_os = "android")
 //! The player's own name and skin from Options > Skin Customization (horizon_client::own_skin):
 //! the name kept for the next world or server, and the chosen PNG of `skins/` put in one of the
 //! atlas's skin slots, where the local player's model (first and third person, the inventory's)
@@ -35,7 +34,7 @@ const TITLE_TURN_PER_PIXEL: f32 = 2.0;
 
 /// The chosen skin and its image, read on first use.
 #[derive(Default)]
-pub(super) struct OwnSkin {
+pub(in crate::game) struct OwnSkin {
     loaded: bool,
     choice: SkinChoice,
     /// The chosen skin's 64x64 RGBA; None for the default one.
@@ -68,7 +67,7 @@ pub(super) struct OwnSkin {
 }
 
 /// The title screen's player: the model wearing the own skin, and the name worlds open with.
-pub(super) struct TitlePlayer {
+pub(in crate::game) struct TitlePlayer {
     mob: Mob,
     name: String,
 }
@@ -132,7 +131,7 @@ impl Game<'_> {
     }
 
     /// `skins/` beside options.txt.
-    pub(super) fn skins_dir() -> PathBuf {
+    pub(in crate::game) fn skins_dir() -> PathBuf {
         Self::options_path().with_file_name(own_skin::DIR)
     }
 
@@ -153,7 +152,7 @@ impl Game<'_> {
 
     /// The local player's own skin in the atlas, and whether its model is slim; None for the
     /// profile's skin (the account's, else the default one).
-    pub(super) fn own_skin_sprite(&mut self) -> Option<(String, bool)> {
+    pub(in crate::game) fn own_skin_sprite(&mut self) -> Option<(String, bool)> {
         self.follow_skin_profile();
         if !self.own_skin.loaded
             && let Err(e) = self.put_on_profile_skin()
@@ -176,7 +175,7 @@ impl Game<'_> {
     }
 
     /// Skin Customization's name: kept for the next world or server.
-    pub(super) fn keep_player_name(&mut self, name: &str) {
+    pub(in crate::game) fn keep_player_name(&mut self, name: &str) {
         if let Err(e) = offline_name::choose(&Self::player_dir(), name) {
             log::warn!("Horizon: {e}");
             self.ui.options.skin_warning(e);
@@ -186,7 +185,7 @@ impl Game<'_> {
     }
 
     /// Skin Customization's Ely.by Skins: kept, and the skins shown again.
-    pub(super) fn keep_elyby(&mut self, on: bool) {
+    pub(in crate::game) fn keep_elyby(&mut self, on: bool) {
         if let Err(e) = horizon_client::elyby::set_enabled(&Self::player_dir(), on) {
             log::warn!("Horizon: could not keep Ely.by Skins: {e}");
         }
@@ -207,7 +206,7 @@ impl Game<'_> {
     }
 
     /// `name`'s skin on Ely.by, where Skin Customization has Ely.by Skins on and it answered.
-    pub(super) fn elyby_textures(&mut self, name: &str) -> Option<horizon_client::skins::Textures> {
+    pub(in crate::game) fn elyby_textures(&mut self, name: &str) -> Option<horizon_client::skins::Textures> {
         if !self.elyby_enabled() {
             return None;
         }
@@ -217,7 +216,7 @@ impl Game<'_> {
     /// The playing Ely.by account's own skin: the one Ely.by named with the account, else its
     /// name's once Ely.by answered. Ely.by is where that account keeps it, whether or not Skin
     /// Customization looks other names up there. None for another account or none.
-    pub(super) fn own_elyby_textures(&mut self) -> Option<horizon_client::skins::Textures> {
+    pub(in crate::game) fn own_elyby_textures(&mut self) -> Option<horizon_client::skins::Textures> {
         let session = horizon_client::auth::current();
         if session.as_ref().is_some_and(|a| !a.is_ely()) {
             return None;
@@ -262,7 +261,7 @@ impl Game<'_> {
     /// the file Skin Customization chose for the playing profile, else a Microsoft account's own,
     /// else, playing offline or as Ely.by, the one the name worlds open with has on Ely.by. None
     /// for the default skin.
-    pub(super) fn worn_skin(&mut self) -> Option<(String, bool)> {
+    pub(in crate::game) fn worn_skin(&mut self) -> Option<(String, bool)> {
         match self.own_worn() {
             Worn::Skin(skin, slim) => Some((skin, slim)),
             Worn::Default | Worn::Waiting => None,
@@ -345,7 +344,7 @@ impl Game<'_> {
     }
 
     /// The skins downloaded since the last call, put in the atlas's skin slots.
-    pub(super) fn store_ready_skins(&mut self) {
+    pub(in crate::game) fn store_ready_skins(&mut self) {
         let ready: Vec<_> = self.skin_downloads.borrow_mut().take_ready();
         for (location, rgba) in ready {
             self.store_skin(location, rgba);
@@ -353,7 +352,7 @@ impl Game<'_> {
     }
 
     /// Skin Customization's skin or model: kept and put on.
-    pub(super) fn choose_own_skin(&mut self, choice: SkinChoice) {
+    pub(in crate::game) fn choose_own_skin(&mut self, choice: SkinChoice) {
         if let Err(e) = self.keep_skin_choice(&choice) {
             log::warn!("Horizon: could not keep the skin: {e}");
             self.ui
@@ -368,7 +367,7 @@ impl Game<'_> {
 
     /// Skin Customization's Choose a File...: the system's picker, whose file comes through the
     /// import inbox (`own_skin_imported`).
-    pub(super) fn pick_skin_file(&mut self) {
+    pub(in crate::game) fn pick_skin_file(&mut self) {
         if !horizon_client::platform::pick_file() {
             self.ui
                 .options
@@ -377,7 +376,7 @@ impl Game<'_> {
     }
 
     /// A skin the import inbox put in `skins/`: worn at once, the page showing it.
-    pub(super) fn own_skin_imported(&mut self, path: &Path) {
+    pub(in crate::game) fn own_skin_imported(&mut self, path: &Path) {
         let Some(file) = path.file_name().and_then(|f| f.to_str()) else {
             return;
         };
@@ -423,13 +422,13 @@ impl Game<'_> {
     }
 
     /// Skin Customization's account rows follow the playing profile and its upload.
-    pub(super) fn show_skin_cloud(&mut self) {
+    pub(in crate::game) fn show_skin_cloud(&mut self) {
         self.ui.options.skin_cloud = horizon_client::accounts::skin_cloud();
     }
 
     /// Skin Customization's upload: the chosen skin, written anew, to the playing Microsoft
     /// account's profile (`accounts::upload_skin`), for every server to show.
-    pub(super) fn upload_own_skin(&mut self, choice: SkinChoice) {
+    pub(in crate::game) fn upload_own_skin(&mut self, choice: SkinChoice) {
         let Some(key) = horizon_client::accounts::player_key() else {
             return;
         };
@@ -445,7 +444,7 @@ impl Game<'_> {
     }
 
     /// Skin Customization's ely.by button: the page where an Ely.by account changes its skin.
-    pub(super) fn open_ely_skins(&mut self) {
+    pub(in crate::game) fn open_ely_skins(&mut self) {
         self.open_link(horizon_client::accounts::ELY_SKINS);
     }
 
@@ -475,7 +474,7 @@ impl Game<'_> {
     }
 
     /// Whether `(x, y)` (GUI pixels) is on the title screen's player, which a drag turns.
-    pub(super) fn on_title_player(&self, (x, y): (f32, f32)) -> bool {
+    pub(in crate::game) fn on_title_player(&self, (x, y): (f32, f32)) -> bool {
         self.title_layout_now().is_some_and(|l| {
             let [x0, y0, x1, y1] = l.model;
             x >= x0 && x < x1 && y >= y0 && y < y1
@@ -483,7 +482,7 @@ impl Game<'_> {
     }
 
     /// Whether `cursor` is on the title screen's player or its Customize... button.
-    pub(super) fn title_player_at(&self, cursor: (f32, f32)) -> bool {
+    pub(in crate::game) fn title_player_at(&self, cursor: (f32, f32)) -> bool {
         self.on_title_player(cursor)
             || self.title_layout_now().is_some_and(|l| {
                 let [x, y, w] = l.button;
@@ -493,7 +492,7 @@ impl Game<'_> {
 
     /// A press on the title screen's player: Customize... opens Skin Customization, the player
     /// itself only turns while dragged (a tap there does nothing, so a drag never opens it).
-    pub(super) fn press_title_player(&mut self) {
+    pub(in crate::game) fn press_title_player(&mut self) {
         if self.on_title_player(self.cursor) {
             self.own_skin.title_drag = Some((self.cursor.0, self.own_skin.title_turn));
         } else if self.title_player_at(self.cursor) {
@@ -503,21 +502,21 @@ impl Game<'_> {
     }
 
     /// The pointer moved: a drag on the title screen's player turns it, rightward to its left.
-    pub(super) fn drag_title_player(&mut self) {
+    pub(in crate::game) fn drag_title_player(&mut self) {
         if let Some((x, turn)) = self.own_skin.title_drag {
             self.own_skin.title_turn = turn - (self.cursor.0 - x) * TITLE_TURN_PER_PIXEL;
         }
     }
 
     /// The pointer let go: the drag ends where it turned the player.
-    pub(super) fn release_title_player(&mut self) {
+    pub(in crate::game) fn release_title_player(&mut self) {
         self.own_skin.title_drag = None;
     }
 
     /// The title screen's player beside the menu, as Bedrock's: turned toward it and turning
     /// under a drag, the arms swaying as a still player's do, the name worlds open with over
     /// the head, and the button that changes skin and name under the feet.
-    pub(super) fn draw_title_player(&mut self, batch: &mut HudBatch) {
+    pub(in crate::game) fn draw_title_player(&mut self, batch: &mut HudBatch) {
         self.own_skin.title_visible = false;
         if !self.title_main() {
             return;

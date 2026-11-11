@@ -174,7 +174,7 @@ impl Game<'_> {
         let [title, body, primary, other] = card_texts(card);
         let mut ui = Ui::new(&self.gui.atlas, batch, (-1.0, -1.0));
         let (w, h) = (ui.w, ui.h);
-        ui.fill(0.0, 0.0, w, h, color::with_alpha(color::BG, 0.72));
+        ui.fill(0.0, 0.0, w, h, color::with_alpha(color::bg(), 0.72));
         let card_w = (w - 48.0).min(470.0);
         let pad = 22.0;
         let mut lines = Vec::new();
@@ -195,9 +195,9 @@ impl Game<'_> {
         let button_h = 40.0;
         let card_h = pad + 26.0 + 12.0 + lines.len() as f32 * 21.0 + 22.0 + button_h + pad;
         let (x, y) = ((w - card_w) / 2.0, ((h - card_h) / 2.0).max(8.0));
-        ui.rounded(x, y, card_w, card_h, 14.0, color::BG);
-        ui.border(x, y, card_w, card_h, 14.0, color::BORDER);
-        ui.text(Face::Semibold, 18.0, x + pad, y + pad, color::TEXT, title);
+        ui.rounded(x, y, card_w, card_h, 14.0, color::bg());
+        ui.border(x, y, card_w, card_h, 14.0, color::border());
+        ui.text(Face::Semibold, 18.0, x + pad, y + pad, color::text(), title);
         let mut ty = y + pad + 26.0 + 12.0;
         for line in &lines {
             ui.text(Face::Regular, 14.0, x + pad, ty, color::MUTED, line);
@@ -209,7 +209,7 @@ impl Game<'_> {
         let other_rect = [x + pad, by, bw, button_h];
         for (rect, text, fill, ink) in [
             (primary_rect, primary, color::ACCENT, color::ON_ACCENT),
-            (other_rect, other, color::RAISED, color::TEXT),
+            (other_rect, other, color::raised(), color::text()),
         ] {
             ui.rounded(rect[0], rect[1], rect[2], rect[3], 10.0, fill);
             ui.text_centered(
