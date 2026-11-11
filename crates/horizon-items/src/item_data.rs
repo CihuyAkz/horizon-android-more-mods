@@ -478,7 +478,7 @@ impl ItemStack {
             .and_then(|d| d.other("minecraft:use_cooldown"))
             .and_then(|c| c.get("cooldown_group"));
         match group {
-            Some(horizon_world::nbt::Tag::String(s)) => s.to_string_lossy(),
+            Some(Tag::String(s)) => s.to_string_lossy(),
             _ => self.item.to_string(),
         }
     }
@@ -489,7 +489,7 @@ impl ItemStack {
             .other("minecraft:equippable")?
             .get("asset_id")?
         {
-            horizon_world::nbt::Tag::String(s) => Some(s.to_string_lossy()),
+            Tag::String(s) => Some(s.to_string_lossy()),
             _ => None,
         }
     }
