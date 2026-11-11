@@ -11,6 +11,7 @@ Horizon Android and Starling are now one app, in [starling-client/starling](http
 
 ### New
 
+- **Horizon Android's controls:** the touch controls, their MCPE and GoyControl layouts and the layout editor now come from Horizon Android: open **H > Controls > Customize Controls**, or **Options > Controls > Customize Layout**, for presets, undo and button sizes. **Options > Controls** picks Auto, Touch, Keyboard & Mouse or Controller. Starling's chat shortcuts and inventory gestures stay.
 - **Accounts:** the account button on the title screen keeps Microsoft, Ely.by and offline profiles, and switches between them. The one you pick is the one you play worlds and servers with, and it stays picked after a restart. Ely.by takes your password and, if you use it, a 2FA code. The setup on the first start offers Ely.by and named offline profiles too.
 - **Skins for each profile:** Skin Customization keeps a skin for each profile. A Microsoft account can send its skin to its Minecraft profile, so others see it on servers, and an Ely.by account wears its Ely.by skin, with a button to change it on ely.by.
 - **A catalog inside the game:** the **Catalog** button on the Mods, Resource Packs and Shader Packs pages finds, installs and removes them. Java shader packs like Complementary, BSL and Photon install with a tap and run as they are.
