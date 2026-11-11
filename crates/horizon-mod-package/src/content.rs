@@ -122,15 +122,12 @@ pub struct BlockProperties {
     /// `false`: the block occludes nothing, so its neighbours' faces are drawn and light passes
     /// it (`BlockBehaviour.Properties.noOcclusion`); unset or `true`: as its template.
     pub occludes: Option<bool>,
-<<<<<<< HEAD:crates/horizon-mods/src/content.rs
     /// Starling: the block's own shape, for a block shaped unlike its template: boxes
     /// `[x1, y1, z1, x2, y2, z2]` in sixteenths (as model elements, -16 to 32: a block out at
     /// most), made for a state facing up (or along y) and turned to each state's `facing` (else
     /// `axis`), as Create's shapers are made. Its outline, collision and support are these
     /// boxes, and it hides none of its neighbours' faces nor their light.
     pub shape: Option<Vec<[f32; 6]>>,
-||||||| c98a51a664:crates/horizon-mods/src/content.rs
-=======
     /// `false`: the breaking crack (`destroy_stage_0..9`) is not drawn on the block, as for a
     /// block broken by use; unset or `true`, it is drawn. Only the overlay: the break and the
     /// destroy-progress packets are vanilla's.
@@ -166,7 +163,6 @@ fn deserialize_push_reaction<'de, D: serde::Deserializer<'de>>(
 ) -> Result<Option<PushReaction>, D::Error> {
     Option::<PushReaction>::deserialize(deserializer)
         .map_err(|e| serde::de::Error::custom(format!("push_reaction: {e}")))
->>>>>>> arismoko/main:crates/horizon-mod-package/src/content.rs
 }
 
 /// Vanilla's `RenderShape`, by its constant's name: `MODEL` puts the block model in the chunk
@@ -680,7 +676,6 @@ pub struct Block {
     /// template is the matching wall sign and which has no item. The
     /// template's when unset.
     pub wall_block: Option<String>,
-<<<<<<< HEAD:crates/horizon-mods/src/content.rs
     /// Its part in a kinetic network, if any.
     pub kinetic: Option<Kinetic>,
     /// The machine it is, if it keeps items of its own.
@@ -688,8 +683,6 @@ pub struct Block {
     /// Starling: models (`<ns>:block/<path>`) the game draws for it besides its own, in the
     /// order its machine names them (a blaze burner's blaze, its rods and its flame).
     pub models: Vec<String>,
-||||||| c98a51a664:crates/horizon-mods/src/content.rs
-=======
     /// A sign's new text colour (`SignBlockEntity.createDefaultSignText`): a `DyeColor` name,
     /// black when unset. Applies to a sign when it is placed, front and back.
     pub sign_text_color: Option<String>,
@@ -697,7 +690,6 @@ pub struct Block {
     pub sign_text_glow: Option<bool>,
     /// The block farmland turns into; the template's base when unset.
     pub base_block: Option<String>,
->>>>>>> arismoko/main:crates/horizon-mod-package/src/content.rs
 }
 
 #[derive(Debug, Deserialize)]
@@ -1162,16 +1154,10 @@ impl FileReader<'_> {
             (OwnFiles::Dir(root), None) => {
                 Box::new(open(root).map_err(|e| format!("{name}: {e}"))?)
             }
+            #[cfg(not(target_arch = "wasm32"))]
             (OwnFiles::Zip(zip), None) => {
                 Box::new(zip.by_name(name).map_err(|e| format!("{name}: {e}"))?)
             }
-<<<<<<< HEAD:crates/horizon-mods/src/content.rs
-||||||| c98a51a664:crates/horizon-mods/src/content.rs
-            Self::Zip(zip) => Box::new(zip.by_name(name).map_err(|e| format!("{name}: {e}"))?),
-=======
-            #[cfg(not(target_arch = "wasm32"))]
-            Self::Zip(zip) => Box::new(zip.by_name(name).map_err(|e| format!("{name}: {e}"))?),
->>>>>>> arismoko/main:crates/horizon-mod-package/src/content.rs
         };
         let mut out = Vec::new();
         reader
@@ -1187,7 +1173,6 @@ impl FileReader<'_> {
     /// the size), for a caller that copies it without reading it; `None` in an archive.
     pub fn path(&self, name: &str) -> Result<Option<std::path::PathBuf>, String> {
         check_path(name)?;
-<<<<<<< HEAD:crates/horizon-mods/src/content.rs
         let fetched = self
             .fetched
             .filter(|(_, names)| names.contains(name))
@@ -1195,16 +1180,8 @@ impl FileReader<'_> {
         let root = match (&self.own, fetched) {
             (_, Some(root)) => root,
             (OwnFiles::Dir(root), None) => root,
-            (OwnFiles::Zip(_), None) => return Ok(None),
-||||||| c98a51a664:crates/horizon-mods/src/content.rs
-        let Self::Dir(root) = self else {
-            return Ok(None);
-=======
-        let root = match self {
-            Self::Dir(root) => root,
             #[cfg(not(target_arch = "wasm32"))]
-            Self::Zip(_) => return Ok(None),
->>>>>>> arismoko/main:crates/horizon-mod-package/src/content.rs
+            (OwnFiles::Zip(_), None) => return Ok(None),
         };
         let path = root.join(name);
         let len = std::fs::metadata(&path)
@@ -1224,6 +1201,7 @@ fn reader<'a>(
     Ok(FileReader {
         own: match source {
             Source::Dir(root) => OwnFiles::Dir(root),
+            #[cfg(not(target_arch = "wasm32"))]
             Source::Zip(path) => OwnFiles::Zip(Box::new(open_zip(path)?)),
             Source::Code => OwnFiles::Dir(Path::new("")),
         },
@@ -1302,7 +1280,6 @@ impl Content {
         manifest: &Manifest,
         declared: &[String],
     ) -> Result<Content, String> {
-<<<<<<< HEAD:crates/horizon-mods/src/content.rs
         Self::read_all(path, manifest, declared, None)
     }
 
@@ -1324,22 +1301,7 @@ impl Content {
         fetched: Option<&Path>,
     ) -> Result<Content, String> {
         let (source, mut sized) = if path.is_dir() {
-            let mut out = Vec::new();
-            for top in ["assets", "data"] {
-                walk(path, &path.join(top), &mut out)?;
-            }
-            (Source::Dir(path.to_owned()), out)
-||||||| c98a51a664:crates/horizon-mods/src/content.rs
-        let (source, sized) = if path.is_dir() {
-            let mut out = Vec::new();
-            for top in ["assets", "data"] {
-                walk(path, &path.join(top), &mut out)?;
-            }
-            (Source::Dir(path.to_owned()), out)
-=======
-        let (source, sized) = if path.is_dir() {
             (Source::Dir(path.to_owned()), folder_files(path)?)
->>>>>>> arismoko/main:crates/horizon-mod-package/src/content.rs
         } else {
             #[cfg(target_arch = "wasm32")]
             return Err("archive I/O is unavailable on wasm32".into());
@@ -1628,16 +1590,12 @@ impl Content {
                 thickness: file.thickness,
                 wood_type: file.wood_type,
                 wall_block: file.wall_block,
-<<<<<<< HEAD:crates/horizon-mods/src/content.rs
                 kinetic: file.kinetic,
                 machine: file.machine,
                 models: file.models,
-||||||| c98a51a664:crates/horizon-mods/src/content.rs
-=======
                 sign_text_color: file.sign_text_color,
                 sign_text_glow: file.sign_text_glow,
                 base_block: file.base_block,
->>>>>>> arismoko/main:crates/horizon-mod-package/src/content.rs
             };
             check_block(&block).map_err(|e| format!("{name}: {e}"))?;
             if block.item {
@@ -2255,28 +2213,7 @@ fn check_sign_walls(blocks: &[&Block]) -> Result<(), String> {
     Ok(())
 }
 
-<<<<<<< HEAD:crates/horizon-mods/src/content.rs
-||||||| c98a51a664:crates/horizon-mods/src/content.rs
-fn reader_of(source: &Source) -> Result<FileReader<'_>, String> {
-    Ok(match source {
-        Source::Dir(root) => FileReader::Dir(root),
-        Source::Zip(path) => FileReader::Zip(Box::new(open_zip(path)?)),
-        Source::Code => FileReader::Dir(Path::new("")),
-    })
-}
-
-=======
-fn reader_of(source: &Source) -> Result<FileReader<'_>, String> {
-    Ok(match source {
-        Source::Dir(root) => FileReader::Dir(root),
-        #[cfg(not(target_arch = "wasm32"))]
-        Source::Zip(path) => FileReader::Zip(Box::new(open_zip(path)?)),
-        Source::Code => FileReader::Dir(Path::new("")),
-    })
-}
-
 #[cfg(not(target_arch = "wasm32"))]
->>>>>>> arismoko/main:crates/horizon-mod-package/src/content.rs
 fn open_zip(path: &Path) -> Result<zip::ZipArchive<std::fs::File>, String> {
     let file = std::fs::File::open(path).map_err(|e| e.to_string())?;
     zip::ZipArchive::new(file).map_err(|e| e.to_string())
@@ -2343,7 +2280,10 @@ mod tests {
             .unwrap()
             .set_len(MAX_FILE + 1)
             .unwrap();
-        let mut reader = FileReader::Dir(&dir);
+        let mut reader = FileReader {
+            own: OwnFiles::Dir(&dir),
+            fetched: None,
+        };
         let error = reader.path(name).unwrap_err();
         assert!(error.contains("is over"), "{error}");
         let error = reader.read(name).unwrap_err();
@@ -2650,16 +2590,12 @@ capabilities = ["registries"]
                 thickness: None,
                 wood_type: None,
                 wall_block: None,
-<<<<<<< HEAD:crates/horizon-mods/src/content.rs
                 kinetic: None,
                 machine: None,
                 models: Vec::new(),
-||||||| c98a51a664:crates/horizon-mods/src/content.rs
-=======
                 sign_text_color: None,
                 sign_text_glow: None,
                 base_block: None,
->>>>>>> arismoko/main:crates/horizon-mod-package/src/content.rs
             }]
         );
         assert_eq!(content.items[0].id, "ruby:ruby");

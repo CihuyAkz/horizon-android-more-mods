@@ -1202,7 +1202,6 @@ impl Behaviours {
     pub fn is_randomly_ticking(&self, state: BlockStateId) -> bool {
         self.has_flag(state, data::state_flags::RANDOM_TICKS)
     }
-<<<<<<< HEAD
     /// Whether a random tick at a block in this state does anything: the
     /// block ticks randomly, or its fluid is lava (`random_tick_at`).
     pub fn takes_random_tick(&self, state: BlockStateId) -> bool {
@@ -1211,12 +1210,10 @@ impl Behaviours {
                 self.fluid(state).kind(),
                 FluidKind::Lava | FluidKind::FlowingLava
             )
-||||||| c98a51a664
-=======
+    }
     /// Whether the exported vanilla support cache can answer for this state.
     pub fn has_cached_support(&self, state: BlockStateId) -> bool {
         !self.data(state).dynamic_shape && self.facts(state).sturdy & (1 << 30) == 0
->>>>>>> arismoko/main
     }
     /// `isFaceSturdy(level, pos, direction, FULL)` from the empty-level cache.
     pub fn is_face_sturdy(&self, state: BlockStateId, direction: Direction) -> bool {

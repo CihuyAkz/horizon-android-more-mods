@@ -1,16 +1,7 @@
 [workspace]
-<<<<<<< HEAD
-exclude = ["launcher", "crates/horizon-telemetry-server", "crates/horizon-mod-registry", "third_party/wgpu-hal", "third_party/naga", "third_party/libmimalloc-sys", "third_party/winit"]
-||||||| c98a51a664
-exclude = ["launcher", "crates/horizon-telemetry-server", "crates/horizon-mod-registry", "third_party/wgpu-hal", "third_party/naga", "third_party/libmimalloc-sys"]
-=======
-exclude = ["crates/horizon-telemetry-server", "launcher", "crates/horizon-mod-registry", "third_party/wgpu-hal", "third_party/naga", "third_party/libmimalloc-sys", "tools/fixtures/paper-trace-mod"]
->>>>>>> arismoko/main
+exclude = ["crates/horizon-telemetry-server", "launcher", "crates/horizon-mod-registry", "third_party/wgpu-hal", "third_party/naga", "third_party/libmimalloc-sys", "third_party/winit", "tools/fixtures/paper-trace-mod"]
 members = [
-<<<<<<< HEAD
     "crates/starling-catalog",
-||||||| c98a51a664
-=======
     "crates/horizon-mod-vocab",
     "crates/horizon-game-discovery",
     "crates/horizon-cosmetics",
@@ -20,8 +11,6 @@ members = [
     "crates/horizon-game",
     "crates/horizon-official",
     "crates/horizon-heartbeat",
-
->>>>>>> arismoko/main
     "crates/horizon-core",
     "crates/horizon-platform",
     "crates/horizon-addresses",
@@ -34,14 +23,10 @@ members = [
     "crates/horizon-hdr",
     "crates/horizon-world",
     "crates/horizon-client",
-<<<<<<< HEAD
     # Starling: the game as a NativeActivity library; empty on other targets.
     "crates/horizon-android",
-||||||| c98a51a664
-=======
     "crates/horizon-mod-points",
     "crates/horizon-internals",
->>>>>>> arismoko/main
     "crates/horizon-client-lib",
     "crates/horizon-client-core",
     "crates/horizon-client-input",

@@ -807,22 +807,6 @@ dependencies = [
 ]
 
 [[package]]
-<<<<<<< HEAD
-name = "crc"
-version = "3.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5eb8a2a1cd12ab0d987a5d5e825195d372001a4094a0376319d5a0ad71c1ba0d"
-dependencies = [
- "crc-catalog",
-]
-
-[[package]]
-name = "crc-catalog"
-version = "2.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "217698eaf96b4a3f0bc4f3662aaa55bdf913cd54d7204591faa790070c6d0853"
-||||||| c98a51a664
-=======
 name = "cranelift-assembler-x64"
 version = "0.137.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -968,7 +952,6 @@ name = "cranelift-srcgen"
 version = "0.137.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6f34b169b8cbbaed2b4995205f1d02d7eac4b2771df5479255fe5483e1334a39"
->>>>>>> arismoko/main
 
 [[package]]
 name = "crc32fast"
@@ -1752,7 +1735,6 @@ dependencies = [
 ]
 
 [[package]]
-<<<<<<< HEAD
 name = "horizon-android"
 version = "0.1.0"
 dependencies = [
@@ -1760,11 +1742,10 @@ dependencies = [
  "jni 0.21.1",
  "winit",
 ]
-||||||| c98a51a664
-=======
+
+[[package]]
 name = "horizon-addresses"
 version = "0.1.0"
->>>>>>> arismoko/main
 
 [[package]]
 name = "horizon-anticheat"
@@ -5248,9 +5229,6 @@ dependencies = [
 ]
 
 [[package]]
-<<<<<<< HEAD
-||||||| c98a51a664
-=======
 name = "target-lexicon"
 version = "0.13.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5270,7 +5248,6 @@ dependencies = [
 ]
 
 [[package]]
->>>>>>> arismoko/main
 name = "termcolor"
 version = "1.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

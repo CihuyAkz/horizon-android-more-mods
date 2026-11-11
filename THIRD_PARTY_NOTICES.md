@@ -433,7 +433,6 @@ are adapted from the touch layout and touch helpers of
 (`android` branch), written mostly by Vasysik. Starling is licensed under the same MIT license as
 Horizon (Copyright (c) 2026 Ludovic Marie and the Horizon contributors).
 
-<<<<<<< HEAD
 ## Horizon Android renderer paths
 
 What only Adreno on Android's Vulkan takes here is adapted from
@@ -487,8 +486,6 @@ Provider-aware profile selection and Ely.by authentication, refresh, 2FA and ses
 Per-account skin selection and the Microsoft profile skin upload are adapted from [Vasysik/horizon-android at fa548eb7abe91c194d3780e4580b9746323cd606](https://github.com/Vasysik/horizon-android/tree/fa548eb7abe91c194d3780e4580b9746323cd606), specifically `launcher/src/skins.rs`, `launcher/src/skins/library.rs`, `launcher/src/skins/cloud.rs` and `crates/horizon-client/src/android/wardrobe.rs` (behavior reference). MIT, copyright (c) 2026 Ludovic Marie and the Horizon contributors; the repository LICENSE retains the license text. Starling keeps its `skins/` folder and Skin Customization page in place of the wardrobe's image store and launcher panel, keys each choice by the profile, uploads through its own sealed session, and sends Ely.by accounts to ely.by as Horizon Android does.
 
 The mobile attack gauge side and offhand spacing in `crates/horizon-client-render/src/hud_layout.rs` are adapted from the same Horizon Android commit fa548eb7abe91c194d3780e4580b9746323cd606 under MIT.
-||||||| c98a51a664
-=======
 `crates/horizon-client-render/src/keypad.rs` is adapted from Starling's keypad profile
 (`crates/horizon-client-render/src/keypad.rs`) at the same commit.
 
@@ -501,4 +498,3 @@ state of Starling's `crates/horizon-client-render/src/touch.rs` at the same comm
 
 `crates/horizon-client-render/src/android_runtime.rs` and `android_runtime/tests/` are adapted from the
 input part of Starling's `crates/horizon-client-render/src/android_runtime.rs` at the same commit.
->>>>>>> arismoko/main

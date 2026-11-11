@@ -98,15 +98,10 @@ pub mod component {
     pub const EQUIPPABLE: i32 = 32;
     pub const REPAIRABLE: i32 = 33;
     pub const GLIDER: i32 = 34;
-<<<<<<< HEAD
     pub const TOOLTIP_STYLE: i32 = 35;
-||||||| c98a51a664
-=======
     /// `DeathProtection`: the `death_effects` a stack runs when it saves its holder.
->>>>>>> arismoko/main
     pub const DEATH_PROTECTION: i32 = 36;
     pub const BLOCKS_ATTACKS: i32 = 37;
-<<<<<<< HEAD
     pub const PIERCING_WEAPON: i32 = 38;
     pub const KINETIC_WEAPON: i32 = 39;
     pub const ATTACK_ANIMATION: i32 = 40;
@@ -114,10 +109,6 @@ pub mod component {
     pub const ADDITIONAL_TRADE_COST: i32 = 42;
     pub const BLOCK_TRANSFORMER: i32 = 43;
     pub const VILLAGER_FOOD: i32 = 44;
-||||||| c98a51a664
-=======
-    pub const KINETIC_WEAPON: i32 = 39;
->>>>>>> arismoko/main
     pub const STORED_ENCHANTMENTS: i32 = 45;
     pub const DYE: i32 = 46;
     pub const DYED_COLOR: i32 = 47;

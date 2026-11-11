@@ -9,8 +9,15 @@ import sys
 
 PRIVATE_ROOTS = {".local", "decompiled", "minecraft", "assets", "run", "logs"}
 PRIVATE_EXTENSIONS = {".jar", ".class", ".jfr", ".hprof", ".java"}
-<<<<<<< HEAD
-ORIGINAL_JDK_TOOLS = {"tools/JfrSummary.java", "tests/java/JfrFixture.java", "tests/java/GameFolderChecks.java"}
+ORIGINAL_JDK_TOOLS = {
+    # Original observer of public Paper API events, with no server implementation code.
+    "tools/fixtures/paper-trace-plugin/PaperTrace.java",
+    "tools/JfrSummary.java",
+    "tests/java/JfrFixture.java",
+    "tests/java/GameFolderChecks.java",
+    # Our own comparison driver; it calls the player's pinned vanilla jars at run time and carries none of their code.
+    "tools/refactors/api-pr3/JsonNbtOracle.java",
+}
 # The Android app's own classes (packaging/android/build_apk.py), Horizon's code like the above.
 ORIGINAL_ANDROID = {
     "packaging/android/java/io/github/juanluci/starling/StarlingActivity.java",
@@ -27,17 +34,6 @@ ORIGINAL_ANDROID = {
     "packaging/android/java/io/github/juanluci/starling/GameFolderProvider.java",
     # The same activity before the app was named Starling, in the history.
     "packaging/android/java/dev/horizon/android/HorizonActivity.java",
-||||||| c98a51a664
-ORIGINAL_JDK_TOOLS = {"tools/JfrSummary.java", "tests/java/JfrFixture.java"}
-=======
-ORIGINAL_JDK_TOOLS = {
-    # Original observer of public Paper API events, with no server implementation code.
-    "tools/fixtures/paper-trace-plugin/PaperTrace.java",
-    "tools/JfrSummary.java",
-    "tests/java/JfrFixture.java",
-    # Our own comparison driver; it calls the player's pinned vanilla jars at run time and carries none of their code.
-    "tools/refactors/api-pr3/JsonNbtOracle.java",
->>>>>>> arismoko/main
 }
 # The prepared folder's files in one file (crates/horizon-core/src/prepared_files.rs): Mojang's data.
 PRIVATE_NAMES = {"horizon-data.bin"}

@@ -141,10 +141,7 @@ HORIZON_RELEASES = unittest.skipUnless(
 )
 
 
-<<<<<<< HEAD
 @HORIZON_RELEASES
-||||||| c98a51a664
-=======
 class FirstNightlyTests(unittest.TestCase):
     def test_fetch_succeeds_with_or_without_an_existing_nightly_tag(self):
         class ReachedGreenBase(Exception):
@@ -166,7 +163,7 @@ class FirstNightlyTests(unittest.TestCase):
                 self.assertEqual("+refs/tags/nightly:refs/tags/nightly" in fetched, existing)
 
 
->>>>>>> arismoko/main
+@HORIZON_RELEASES
 class UntrustedBuildTests(unittest.TestCase):
     """A nightly can hold pull requests nobody reviewed: nothing its build leaves may reach a release (game-build.yml)."""
 

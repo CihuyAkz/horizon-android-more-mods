@@ -471,7 +471,6 @@ impl ItemStack {
     pub fn data(&self) -> Option<&StackData> {
         self.extra.as_deref()
     }
-<<<<<<< HEAD
     /// `ItemCooldowns.getCooldownGroup`: `use_cooldown`'s group, else the item's id.
     pub fn cooldown_group(&self) -> String {
         let group = self
@@ -493,8 +492,7 @@ impl ItemStack {
             horizon_world::nbt::Tag::String(s) => Some(s.to_string_lossy()),
             _ => None,
         }
-||||||| c98a51a664
-=======
+    }
     /// Whether the stack carries component `id`: its own data sets it, or its item has it by
     /// default and the stack's changes don't remove it (a `!id` entry). Reads the live
     /// components, so nothing is encoded.
@@ -570,7 +568,6 @@ impl ItemStack {
             }
         }
         info.map_or(0, |item| item.damage)
->>>>>>> arismoko/main
     }
     /// The patch the server sent for this stack, while the stack is still what
     /// it decoded to (its count aside); None once anything else changed.
