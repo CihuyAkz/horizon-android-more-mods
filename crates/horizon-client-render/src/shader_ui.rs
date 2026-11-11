@@ -31,6 +31,9 @@ pub(crate) enum Item {
     Pack(u16),
     /// Opens `shaderpacks/`.
     Folder,
+    /// Starling (Android): the catalog's shader packs shelf (game/mod_catalog.rs), a phone's way
+    /// to get packs.
+    Catalog,
     /// Option `.0` of the picked pack: of a `shaders/` pack, the `.0`th of its options by name;
     /// of a Horizon pack, its `[[options]]` entry.
     Option(u16),
@@ -248,6 +251,7 @@ fn parts(item: Item, s: &Settings, screens: &[PackScreen]) -> (String, Option<St
             (name, Some(String::new()))
         }
         Item::Folder => (lang::get("pack.openFolder"), None),
+        Item::Catalog => (lang::get("Catalog"), None),
         Item::Link(i) => (format!("{}...", screen_name(i, screens)), None),
         Item::Reset => (lang::get("Reset all options"), None),
         Item::ShadowCache => (lang::get("Shadow Cache"), Some(String::new())),
@@ -390,6 +394,7 @@ fn description(item: Item, s: &Settings, screens: &[PackScreen]) -> String {
             lang::get("Put shader pack .zip files or folders in it."),
             crate::options_ui::shader_folder_note()
         ),
+        Item::Catalog => lang::get("Shader packs to download, from Starling's catalog."),
         Item::Reset => lang::get("Puts every option of this pack back to its default."),
         Item::ShadowCache => {
             lang::get("Reuses the pack shadow map when sun, view and world match. Off by default.")
@@ -438,11 +443,7 @@ fn row(item: Item, s: &Settings, screens: &[PackScreen]) -> Row<Item> {
             text,
         },
         (
-            Item::Option(_)
-            | Item::Profile
-            | Item::Resolution
-            | Item::FpsLimit
-            | Item::PackProfile,
+            Item::Option(_) | Item::Profile | Item::Resolution | Item::FpsLimit | Item::PackProfile,
             None,
             None,
             Some(text),
@@ -455,7 +456,9 @@ fn row(item: Item, s: &Settings, screens: &[PackScreen]) -> Row<Item> {
 /// The pack list, and Horizon's own setting beside it.
 fn pack_sheet(s: &Settings) -> Sheet<Tab, Item> {
     let packs = (0..s.shader_packs.len()).map(|i| Item::Pack(i as u16));
-    let installed = packs.chain([Item::Folder]);
+    // Starling: a phone gets its packs from the catalog too.
+    let catalog = cfg!(target_os = "android").then_some(Item::Catalog);
+    let installed = packs.chain([Item::Folder]).chain(catalog);
     let about = lang::get(if s.shader_packs.is_empty() {
         NO_PACKS
     } else {
@@ -638,6 +641,9 @@ impl shell::Screen for ShaderScreen {
                 outputs
             }
             Item::Folder => vec![Output::Event(Event::OpenShaderPackFolder)],
+            Item::Catalog => vec![Output::Event(Event::OpenCatalog(
+                crate::options_ui::CatalogShelf::ShaderPacks,
+            ))],
             Item::Resolution => {
                 const STEPS: [u32; 6] = [100, 75, 50, 40, 30, 25];
                 let now = s.horizon.resolution_scale;

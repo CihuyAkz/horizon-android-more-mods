@@ -136,19 +136,6 @@ impl OptionsUi {
             },
             Row::Buttons(open("horizon.mods.browse", Page::ModBrowser), None),
         ];
-        // A phone builds its native mods on a server: the game they run in and the ones chosen.
-        if cfg!(target_os = "android") && s.mods.native_game.is_some() {
-            rows.push(Row::Buttons(
-                button(
-                    0.0,
-                    0.0,
-                    310.0,
-                    Text::literal("Native Mods Game..."),
-                    Act::Push(Page::NativeGame),
-                ),
-                None,
-            ));
-        }
         self.added_entries(&mut rows);
         rows
     }

@@ -1316,6 +1316,7 @@
   "starling.mods.native.not_in_game": "The native mods turned on are not in the game yet: compile to play with them.",
   "starling.mods.native.compiling": "Compiling your native mods...",
   "starling.mods.native.not_compiled": "Not compiled",
+  "starling.mods.details": "Mod details...",
   "starling.mods.native.compile": "Compile",
   "starling.mods.native.differs": "The native mods turned on are not the ones in that build: compile again to apply.",
   "starling.mods.native.next_apk": "Next start: without native mods.",

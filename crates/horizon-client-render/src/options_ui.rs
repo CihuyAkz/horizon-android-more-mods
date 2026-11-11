@@ -1654,7 +1654,7 @@ fn with_diagnostics(
 /// draws its own (`pack_screen`).
 fn catalog_shelf(page: Page) -> Option<CatalogShelf> {
     match page {
-        Page::Mods => Some(CatalogShelf::Mods),
+        Page::Mods | Page::NativeGame => Some(CatalogShelf::Mods),
         Page::ShaderPacks => Some(CatalogShelf::ShaderPacks),
         _ => None,
     }
@@ -2074,8 +2074,14 @@ enum Act {
     ResetKey(&'static str),
     ResetKeys,
     KeyboardProfile,
-    /// A native mod chosen (or not) for the next build, on the native game page (Android).
+    /// A mod turned on or off on Starling's Mods page; a native mod chosen (or not) for the next
+    /// build there (Android).
     ToggleMod(usize),
+    /// Starling's Mods page: a mod's Settings beside its switch, its page (`Page::NativeMod`)
+    /// with its labels asked of the game again.
+    ModSettings(usize),
+    /// Starling's Mods page: Open Mod Folder.
+    OpenModFolder,
     /// The Custom Buttons page, a new button there, one to change or take away, a control or a
     /// keyboard key for it, and its icon.
     CustomButtons,
@@ -2710,39 +2716,75 @@ fn native_game_rows(s: &Settings) -> Vec<Row> {
     rows
 }
 
-/// Android: the native game page: which game runs and its buttons, then each native mod as a box
-/// ticked when it is chosen for the next build (the buttons' Compile builds with those), and one
-/// chosen and not in this game says so beside it.
+/// Starling's Mods page (`Page::NativeGame`, which the Mods buttons open: a phone has no launcher
+/// to choose the mods): which game runs and its buttons (Android), then every mod's switch. A
+/// native mod is a box ticked when it is chosen for the next build (the buttons' Compile builds
+/// with those); one chosen and not in this game says so beside it, and one in it with settings
+/// has Settings there. Details opens upstream's Mods screen (`Page::Mods`).
 fn native_game_page_rows(s: &Settings) -> Vec<Row> {
     let mut rows = native_game_rows(s);
-    let natives: Vec<_> = (s.mods.installed.iter().enumerate())
-        .filter(|(_, m)| m.native.is_some() && !m.id.is_empty() && !m.dev)
-        .collect();
-    if natives.is_empty() {
+    if s.mods.installed.is_empty() {
         rows.push(Row::Header("horizon.mods.empty"));
         return rows;
     }
-    for (i, installed) in natives {
-        let tick = if s.mods.is_on(i) {
-            '\u{2611}'
+    rows.push(Row::Buttons(
+        button(
+            0.0,
+            0.0,
+            310.0,
+            tr("starling.mods.details"),
+            Act::Push(Page::Mods),
+        ),
+        None,
+    ));
+    let mods = s.mods.installed.iter().enumerate().map(|(i, installed)| {
+        let on = s.mods.is_on(i);
+        let not_built = installed.problem.as_deref() == Some(crate::mod_list::NOT_BUILT);
+        let compiled_here = not_built && installed.native.is_some();
+        let chosen_box = installed.native.is_some() && !installed.id.is_empty();
+        let mut label = if chosen_box {
+            let tick = if on { '\u{2611}' } else { '\u{2610}' };
+            Text::literal(format!("{tick} {}", installed.title))
         } else {
-            '\u{2610}'
+            Text::literal(format!("{}: ", installed.title)).append(on_off(on))
         };
-        let mut label = Text::literal(format!("{tick} {}", installed.title));
-        if installed.problem.as_deref() == Some(crate::mod_list::NOT_BUILT) {
-            if s.mods.is_on(i) {
-                label = label.append(tr("starling.mods.native.not_compiled"));
-            } else {
+        if not_built {
+            if !compiled_here {
                 label = label.append(tr("horizon.mods.not_built"));
             }
         } else if installed.problem.is_some() {
             label = label.append(tr("horizon.mods.stopped"));
+        } else if installed.dev {
+            label = label.append(tr("horizon.mods.dev"));
         }
-        rows.push(Row::Buttons(
-            button(0.0, 0.0, 310.0, label, Act::ToggleMod(i)),
-            None,
-        ));
-    }
+        let dead = installed.dev || installed.id.is_empty();
+        // Beside it: a warning, as Java's, for a native mod chosen and not in this game (nothing
+        // to press: Compile is the page's), Settings for one in it that has settings.
+        let side = if compiled_here {
+            on.then(|| {
+                let warning = Text::literal(format!(
+                    "\u{a7}e\u{26a0} {}",
+                    lang::get("starling.mods.native.not_compiled")
+                ));
+                inactive(button(0.0, 0.0, 150.0, warning, Act::ModSettings(i)))
+            })
+        } else {
+            (installed.native.as_ref())
+                .is_some_and(|page| !page.settings.is_empty())
+                .then(|| {
+                    let settings = tr("horizon.mods.settings");
+                    button(0.0, 0.0, 150.0, settings, Act::ModSettings(i))
+                })
+        };
+        if let Some(side) = side {
+            let toggle = button(0.0, 0.0, 150.0, label, Act::ToggleMod(i));
+            Row::Buttons(if dead { inactive(toggle) } else { toggle }, Some(side))
+        } else {
+            let widget = button(0.0, 0.0, 310.0, label, Act::ToggleMod(i));
+            Row::Buttons(if dead { inactive(widget) } else { widget }, None)
+        }
+    });
+    rows.extend(mods);
     rows
 }
 
@@ -3449,6 +3491,13 @@ impl OptionsUi {
     }
     /// Open a page whose Done/Escape returns directly to the calling screen.
     pub fn open_at(&mut self, in_world: bool, page: Page) {
+        // Starling: the Mods buttons open its Mods page (the switches and Compile: a phone has no
+        // launcher to choose the mods); upstream's Mods screen is that page's Details.
+        let page = if page == Page::Mods {
+            Page::NativeGame
+        } else {
+            page
+        };
         self.stack.clear();
         self.data_pack_dir = None;
         self.focus = None;
@@ -3550,7 +3599,7 @@ impl OptionsUi {
             Page::ModBrowser => "horizon.mods.browse.title",
             Page::ModProject => "horizon.mods.browse.project",
             Page::NativeMod(_) => "Mod Settings",
-            Page::NativeGame => "Native Mods Game",
+            Page::NativeGame => "horizon.pages.mods",
             Page::Added(i) => pages::title(i),
             Page::ShaderPacks => "horizon.pages.shader_packs",
             Page::ShaderOptions => "horizon.pages.shader_options",
@@ -4636,7 +4685,8 @@ impl OptionsUi {
                     // settings and its mods, as a mod adds its button here.
                     // Credits & Attribution (WinScreen's credits) follows them.
                     ("horizon.pages.open.horizon_settings", Some(Page::Horizon)),
-                    ("horizon.pages.open.mods", Some(Page::Mods)),
+                    // Starling's Mods page (`open_at`).
+                    ("horizon.pages.open.mods", Some(Page::NativeGame)),
                     ("options.credits_and_attribution", Some(Page::Credits)),
                 ];
                 // horizon-extras: without it, vanilla's last row instead of Horizon Settings and
@@ -5298,6 +5348,8 @@ impl OptionsUi {
                     Page::Accessibility => {
                         Some(("options.accessibility.link", Act::AccessibilityHelp))
                     }
+                    // Starling's Mods page.
+                    Page::NativeGame => Some(("horizon.mods.open_folder", Act::OpenModFolder)),
                     Page::Skin if self.skin_page => Some(("Open Skin Folder", Act::OpenSkinFolder)),
                     _ => None,
                 };
@@ -6187,7 +6239,7 @@ impl OptionsUi {
                                 s.shader_options = None;
                                 events.push(Event::OpenShaderOptions);
                             }
-                            if p == Page::Mods {
+                            if p == Page::Mods || p == Page::NativeGame {
                                 events.push(Event::ListMods);
                             }
                             if p == Page::Music {
@@ -6251,6 +6303,11 @@ impl OptionsUi {
                             events.push(Event::Changed);
                             events.push(Event::ModToggled(i));
                         }
+                        Act::ModSettings(i) => {
+                            self.push(Page::NativeMod(i));
+                            events.push(Event::NativeSettings(i));
+                        }
+                        Act::OpenModFolder => events.push(Event::OpenModFolder),
                         Act::ModKey(i, k) => {
                             self.selected_key = Some(MOD_KEY);
                             self.selected_mod_key = Some((i, k));
@@ -7502,7 +7559,7 @@ impl OptionsUi {
                                 s.shader_options = None;
                                 events.push(Event::OpenShaderOptions);
                             }
-                            if p == Page::Mods {
+                            if p == Page::Mods || p == Page::NativeGame {
                                 events.push(Event::ListMods);
                             }
                             if p == Page::Music {
@@ -7571,6 +7628,11 @@ impl OptionsUi {
                             events.push(Event::Changed);
                             events.push(Event::ModToggled(i));
                         }
+                        Act::ModSettings(i) => {
+                            self.push(Page::NativeMod(i));
+                            events.push(Event::NativeSettings(i));
+                        }
+                        Act::OpenModFolder => events.push(Event::OpenModFolder),
                         Act::ModKey(i, k) => {
                             self.selected_key = Some(MOD_KEY);
                             self.selected_mod_key = Some((i, k));
@@ -8194,12 +8256,13 @@ mod tests {
         let mut s = Settings::default();
         let mut ui = OptionsUi::default();
         let size = (480.0, 240.0);
+        // Starling: Options' Mods button opens its Mods page, whose Details is this screen.
         assert!(ui.layout(&s, size.0, size.1).0.iter().any(|w| {
             matches!(
                 w.kind,
                 WKind::Button {
                     active: true,
-                    act: Act::Push(Page::Mods),
+                    act: Act::Push(Page::NativeGame),
                     ..
                 }
             )
@@ -8672,10 +8735,12 @@ mod tests {
             events.last(),
             Some(&Event::NativeGame(NativeGameAct::PlayWithout))
         );
-        // The mod is chosen and not in this game: its row is a ticked box, without "(Not built)"
-        // after it.
+        // Above the mods. The mod is chosen and not in this game: its row is a ticked box, without
+        // "(Not built)" after it, and beside it a warning that presses nothing (Compile is the
+        // page's, at the top).
+        // The row's toggle (where, how wide, its label) and the button beside it, if any.
         let row = |widgets: &[Widget]| {
-            widgets
+            let toggle = widgets
                 .iter()
                 .find_map(|w| match &w.kind {
                     WKind::Button {
@@ -8685,27 +8750,186 @@ mod tests {
                     } => Some(([w.x, w.y, w.w], label.plain())),
                     _ => None,
                 })
-                .expect("the mod's row")
+                .expect("the mod's row");
+            let side = widgets.iter().find_map(|w| match &w.kind {
+                WKind::Button {
+                    act: Act::ModSettings(0),
+                    ..
+                } => Some([w.x, w.y, w.w]),
+                _ => None,
+            });
+            (toggle, side)
         };
-        let (toggle, label) = row(&widgets);
+        let ((toggle, label), warning) = row(&widgets);
         assert!(toggle[1] > without.y);
         assert!(label.starts_with('\u{2611}'), "{label}");
         assert!(
             !label.contains(&tr("horizon.mods.not_built").plain()),
             "{label}"
         );
+        let warning = warning.expect("the warning beside the row");
+        assert_eq!(
+            (toggle[2], warning[2], warning[1]),
+            (150.0, 150.0, toggle[1])
+        );
+        let (x, y) = (warning[0] + 1.0, warning[1] + 1.0);
+        let events = ui.click(&mut s, &atlas, x, y, size, [480, 400], false, false);
+        assert!(!events.contains(&Event::NativeSettings(0)), "{events:?}");
         // Not chosen, it has nothing to compile: the row is the box alone.
         let (x, y) = (toggle[0] + 1.0, toggle[1] + 1.0);
         ui.click(&mut s, &atlas, x, y, size, [480, 400], false, false);
         assert!(!s.mods.is_on(0));
         let (widgets, ..) = ui.layout(&s, size.0, size.1);
-        let (toggle, label) = row(&widgets);
+        let ((toggle, label), warning) = row(&widgets);
         assert!(label.starts_with('\u{2610}'), "{label}");
+        assert!(warning.is_none());
         assert_eq!(toggle[2], 310.0);
     }
 
     #[test]
-    #[ignore = "sync 6: the 0.8.0 Mods page's rows (their description as tooltip) gave way to upstream's; FOLLOWUPS.md"]
+    fn starlings_mods_page_switches_every_mod_and_keeps_dev_and_invalid_ones_inactive() {
+        let atlas = atlas();
+        let mut s = Settings::default();
+        let mut ui = OptionsUi::default();
+        let size = (480.0, 240.0);
+        // The title's and the pause menu's Mods open it (a phone has no launcher).
+        ui.open_at(false, Page::Mods);
+        assert_eq!(ui.page(), Page::NativeGame);
+        let empty = ui.layout(&s, size.0, size.1).0;
+        assert!(empty.iter().any(|w| {
+            matches!(&w.kind, WKind::Text { text, .. } if text.plain() == "horizon.mods.empty")
+        }));
+        let open_folder = empty
+            .iter()
+            .find(|w| {
+                matches!(
+                    &w.kind,
+                    WKind::Button {
+                        act: Act::OpenModFolder,
+                        ..
+                    }
+                )
+            })
+            .expect("the Mods page has an Open Mod Folder button");
+        let (x, y) = (open_folder.x + 1.0, open_folder.y + 1.0);
+        assert_eq!(
+            ui.click(&mut s, &atlas, x, y, size, [480, 240], false, false),
+            vec![Event::ButtonClick, Event::OpenModFolder]
+        );
+        for (id, dev) in [("normal", false), ("dev", true), ("", false)] {
+            s.mods.installed.push(crate::mod_list::Installed {
+                id: id.into(),
+                title: id.into(),
+                description: "May show HUD panels.".into(),
+                problem: id.is_empty().then(|| "Invalid package".into()),
+                dev,
+                native: None,
+            });
+        }
+        let (widgets, ..) = ui.layout(&s, size.0, size.1);
+        // Details opens upstream's Mods screen.
+        assert!(widgets.iter().any(|w| matches!(
+            w.kind,
+            WKind::Button {
+                act: Act::Push(Page::Mods),
+                ..
+            }
+        )));
+        let rows: Vec<(f32, f32)> = widgets
+            .iter()
+            .filter(|w| {
+                matches!(
+                    w.kind,
+                    WKind::Button {
+                        act: Act::ToggleMod(_),
+                        ..
+                    }
+                )
+            })
+            .map(|w| (w.x + 1.0, w.y + 1.0))
+            .collect();
+        assert_eq!(rows.len(), 3);
+        for (i, &(x, y)) in rows.iter().enumerate() {
+            let events = ui.click(&mut s, &atlas, x, y, size, [480, 240], false, false);
+            if i == 0 {
+                assert!(events.contains(&Event::Changed));
+                assert!(events.contains(&Event::ModToggled(0)));
+            } else {
+                assert!(events.is_empty(), "{events:?}");
+            }
+        }
+        // A mod that is not native starts off: the click turned it on. A dev mod is always on,
+        // the invalid one never.
+        assert!(s.mods.is_on(0));
+        assert!(s.mods.is_on(1));
+        assert!(!s.mods.is_on(2));
+    }
+
+    #[test]
+    fn a_native_mod_with_settings_has_them_beside_its_switch() {
+        let atlas = atlas();
+        let mut s = Settings::default();
+        let mut ui = OptionsUi::default();
+        let size = (480.0, 240.0);
+        s.mods.installed.push(crate::mod_list::Installed {
+            id: "native".into(),
+            title: "Native 1.0".into(),
+            description: String::new(),
+            problem: None,
+            dev: false,
+            native: Some(crate::mod_list::NativePage {
+                settings: vec![crate::mod_list::NativeSetting {
+                    key: "trails".into(),
+                    label: "Trails".into(),
+                    tooltip: None,
+                    value: crate::mod_list::NativeSettingValue::Toggle(true),
+                }],
+                ..Default::default()
+            }),
+        });
+        s.mods.installed.push(crate::mod_list::Installed {
+            id: "no_settings".into(),
+            title: "Plain 1.0".into(),
+            description: String::new(),
+            problem: None,
+            dev: false,
+            native: Some(crate::mod_list::NativePage::default()),
+        });
+        ui.show(Page::NativeGame);
+        let (widgets, ..) = ui.layout(&s, size.0, size.1);
+        let toggle_w = |i: usize| {
+            widgets
+                .iter()
+                .find(|w| matches!(w.kind, WKind::Button { act: Act::ToggleMod(j), .. } if j == i))
+                .map(|w| w.w)
+                .unwrap()
+        };
+        // Without settings, the switch takes the row.
+        assert_eq!(toggle_w(1), 310.0);
+        assert_eq!(toggle_w(0), 150.0);
+        let (x, y) = widgets
+            .iter()
+            .find(|w| {
+                matches!(
+                    w.kind,
+                    WKind::Button {
+                        active: true,
+                        act: Act::ModSettings(0),
+                        ..
+                    }
+                )
+            })
+            .map(|w| (w.x + 1.0, w.y + 1.0))
+            .expect("Settings beside the switch");
+        let events = ui.click(&mut s, &atlas, x, y, size, [480, 240], false, false);
+        // Its labels were made with the list, maybe in another language.
+        assert_eq!(events.last(), Some(&Event::NativeSettings(0)));
+        assert_eq!(ui.page(), Page::NativeMod(0));
+        ui.back(&mut s);
+        assert_eq!(ui.page(), Page::NativeGame);
+    }
+
+    #[test]
     fn a_tapped_row_keeps_no_tooltip_once_the_finger_lifts() {
         let atlas = atlas();
         let mut s = Settings::default();
@@ -8751,9 +8975,8 @@ mod tests {
             batch.vertices
         };
         let plain = drawn(&mut never);
-        // A click's focus keeps the row's tooltip beside it, wherever the pointer went...
-        assert!(drawn(&mut tapped).len() > plain.len());
-        // ...which a lifted finger lets go of.
+        // A click's focus draws no tooltip away from the pointer (upstream follows vanilla
+        // there), and a lifted finger lets go of its highlight too.
         tapped.drop_pointer_focus();
         let after = drawn(&mut tapped);
         assert_eq!(
@@ -10571,12 +10794,12 @@ mod tests {
                 })
                 .collect()
         };
-        // Vanilla's Options buttons, Horizon's two in the Telemetry and Credits slots, then
-        // Credits & Attribution (WinScreen's credits).
+        // Vanilla's Options buttons, Horizon's two in the Telemetry and Credits slots (Mods is
+        // Starling's Mods page), then Credits & Attribution (WinScreen's credits).
         let main = pushes(&mut ui);
         assert_eq!(
             &main[main.len() - 3..],
-            [Page::Horizon, Page::Mods, Page::Credits]
+            [Page::Horizon, Page::NativeGame, Page::Credits]
         );
         // Video Settings... is the graphics screen, as Sodium's.
         assert!(main.contains(&Page::Graphics) && !main.contains(&Page::Video));
@@ -11705,16 +11928,14 @@ mod tests {
         }
     }
 
+    /// Starling's Mods page has it in its footer; the shader packs page, upstream's settings shell,
+    /// as a row under Open Folder (`shader_ui::Item::Catalog`).
     #[test]
-    #[ignore = "sync 6: the 0.8.0 Mods page (its footer's Catalog button) gave way to upstream's; FOLLOWUPS.md"]
-    fn the_mods_and_shader_packs_pages_open_the_catalog_on_their_own_shelf() {
+    fn the_mods_page_opens_the_catalog_on_its_own_shelf() {
         let atlas = atlas();
         let mut s = Settings::default();
         for size in PHONE_GUI {
-            for (page, shelf) in [
-                (Page::Mods, CatalogShelf::Mods),
-                (Page::ShaderPacks, CatalogShelf::ShaderPacks),
-            ] {
+            for (page, shelf) in [(Page::NativeGame, CatalogShelf::Mods)] {
                 let mut ui = OptionsUi {
                     catalog_buttons: true,
                     ..OptionsUi::default()

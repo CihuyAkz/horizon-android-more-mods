@@ -370,6 +370,7 @@
   "starling.mods.native.not_in_game": "Включённых нативных модов ещё нет в игре: соберите, чтобы играть с ними.",
   "starling.mods.native.compiling": "Идёт сборка нативных модов...",
   "starling.mods.native.not_compiled": "Не собран",
+  "starling.mods.details": "Подробнее о модах...",
   "starling.mods.native.compile": "Собрать",
   "starling.mods.native.now_build": "Сейчас: Starling %s с %s, собран %s.",
   "starling.mods.native.hours_ago": "%s ч назад",
