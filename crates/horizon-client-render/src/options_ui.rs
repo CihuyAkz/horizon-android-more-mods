@@ -4476,8 +4476,8 @@ impl OptionsUi {
                     let Some(page) = &m.native else {
                         continue;
                     };
-                    for (k, [_, label, _]) in page.keys.iter().enumerate() {
-                        let label = Text::literal(format!("{}: {label}", m.title));
+                    for (k, mapping) in page.mappings.iter().enumerate() {
+                        let label = Text::literal(format!("{}: {}", m.title, mapping.label));
                         rows.push(Row::Buttons(
                             button(0.0, 0.0, 310.0, label, Act::CustomModKey(id, i, k)),
                             None,
@@ -6324,9 +6324,9 @@ impl OptionsUi {
                         }
                         Act::CustomModKey(id, i, k) => {
                             let key = s.mods.installed.get(i).and_then(|m| {
-                                let [name, _, default] = m.native.as_ref()?.keys.get(k)?;
-                                let chosen = s.mods.keys.get(&m.id).and_then(|c| c.get(name));
-                                Some(chosen.unwrap_or(default).clone())
+                                let mapping = m.native.as_ref()?.mappings.get(k)?;
+                                let chosen = s.mods.keys.get(&m.id).and_then(|c| c.get(&mapping.id));
+                                Some(chosen.unwrap_or(&mapping.key).clone())
                             });
                             if let Some(key) = key
                                 && let Some(b) = s.custom_buttons.iter_mut().find(|b| b.id == id)
@@ -8731,8 +8731,14 @@ mod tests {
         // The finger went away (the game draws with no pointer then).
         let away = (-10_000.0, -10_000.0);
         let drawn = |ui: &mut OptionsUi| {
-            let mut batch = HudBatch::new([480, 400]);
-            ui.draw(&s, &mut batch, &atlas, away);
+            let mut batch = HudBatch::new(
+                [480, 400],
+                crate::hud::GuiScale {
+                    requested: 0,
+                    unicode: false,
+                },
+            );
+            ui.draw(&s, NONE, &mut batch, &atlas, away);
             batch.vertices
         };
         let plain = drawn(&mut never);
@@ -11817,7 +11823,7 @@ mod tests {
             catalog_buttons: true,
             ..OptionsUi::default()
         };
-        ui.open_data_packs(dir.clone(), Vec::new(), dir);
+        ui.open_data_packs(dir.clone(), Vec::new(), dir, Vec::new());
         let events = ui.click(
             &mut s,
             &atlas,
@@ -11876,7 +11882,7 @@ mod tests {
     fn a_resource_pack_installed_leaves_create_worlds_data_packs_alone() {
         let dir = std::env::temp_dir().join(format!("horizon-catalog-{}", std::process::id()));
         let mut ui = OptionsUi::default();
-        ui.open_data_packs(dir.clone(), Vec::new(), dir);
+        ui.open_data_packs(dir.clone(), Vec::new(), dir, Vec::new());
         let listed = ui.pack_infos.len();
         ui.update_pack_infos(vec![pack_info("file/new")]);
         assert_eq!(ui.pack_infos.len(), listed);

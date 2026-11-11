@@ -156,9 +156,9 @@ fn key(variant: &Variant) -> VariantKey {
 /// The models the kinetic blocks of a content root turn or move besides their own (`half`,
 /// `extra`, `head`, `pole` and `models` in its kinetic.json, which horizon-client's mod_content
 /// writes); none for vanilla's.
-fn partial_models(root: &Path) -> BTreeSet<String> {
+fn partial_models(root: &crate::resource_source::ResourceSource) -> BTreeSet<String> {
     let mut out = BTreeSet::new();
-    if let Ok(bytes) = fs::read(root.join("kinetic.json")) {
+    if let Ok(bytes) = root.read("kinetic.json") {
         let parts: BTreeMap<String, Value> = serde_json::from_slice(&bytes).unwrap_or_default();
         for part in parts.values() {
             for k in ["half", "extra", "head", "pole"] {
@@ -171,7 +171,7 @@ fn partial_models(root: &Path) -> BTreeSet<String> {
         }
     }
     // Any block's models besides its own (block-models.json: a blaze burner's blaze).
-    if let Ok(bytes) = fs::read(root.join("block-models.json")) {
+    if let Ok(bytes) = root.read("block-models.json") {
         let blocks: BTreeMap<String, Vec<String>> =
             serde_json::from_slice(&bytes).unwrap_or_default();
         out.extend(blocks.into_values().flatten());

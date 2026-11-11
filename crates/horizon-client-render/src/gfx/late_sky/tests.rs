@@ -407,7 +407,7 @@ fn the_late_sky_draws_the_usual_pixels() {
                 mapped_at_creation: false,
             });
             let mut encoder = device.create_command_encoder(&Default::default());
-            stars.prepare(&mut uploads, &mut encoder, view_proj, 1.0);
+            stars.prepare(&mut uploads, &mut encoder, view_proj, 1.0, &globals);
             uploads.finish(&encoder);
             {
                 let view = target.create_view(&Default::default());

@@ -700,7 +700,7 @@ impl Font {
         // FontManager.prepare: every font definition of the resources.
         let mut ids = font_ids(source);
         ids.sort_by_key(|id| id != DEFAULT);
-        font.variants = std::fs::read(root.join("assets/minecraft/font/default.json"))
+        font.variants = source.read("assets/minecraft/font/default.json")
             .ok()
             .and_then(|b| serde_json::from_slice::<serde_json::Value>(&b).ok())
             .and_then(|v| {

@@ -2008,38 +2008,21 @@ impl HudAtlas {
                     "starling:gui/sprites/touch",
                 ),
             ] {
-                let dir = base.join(folder);
-                let mut pending = vec![dir.clone()];
-                while let Some(folder) = pending.pop() {
-                    let Ok(entries) = fs::read_dir(folder) else {
+                let dir = format!("{folder}/");
+                for file in base.list(&dir) {
+                    let Some(stem) = file
+                        .strip_prefix(&dir)
+                        .and_then(|relative| relative.strip_suffix(".png"))
+                    else {
                         continue;
                     };
-                    for entry in entries.flatten() {
-                        let path = entry.path();
-                        if path.is_dir() {
-                            pending.push(path);
-                            continue;
-                        }
-                        if path.extension().is_none_or(|e| e != "png") {
-                            continue;
-                        }
-                        let Ok(relative) = path.strip_prefix(&dir) else {
-                            continue;
-                        };
-                        let name = format!(
-                            "{prefix}/{}",
-                            relative
-                                .with_extension("")
-                                .to_string_lossy()
-                                .replace('\\', "/")
-                        );
-                        if !existing.contains(&name)
-                            && let Ok(bytes) = fs::read(&path)
-                            && let Ok((w, h, pixels)) = decode_bytes(&bytes)
-                        {
-                            existing.insert(name.clone());
-                            images.push((name, w, h, pixels));
-                        }
+                    let name = format!("{prefix}/{stem}");
+                    if !existing.contains(&name)
+                        && let Ok(bytes) = base.read(&file)
+                        && let Ok((w, h, pixels)) = decode_bytes(&bytes)
+                    {
+                        existing.insert(name.clone());
+                        images.push((name, w, h, pixels));
                     }
                 }
             }
@@ -2047,13 +2030,13 @@ impl HudAtlas {
         #[cfg(target_os = "android")]
         if full {
             log::info!(
-                "Android control atlas: {} original textures (root {}, defaults {})",
+                "Android control atlas: {} original textures (root {:?}, defaults {:?})",
                 images
                     .iter()
                     .filter(|i| i.0.starts_with("gui/bedrock/"))
                     .count(),
-                root.display(),
-                defaults.display()
+                root,
+                defaults
             );
         }
         // The menus' atlas too: the touch layout editor works before a world.
@@ -5116,7 +5099,7 @@ texture=wide",
             utilities.join("pause.png"),
         )
         .unwrap();
-        let atlas = HudAtlas::build(&root).unwrap();
+        let atlas = HudAtlas::build(&ResourceSource::directory(root.clone())).unwrap();
         assert_eq!(atlas.sprites["gui/bedrock/gui"].w, 256);
         assert_eq!(atlas.sprites["gui/bedrock/ui/attack"].h, 32);
         assert_eq!(atlas.sprites["starling:gui/sprites/touch/pause"].w, 32);

@@ -201,4 +201,3 @@ pub use horizon_items::items;
 pub use horizon_items::random_sequences;
 
 pub mod android_controls;
-pub mod keypad;

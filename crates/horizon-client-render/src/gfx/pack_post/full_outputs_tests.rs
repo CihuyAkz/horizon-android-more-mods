@@ -53,6 +53,7 @@ fn pack(outputs: u32) -> Post {
             paged_maps: false,
             water_mask: false,
             water_patches: false,
+            prepass_uv: false,
             declarations: "layout(location=0)in vec3 fixture_position;\n".into(),
             body: "hz_Vertex=vec4(fixture_position,1.0);hz_Color=vec4(1.0);\
                    hz_MultiTexCoord0=vec4(0.0);hz_MultiTexCoord1=vec4(240.0);\
@@ -85,6 +86,7 @@ fn a_shadow_program_with_every_output_drops_the_boats_patches_not_its_water() {
             atlas: None,
             ids: None,
             cull: true,
+            prepass: false,
         })
     };
     let outputs = gpu.device.limits().max_inter_stage_shader_variables;

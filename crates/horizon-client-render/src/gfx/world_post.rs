@@ -876,7 +876,7 @@ mod tests {
         let Some((device, _)) = test_device() else {
             return;
         };
-        let mut post = Post::new(&device, wgpu::TextureFormat::Rgba8Unorm);
+        let mut post = Post::new(&device, wgpu::TextureFormat::Rgba8Unorm, "");
         assert!(!post.taa_on);
         assert!(post.size().is_none());
         for (window, scale, upscale, expected) in [
@@ -901,7 +901,7 @@ mod tests {
             eprintln!("TAA baked-light GPU skipped: no test device");
             return;
         };
-        let mut post = Post::new(&device, wgpu::TextureFormat::Rgba16Float);
+        let mut post = Post::new(&device, wgpu::TextureFormat::Rgba16Float, "");
         post.taa = true;
         if !post.supports_taa() {
             eprintln!("TAA baked-light GPU skipped: TAA unsupported");
