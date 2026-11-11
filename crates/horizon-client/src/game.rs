@@ -21589,8 +21589,10 @@ impl Loading {
             self.shown = true;
             startup::mark("loading_screen.shown");
             log::info!(
-                "Horizon: loading screen shown after {} ms",
-                self.started.elapsed().as_millis()
+                "Horizon: loading screen shown after {} ms{}",
+                self.started.elapsed().as_millis(),
+                horizon_client::system_stats::memory_note()
+                    .map_or_else(String::new, |m| format!("; memory: {m}"))
             );
             // The system's starting window stayed over the app until now (StarlingActivity).
             #[cfg(target_os = "android")]
