@@ -5868,7 +5868,6 @@ mod tests {
     use crate::mobs::spawner::SpawnDataExt;
 
     #[test]
-<<<<<<< HEAD
     fn deferred_world_files_read_back_and_keep_their_order() {
         let dir = std::env::temp_dir().join(format!("horizon-later-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
@@ -5891,8 +5890,9 @@ mod tests {
         assert_eq!(v(super::read_dat(&path)), Some(Tag::Int(3)));
         assert_eq!(std::fs::read(&json).unwrap(), b"{\"a\":1}");
         let _ = std::fs::remove_dir_all(&dir);
-||||||| c98a51a664
-=======
+    }
+
+    #[test]
     fn saved_preset_editor_stems_supply_shapes_and_facts_below_pack_stems() {
         use super::*;
         use horizon_world::worldgen::overrides::{DIMENSIONS, WorldgenOverrides};
@@ -6013,7 +6013,6 @@ mod tests {
         assert_eq!(returned.game_rules.get("example:enabled"), Some(&0));
         returned.write(&dir).unwrap();
         let _ = std::fs::remove_dir_all(dir);
->>>>>>> arismoko/main
     }
 
     #[test]

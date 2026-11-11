@@ -677,7 +677,6 @@ fn resolve_shapes<'a>(
         .collect()
 }
 
-<<<<<<< HEAD
 /// A declared `properties.shape` (Starling): its boxes, made for a state facing up (or along y),
 /// turned to each state's `facing`, else its `axis`, as Create's shapers turn theirs.
 fn turned_shapes<'a>(
@@ -745,8 +744,8 @@ fn turn_box(b: &[f32; 6], turns: [u8; 2]) -> [f64; 6] {
         a[1].max(c[1]),
         a[2].max(c[2]),
     ]
-||||||| c98a51a664
-=======
+}
+
 /// A content farmland declaration names a block absent from the loaded registry.
 #[derive(Debug)]
 pub struct UnknownBaseBlock {
@@ -788,7 +787,6 @@ enum SkylightRule {
     Shape,
     Fluid,
     Template,
->>>>>>> arismoko/main
 }
 
 /// A block being added: its declaration and where its states go.
@@ -3552,7 +3550,6 @@ pub fn build(
             overlay.write(&own, &fs::read(&vanilla)?)?;
         }
     }
-<<<<<<< HEAD
     // The blocks' kinetic parts, by block id: the game's networks (kinetics.rs) and the models
     // it turns (the model catalog bakes those no blockstate names).
     let kinetic: BTreeMap<&str, &horizon_mods::content::Kinetic> = mods
@@ -3582,19 +3579,6 @@ pub fn build(
     if !models.is_empty() {
         overlay.write(BLOCK_MODELS, &serde_json::to_vec(&models)?)?;
     }
-    let mut namespaces: Vec<&str> = mods
-        .iter()
-        .flat_map(|m| m.content.namespaces.iter().map(String::as_str))
-        .collect();
-    namespaces.sort();
-||||||| c98a51a664
-    let mut namespaces: Vec<&str> = mods
-        .iter()
-        .flat_map(|m| m.content.namespaces.iter().map(String::as_str))
-        .collect();
-    namespaces.sort();
-=======
->>>>>>> arismoko/main
     overlay.write(MARKER, &serde_json::to_vec(&namespaces)?)?;
     let requirements =
         collect_jar_requirements(mods.iter().map(|m| (m.id.as_str(), m.jars.as_slice())))?;
@@ -3764,36 +3748,25 @@ pub fn resolved_resources(
 /// The root is built once and kept: later starts with the same build, base
 /// and mod files reuse it. With ATM10's carried mods a build takes about
 /// 25 s and peaks above 3 GB, more than everything the game keeps.
-<<<<<<< HEAD
-pub fn resource_root(base: &Path, mods: &[ContentMod], cache: &Path) -> Result<PathBuf> {
-    resource_root_with(base, mods, cache, &mut || {})
-}
-
-/// [`resource_root`], calling `on_build` before a build (none when the root is reused), so a
-/// loading screen can say why it waits.
-pub fn resource_root_with(
-    base: &Path,
-    mods: &[ContentMod],
-    cache: &Path,
-    on_build: &mut dyn FnMut(),
-) -> Result<PathBuf> {
-    if mods
-        .iter()
-        .all(|m| m.content.is_empty() && m.content.blocks.is_empty() && m.content.items.is_empty())
-    {
-||||||| c98a51a664
-pub fn resource_root(base: &Path, mods: &[ContentMod], cache: &Path) -> Result<PathBuf> {
-    if mods
-        .iter()
-        .all(|m| m.content.is_empty() && m.content.blocks.is_empty() && m.content.items.is_empty())
-    {
-=======
 pub fn resource_root(
     base: &Path,
     jar_store: &Path,
     mods: &[ContentMod],
     cache: &Path,
     inventory: &horizon_mod_package::enabled::EnabledMods,
+) -> Result<PathBuf> {
+    resource_root_with(base, jar_store, mods, cache, inventory, &mut || {})
+}
+
+/// [`resource_root`], calling `on_build` before a build (none when the root is reused), so a
+/// loading screen can say why it waits.
+pub fn resource_root_with(
+    base: &Path,
+    jar_store: &Path,
+    mods: &[ContentMod],
+    cache: &Path,
+    inventory: &horizon_mod_package::enabled::EnabledMods,
+    on_build: &mut dyn FnMut(),
 ) -> Result<PathBuf> {
     let has_content = mods.iter().any(|m| {
         !m.jars.is_empty()
@@ -3803,27 +3776,18 @@ pub fn resource_root(
             || !m.content.block_entity_types.is_empty()
     });
     if inventory.is_empty() && !has_content {
->>>>>>> arismoko/main
         return Ok(base.to_owned());
     }
     let stamp = stamp(base, jar_store, mods, inventory)?;
     let roots = cache.join("mod-content");
     let out = roots.join(&stamp[..ROOT_NAME]);
-<<<<<<< HEAD
-    if fs::read(out.join(STAMP)).is_ok_and(|s| s == stamp.as_bytes()) {
-        // A reused root warns as the build did; rewriting the stamp marks it as used.
-||||||| c98a51a664
-    if fs::read(out.join(STAMP)).is_ok_and(|s| s == stamp.as_bytes()) {
-        // A reused root warns as the build did.
-=======
     if fs::read(out.join(STAMP)).is_ok_and(|s| s == stamp.as_bytes())
         && fs::read(out.join(horizon_mod_package::enabled::MARKER)).is_ok_and(|bytes| {
             serde_json::from_slice::<horizon_mod_package::enabled::EnabledMods>(&bytes)
                 .is_ok_and(|loaded| &loaded == inventory)
         })
     {
-        // A reused root warns as the build did.
->>>>>>> arismoko/main
+        // A reused root warns as the build did; rewriting the stamp marks it as used.
         let warnings = fs::read_to_string(out.join(WARNINGS)).unwrap_or_default();
         warnings.lines().for_each(|w| log::warn!("Horizon: {w}"));
         // Used again: kept another day. Marked beside the root, not in it: the pack overlay
@@ -3831,14 +3795,7 @@ pub fn resource_root(
         let _ = fs::write(used_path(&out), b"");
         return Ok(out);
     }
-<<<<<<< HEAD
     on_build();
-    for warning in build(base, mods, &out)? {
-        log::warn!("Horizon: {warning}");
-||||||| c98a51a664
-    for warning in build(base, mods, &out)? {
-        log::warn!("Horizon: {warning}");
-=======
     if has_content {
         for warning in build(base, jar_store, mods, &out, inventory)? {
             log::warn!("Horizon: {warning}");
@@ -3853,7 +3810,6 @@ pub fn resource_root(
             &serde_json::to_vec(inventory)?,
         )?;
         overlay.write(GENERATED_FILES, b"[]")?;
->>>>>>> arismoko/main
     }
     fs::write(out.join(STAMP), stamp)?;
     prune_roots(&roots, &out, KEEP_ROOTS);

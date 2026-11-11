@@ -11,30 +11,10 @@ pub struct Startup {
     _capture: Option<horizon_mod_package::output::Capture>,
 }
 
-<<<<<<< HEAD
-/// Start the game with trait mods in dispatch order.
-pub fn main_with(mods: crate::mod_api::Mods) {
-    start(mods, || {});
-}
-
-/// [`main_with`], running `after_log` once the log is open (Android's start-up notes, its
-/// platform set-up that logs).
-pub fn start(mods: crate::mod_api::Mods, after_log: impl FnOnce()) {
-    // First: a trait injection into anything below (logging, the crash handler) calls its mod.
-    if crate::mod_api::MODS.set(mods).is_err() {
-        log::warn!("Trait mods already installed; ignoring the second list");
-||||||| c98a51a664
-/// Start the game with trait mods in dispatch order.
-pub fn main_with(mods: crate::mod_api::Mods) {
-    // First: a trait injection into anything below (logging, the crash handler) calls its mod.
-    if crate::mod_api::MODS.set(mods).is_err() {
-        log::warn!("Trait mods already installed; ignoring the second list");
-=======
 impl Startup {
     /// Validated launch context used by the platform's code loader.
     pub fn launch(&self) -> &LaunchArguments {
         &self.launch
->>>>>>> arismoko/main
     }
 }
 
@@ -45,7 +25,11 @@ pub fn prepare() -> Startup {
     horizon_mod_package::holder::enter();
     let result: crate::Result<_> = (|| {
         let mut command = std::process::Command::new(std::env::current_exe()?);
+        #[cfg(not(target_os = "android"))]
         command.args(std::env::args_os().skip(1));
+        // The process has no command line: `horizon-args.txt`'s, read by `android::main`.
+        #[cfg(target_os = "android")]
+        command.args(crate::android::args());
         let launch = LaunchArguments::for_command(&command)?;
         let options = game::Options::validate(launch.clone())?;
         Ok((launch, options))
@@ -63,6 +47,16 @@ pub fn prepare() -> Startup {
         options,
         _capture: capture,
     }
+}
+
+/// Runs once the log is open (Android's start-up notes, its platform set-up that logs); set before [`start`].
+static AFTER_LOG: std::sync::Mutex<Option<Box<dyn FnOnce() + Send>>> = std::sync::Mutex::new(None);
+
+/// Register what runs once the log is open (see `AFTER_LOG`).
+pub fn set_after_log(hook: impl FnOnce() + Send + 'static) {
+    *AFTER_LOG
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(Box::new(hook));
 }
 
 /// A native function slot, checked against its place's exact type before erasure.
@@ -129,29 +123,6 @@ pub fn start<G>(
     horizon_hooks::engine::seal();
     horizon_client::spans::startup::init(std::time::Instant::now());
     horizon_client::spans::trace::start_from_env();
-<<<<<<< HEAD
-    #[cfg(not(target_os = "android"))]
-    let args: Vec<String> = std::env::args().skip(1).collect();
-    // The process has no command line: `horizon-args.txt`'s, read by `android::main`.
-    #[cfg(target_os = "android")]
-    let args: Vec<String> = crate::android::args();
-    let game_args = args.iter().take_while(|a| *a != "--dedicated");
-    let help = game_args
-        .clone()
-        .any(|a| a == "--help" || a == "-h" || a == "--launch-api");
-    // --home before the log opens in it.
-    if let Some(dir) = game_args.clone().skip_while(|a| *a != "--home").nth(1) {
-        logging::set_game_home(std::path::absolute(dir).unwrap_or_else(|_| dir.into()));
-||||||| c98a51a664
-    let args: Vec<String> = std::env::args().skip(1).collect();
-    let game_args = args.iter().take_while(|a| *a != "--dedicated");
-    let help = game_args
-        .clone()
-        .any(|a| a == "--help" || a == "-h" || a == "--launch-api");
-    // --home before the log opens in it.
-    if let Some(dir) = game_args.clone().skip_while(|a| *a != "--home").nth(1) {
-        logging::set_game_home(std::path::absolute(dir).unwrap_or_else(|_| dir.into()));
-=======
     let (ids, _loaded_code) = load(&native, &launch);
     for id in ids {
         for slot in slots.iter().filter(|slot| slot.id() == id) {
@@ -160,7 +131,6 @@ pub fn start<G>(
                 std::process::exit(game::exit_code::ERROR);
             }
         }
->>>>>>> arismoko/main
     }
     logging::set_game_home(launch.context.home.clone());
     // The dedicated server logs in its own folder, as vanilla's does; the game in its home.
@@ -180,46 +150,6 @@ pub fn start<G>(
         }
         (launch.context.home.clone(), "client", "Render thread")
     };
-<<<<<<< HEAD
-    // Before the log opens, so a mod's injection hears its first lines.
-    logging::set_line_hook(crate::native_client_hooks::native_log_line);
-    if !help {
-        logging::init(
-            logging::player_dir_override().unwrap_or(home.as_path()),
-            thread,
-        );
-        // The log's first line names the build, so a bug report that carries the log says which one it was.
-        log::info!("Horizon {}", crash::version());
-        crash::install(home.clone(), side);
-    }
-    after_log();
-    let renderers = crate::mod_api::mods()
-        .iter()
-        .filter_map(|m| m.render())
-        .collect();
-    if crate::gfx::native_render::install(renderers).is_err() {
-        log::warn!("Trait renderers already installed; keeping the first list");
-    }
-||||||| c98a51a664
-    // Before the log opens, so a mod's injection hears its first lines.
-    logging::set_line_hook(crate::native_client_hooks::native_log_line);
-    if !help {
-        logging::init(
-            logging::player_dir_override().unwrap_or(home.as_path()),
-            thread,
-        );
-        // The log's first line names the build, so a bug report that carries the log says which one it was.
-        log::info!("Horizon {}", crash::version());
-        crash::install(home.clone(), side);
-    }
-    let renderers = crate::mod_api::mods()
-        .iter()
-        .filter_map(|m| m.render())
-        .collect();
-    if crate::gfx::native_render::install(renderers).is_err() {
-        log::warn!("Trait renderers already installed; keeping the first list");
-    }
-=======
     logging::init(
         logging::player_dir_override().unwrap_or(home.as_path()),
         thread,
@@ -227,7 +157,13 @@ pub fn start<G>(
     // The log's first line names the build, so a bug report that carries the log says which one it was.
     log::info!("Horizon {}", crash::version());
     crash::install(home.clone(), side);
->>>>>>> arismoko/main
+    if let Some(after_log) = AFTER_LOG
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .take()
+    {
+        after_log();
+    }
     if horizon_world::native_load_hooks::install(
         horizon_world::native_load_hooks::NativeLoadHooks {
             loot_table_load: |context, id, table| {

@@ -501,27 +501,6 @@ impl Game<'_> {
             }
         };
         // Everything loaded: switch over.
-<<<<<<< HEAD:crates/horizon-client/src/game/packs.rs
-        self.waypoint_styles = waypoint_styles;
-        self.armor_stand_assets.take_reloaded(armor);
-        *self
-            .res
-            .mob_data()
-            .armor_atlases
-            .write()
-            .unwrap_or_else(std::sync::PoisonError::into_inner) =
-            self.armor_stand_assets.atlases.clone();
-        *self
-            .res
-            .mob_data()
-            .equipment
-            .write()
-            .unwrap_or_else(std::sync::PoisonError::into_inner) =
-            self.armor_stand_assets.equipment.clone();
-||||||| c98a51a664:crates/horizon-client/src/game/packs.rs
-        self.waypoint_styles = horizon_client::locator_bar::WaypointStyles::load(&root);
-        self.armor_stand_assets.reload_trims(&root);
-=======
         [
             self.frame_model,
             self.glow_frame_model,
@@ -530,7 +509,6 @@ impl Game<'_> {
         ] = frame_models;
         self.waypoint_styles = waypoint_styles;
         self.armor_stand_assets.apply_resources(armor_stand_assets);
->>>>>>> arismoko/main:crates/horizon-client/src/game/world/packs/mod.rs
         self.random_tick_sections.clear();
         self.portals.sections.clear();
         self.options.resources = root.clone();
@@ -564,15 +542,8 @@ impl Game<'_> {
             .mob_data()
             .villager_hats
             .write()
-<<<<<<< HEAD:crates/horizon-client/src/game/packs.rs
-            .unwrap_or_else(std::sync::PoisonError::into_inner) = villager_hats;
-||||||| c98a51a664:crates/horizon-client/src/game/packs.rs
-            .unwrap_or_else(std::sync::PoisonError::into_inner) =
-            horizon_client::mobs::villager_hats::VillagerHats::load(&root);
-=======
             .unwrap_or_else(std::sync::PoisonError::into_inner) =
             horizon_client::mobs::villager_hats::VillagerHats::load(&self.pack.source);
->>>>>>> arismoko/main:crates/horizon-client/src/game/world/packs/mod.rs
         *self
             .res
             .mob_data()
@@ -669,27 +640,11 @@ pub(super) fn stage_pack(
     japanese: bool,
     progress: &super::Progress,
 ) -> horizon_client::Result<StagedPack> {
-<<<<<<< HEAD:crates/horizon-client/src/game/packs.rs
-    // The blocks and items stay the start's: the registries can't change (world_content.rs).
-    let started = super::world_content::running();
-    let base = super::mods::content_root(
-        vanilla_root,
-        mods_enabled,
-        dev_mods,
-        Some(&started),
-        &mut |_| {},
-    );
-    let root = startup_root(vanilla_root, &base, selected, server)?;
-||||||| c98a51a664:crates/horizon-client/src/game/packs.rs
-    let base = super::mods::content_root(vanilla_root, mods_enabled, dev_mods);
-    let root = startup_root(vanilla_root, &base, selected, server)?;
-=======
     let resource_root = startup_root(vanilla_root, selected, server, mod_sources)?;
     let resource_root = super::client_reload::stage_runtime_sprites(resource_root, runtime_sprites);
     let resource_root = super::client_reload::stage_texture_atlases(resource_root, texture_atlases);
     let root = resource_root.prepared().to_path_buf();
     let source = resource_root.source().clone();
->>>>>>> arismoko/main:crates/horizon-client/src/game/world/packs/mod.rs
     progress.set(1);
     // The mod listeners prepare against the merged root before the heavy
     // staging builds run: a listener that fails aborts the reload without the
@@ -750,19 +705,10 @@ pub(super) fn stage_pack(
         &source,
         res.mob_types(),
     ));
-<<<<<<< HEAD:crates/horizon-client/src/game/packs.rs
-    let block_entity_shapes = res.block_entity_render().shapes_for(&root);
-    let armor = super::armor_stands::ArmorStandAssets::load(&root, None);
-    let villager_hats = horizon_client::mobs::villager_hats::VillagerHats::load(&root);
-    let waypoint_styles = horizon_client::locator_bar::WaypointStyles::load(&root);
-||||||| c98a51a664:crates/horizon-client/src/game/packs.rs
-    let block_entity_shapes = res.block_entity_render().shapes_for(&root);
-=======
     let block_entity_shapes = res.block_entity_render().shapes_for(&source);
     let waypoint_styles = horizon_client::locator_bar::WaypointStyles::load(&source);
     let armor_stand_assets = super::armor_stands::ArmorStandAssets::load(&source, None);
     let frame_models = super::frames::bake_frames(&source);
->>>>>>> arismoko/main:crates/horizon-client/src/game/world/packs/mod.rs
     progress.set(3);
     Ok(StagedPack {
         root,

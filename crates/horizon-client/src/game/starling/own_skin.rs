@@ -1,3 +1,4 @@
+// game-module-cfg: not(target_os = "android")
 //! The player's own name and skin from Options > Skin Customization (horizon_client::own_skin):
 //! the name kept for the next world or server, and the chosen PNG of `skins/` put in one of the
 //! atlas's skin slots, where the local player's model (first and third person, the inventory's)

@@ -457,16 +457,10 @@ pub(super) fn start_game<'a>(
             if !cfg!(target_os = "android") && game.settings.file.bool("onboardAccessibility") {
                 title.start_onboarding();
             }
-<<<<<<< HEAD:crates/horizon-client/src/game/loading_window.rs
-            game.title = Some(title);
+            game.show_title(title);
             // Started again for a world's own mods (the start without a loading screen: the
             // menu's takes it in startup_menu.rs).
             game.pending_entry = world_content::next_entry();
-||||||| c98a51a664:crates/horizon-client/src/game/loading_window.rs
-            game.title = Some(title);
-=======
-            game.show_title(title);
->>>>>>> arismoko/main:crates/horizon-client/src/game/runtime/loading_window.rs
         }
     }
     if std::env::var_os("HORIZON_COMMAND_SCRIPT").is_some()

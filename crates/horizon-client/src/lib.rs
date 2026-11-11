@@ -5,13 +5,9 @@
 #![cfg_attr(not(target_os = "android"), forbid(unsafe_code))]
 extern crate self as horizon_client;
 pub use horizon_client_lib::*;
-<<<<<<< HEAD
 #[cfg(target_os = "android")]
 pub mod android;
-||||||| c98a51a664
-=======
 #[doc(hidden)]
->>>>>>> arismoko/main
 pub mod entry;
 
 // The game's allocator lives in the library, not the executable: the prebuilt game (#589) is this crate as a
@@ -24,12 +20,6 @@ static ALLOCATOR: horizon_threads::Allocator = horizon_threads::ALLOCATOR;
 #[global_allocator]
 static ALLOCATOR: horizon_threads::CensusAllocator = horizon_threads::CensusAllocator;
 pub mod game;
-<<<<<<< HEAD
-pub mod mod_api;
 
 pub mod diagnostics;
 pub mod performance;
-||||||| c98a51a664
-pub mod mod_api;
-=======
->>>>>>> arismoko/main

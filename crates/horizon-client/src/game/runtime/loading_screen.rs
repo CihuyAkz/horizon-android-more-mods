@@ -286,7 +286,7 @@ impl Loading {
                 let slop = horizon_client::touch::slop(size[0] as f32, size[1] as f32);
                 // Lists follow the finger one to one at this GUI scale.
                 self.touch_pointer.set_gui_scale(
-                    HudBatch::new(size).scale,
+                    HudBatch::new(size, self.settings.gui_scale_inputs()).scale,
                     self.settings.mouse_wheel_sensitivity,
                 );
                 // A finger on an option's button scrolls whichever way it moves, as in game.
@@ -423,8 +423,7 @@ impl Loading {
         else {
             return;
         };
-<<<<<<< HEAD:crates/horizon-client/src/game/loading_screen.rs
-        let mut batch = HudBatch::new(size);
+        let mut batch = HudBatch::new(size, self.settings.gui_scale_inputs());
         if self.failure.is_some() && self.menu.options_open {
             // The setup's settings: the menu's own screens, in the skin it put on.
             self.draw_menu(&mut batch);
@@ -441,13 +440,6 @@ impl Loading {
             self.draw_menu(&mut batch);
         }
         self.draw_menu_touch_editor(&mut batch, size);
-||||||| c98a51a664:crates/horizon-client/src/game/loading_screen.rs
-        let mut batch = HudBatch::new(size);
-        self.draw_menu(&mut batch);
-=======
-        let mut batch = HudBatch::new(size, self.settings.gui_scale_inputs());
-        self.draw_menu(&mut batch);
->>>>>>> arismoko/main:crates/horizon-client/src/game/runtime/loading_screen.rs
         self.menu.frame_drawn((batch.width, batch.height));
         let mut frame = loading_frame(&batch);
         frame.yaw = self.panorama_rotation.update(
@@ -533,7 +525,6 @@ impl Loading {
             }
         }
     }
-<<<<<<< HEAD:crates/horizon-client/src/game/loading_screen.rs
     /// Load the resources again (they were imported after a failure): a fresh loader, as at start.
     pub(super) fn retry(&mut self) -> Result<()> {
         let options = self.options.as_ref().ok_or("loading already finished")?;
@@ -607,12 +598,7 @@ impl Loading {
         ui.finish();
         self.imports.draw(&gui.atlas, batch);
     }
-    pub(super) fn finish(&mut self, loaded: Loaded) -> Result<Option<split::Split<'static>>> {
-||||||| c98a51a664:crates/horizon-client/src/game/loading_screen.rs
-    pub(super) fn finish(&mut self, loaded: Loaded) -> Result<Option<split::Split<'static>>> {
-=======
     pub(super) fn finish(&mut self, mut loaded: Loaded) -> Result<Option<split::Split<'static>>> {
->>>>>>> arismoko/main:crates/horizon-client/src/game/runtime/loading_screen.rs
         let handoff_at = Instant::now();
         let mut options = self.options.take().ok_or("loading already finished")?;
         options.resources = loaded.root.clone();
@@ -658,21 +644,15 @@ impl Loading {
         let audio = if !options.execution_role.is_client() {
             Audio::silent(&loaded.pack.source)
         } else {
-<<<<<<< HEAD:crates/horizon-client/src/game/loading_screen.rs
             match self.audio.take() {
                 Some(mut audio) => {
                     if options.resources != self.vanilla_root {
-                        audio.reload(&options.resources);
+                        audio.reload(&loaded.pack.source);
                     }
                     audio
                 }
-                None => Audio::with_device(&options.resources, &self.settings.sound_device),
+                None => Audio::with_device(&loaded.pack.source, &self.settings.sound_device),
             }
-||||||| c98a51a664:crates/horizon-client/src/game/loading_screen.rs
-            Audio::with_device(&options.resources, &self.settings.sound_device)
-=======
-            Audio::with_device(&loaded.pack.source, &self.settings.sound_device)
->>>>>>> arismoko/main:crates/horizon-client/src/game/runtime/loading_screen.rs
         };
         let pack_error = loaded.pack_error.or_else(|| self.pack_error.take());
         // The game borrows its shared resources for the process's lifetime,

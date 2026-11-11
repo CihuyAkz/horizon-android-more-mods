@@ -1,3 +1,4 @@
+// game-module-cfg: target_os = "android"
 //! Android: native mods (docs/starling-native-mods.md). A native mod is compiled into the game, so
 //! playing with one is playing another build of this version's game library, made by GitHub
 //! (native-mods.yml) and published as assets of the native-builds release, the organisation's

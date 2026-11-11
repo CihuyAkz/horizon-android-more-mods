@@ -585,6 +585,35 @@ pub(super) fn register_particles(role: ExecutionRole) {
     horizon_client::particles::register_particle_groups(groups);
 }
 
+/// What [`content_root`] tells a loading screen while it works.
+pub(super) enum ContentNote<'a> {
+    /// A mod's assets coming from Modrinth: its name, and the bytes so far and in all.
+    Fetching {
+        name: &'a str,
+        done: u64,
+        total: u64,
+    },
+    /// The mods' root being built: their ids.
+    Building(&'a str),
+}
+
+impl ContentNote<'_> {
+    /// The loading screen's line for it.
+    pub(super) fn text(&self) -> String {
+        let mb = |bytes: u64| bytes as f64 / 1_000_000.0;
+        match self {
+            ContentNote::Fetching { name, done, total } => format!(
+                "Downloading {name}'s textures and models from Modrinth: {:.1} of {:.1} MB",
+                mb(*done),
+                mb(*total)
+            ),
+            ContentNote::Building(names) => {
+                format!("Preparing mods: {names} (the first time takes a minute)")
+            }
+        }
+    }
+}
+
 /// `root` with the content mods that are on layered over it
 /// (docs/modpacks.md): their blocks, items, data and assets. Read once at
 /// start, before the resources load; a mod whose content is refused is left
@@ -1289,14 +1318,34 @@ fn not_built(
     paths.sort();
     let mut out: Vec<Installed> = Vec::new();
     for path in paths {
-        let Ok(bundle) = horizon_mod_package::index::native::Bundle::read(&path) else {
-            continue;
+        let bundle = match horizon_mod_package::index::native::Bundle::read(&path) {
+            Ok(bundle) => bundle,
+            // Said on its row: a file left out without a word looks like the folder isn't read.
+            Err(e) => {
+                let title = path
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .into_owned();
+                let shown = |row: &Installed| row.id.is_empty() && row.title == title;
+                if !rows.iter().chain(&out).any(shown) {
+                    out.push(Installed {
+                        title,
+                        id: String::new(),
+                        description: String::new(),
+                        problem: Some(format!("Not a native mod Starling can read: {e}")),
+                        dev: false,
+                        native: None,
+                    });
+                }
+                continue;
+            }
         };
         let m = bundle.manifest;
         let listed = rows.iter().chain(&out).any(|row| row.id == m.id);
         if !listed && !built.iter().any(|b| b.id == m.id) {
             out.push(Installed {
-                title: format!("{} {}", m.id, m.version),
+                title: format!("{} {}", display_name(&m.id), m.version),
                 id: m.id,
                 description: String::new(),
                 problem: Some(mod_list::NOT_BUILT.to_owned()),
@@ -1313,6 +1362,17 @@ pub(super) struct PreparedLoopContext {
     audio: Option<horizon_world::native_load_context::LoopContext>,
     /// A server's context for the features it generates (`alter_ground`).
     worldgen: Option<horizon_world::native_load_context::WorldgenContext>,
+}
+
+/// A native mod's name from its id, which is all its bundle says of it (the name is in its code):
+/// `carry_block` is "Carry block", as the game built with it names `Wrench` "Wrench".
+fn display_name(id: &str) -> String {
+    let words = id.replace(['_', '-'], " ");
+    let mut chars = words.chars();
+    chars
+        .next()
+        .map(|first| first.to_uppercase().chain(chars).collect())
+        .unwrap_or_default()
 }
 
 impl Game<'_> {
@@ -1388,6 +1448,45 @@ impl Game<'_> {
         Ok(Some(content_overlay(&base, &self.mods, &jars)?.root))
     }
 
+    /// The Mods page opened: native mods copied into the folder since the game started (the Files
+    /// app, a computer) get their rows, as the catalog's do. Only a phone compiles them.
+    #[cfg(target_os = "android")]
+    pub(super) fn list_copied_native_mods(&mut self) {
+        self.list_new_native_mods();
+    }
+    #[cfg(not(target_os = "android"))]
+    pub(super) fn list_copied_native_mods(&mut self) {}
+
+    /// Installed mod `i` was turned on or off on the Mods page: a native one changes which build
+    /// the next start runs (`native_builds.rs`). Only a phone has builds.
+    #[cfg(target_os = "android")]
+    pub(super) fn mod_toggled(&mut self, i: usize) {
+        self.native_mod_toggled(i);
+    }
+    #[cfg(not(target_os = "android"))]
+    pub(super) fn mod_toggled(&mut self, _i: usize) {}
+
+    /// A button of the Mods page's game with native mods (`native_builds.rs`).
+    #[cfg(target_os = "android")]
+    pub(super) fn native_game_button(&mut self, act: mod_list::NativeGameAct) {
+        self.native_game_act(act);
+    }
+    #[cfg(not(target_os = "android"))]
+    pub(super) fn native_game_button(&mut self, _act: mod_list::NativeGameAct) {}
+
+    /// A native mod the catalog just put in the folder: its row on the Mods page, with Compile.
+    #[cfg(target_os = "android")]
+    pub(super) fn list_new_native_mods(&mut self) {
+        let native_dir = Self::game_dir().join(mod_list::NATIVE_DIR);
+        let unbuilt = not_built(
+            &native_dir,
+            self.mods.native.built(),
+            &self.settings.mods.installed,
+        );
+        self.settings.mods.installed.extend(unbuilt);
+        self.offer_compile();
+    }
+
     /// Lists the installed mods on the Mods page. Content mods load with the resources
     /// (`content_root`); native ones are built into the game (`native_hooks.rs`). Unsupported
     /// files get the same unreadable-file row as any other invalid package.
@@ -1405,11 +1504,12 @@ impl Game<'_> {
                 let package = match horizon_mod_package::Package::read(path) {
                     Ok(package) => package,
                     Err(e) => {
+                        log::warn!("Horizon: mod {file} can't be read: {e}");
                         return Installed {
                             id: String::new(),
                             title: file.into_owned(),
                             description: String::new(),
-                            problem: Some(format!("Can't be read: {e}")),
+                            problem: Some("Made for another version: needs an update".to_owned()),
                             dev: false,
                             native: None,
                         };
@@ -1445,6 +1545,8 @@ impl Game<'_> {
         }
         // A mod with a native version built in says so instead, and isn't news.
         self.list_native_mods();
+        #[cfg(target_os = "android")]
+        self.list_native_builds_row();
         self.sync_native_switches();
         let built = self.mods.native.built();
         let built_mods = native_mods_detail(built);
@@ -1456,6 +1558,8 @@ impl Game<'_> {
         let unbuilt = not_built(&native_dir, built, &self.settings.mods.installed);
         self.settings.mods.installed.extend(unbuilt);
         self.mods.report_refusals(&mut self.settings.mods.installed);
+        #[cfg(target_os = "android")]
+        self.offer_compile();
     }
     /// The content mods the resources load with: the ones applied, which a
     /// switch that needs a restart doesn't change.
@@ -2761,16 +2865,27 @@ mod tests {
         std::fs::write(f.0.join("notes.txt"), "not a mod").unwrap();
         std::fs::write(f.0.join("broken.hmod"), "not a zip").unwrap();
         let rows = not_built(&f.0, &[], &[]);
+        // The file that isn't a bundle gets a row named after it, saying why, with no Compile.
+        let (broken, rows): (Vec<_>, Vec<_>) = rows.into_iter().partition(|r| r.id.is_empty());
+        assert_eq!(broken.len(), 1);
+        assert_eq!(broken[0].title, "broken.hmod");
+        assert!(
+            broken[0]
+                .problem
+                .as_deref()
+                .is_some_and(|p| p.starts_with("Not a native mod Starling can read"))
+        );
         let ids: Vec<_> = rows.iter().map(|r| r.id.as_str()).collect();
         assert_eq!(ids, ["machine_sample", "minimap", "veinminer", "zoom"]);
-        assert_eq!(rows[2].title, "veinminer 0.3.0");
+        assert_eq!(rows[2].title, "Veinminer 0.3.0");
         assert_eq!(rows[2].problem.as_deref(), Some(mod_list::NOT_BUILT));
         assert!(rows.iter().all(|r| r.native.is_none() && !r.dev));
         let listed = Installed {
             id: "minimap".into(),
             ..rows[0].clone()
         };
-        let rows = not_built(&f.0, BUILT, &[listed]);
+        // The broken file's row, listed already, isn't added again when the page reads the folder.
+        let rows = not_built(&f.0, BUILT, &[listed, broken[0].clone()]);
         let ids: Vec<_> = rows.iter().map(|r| r.id.as_str()).collect();
         assert_eq!(ids, ["veinminer", "zoom"]);
         assert!(not_built(&f.0.join("missing"), &[], &[]).is_empty());

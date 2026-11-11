@@ -95,6 +95,15 @@ impl Game<'_> {
             self.focus_after_run = Some(focused);
             return;
         }
+        self.save_when_focus_leaves(&event);
+        if self.touch_event(event_loop, id, &event) {
+            return;
+        }
+        if let WindowEvent::KeyboardInput { event, .. } = &event
+            && self.touch_back_key(event)
+        {
+            return;
+        }
         follow_keymap(&mut event);
         // MacosUtil.setCtrlClickEmulatesRightClick: Control + left click is a right click.
         if let WindowEvent::MouseInput { state, button, .. } = &mut event
@@ -102,7 +111,7 @@ impl Game<'_> {
             && self.right_click_emulation.is_right_click(
                 *state == ElementState::Pressed,
                 self.modifiers.control_key(),
-                cfg!(target_os = "macos") && self.settings.ctrl_click_emulates_right_click,
+                MACOS_PLATFORM && self.settings.ctrl_click_emulates_right_click,
             )
         {
             *button = MouseButton::Right;
@@ -179,6 +188,10 @@ impl Game<'_> {
         event_loop: &dyn EventLoopCtl,
         mut event: WindowEvent,
     ) {
+        if self.platform_keypad_event(event_loop, &mut event) {
+            return;
+        }
+
         let pressed = match &event {
             WindowEvent::KeyboardInput { event, .. } => {
                 event.state == ElementState::Pressed && !event.repeat
@@ -250,6 +263,8 @@ impl Game<'_> {
             }
             return;
         }
+        // Android's winit sends no ModifiersChanged: the held keys make them.
+        self.platform_held_modifiers(&event);
         // Fullscreen is a window shortcut, before screens consume keyboard input.
         // Not Alt or Super on their own: leaving the window isn't playing with the keyboard.
         if let WindowEvent::KeyboardInput { event, .. } = &event
@@ -703,6 +718,7 @@ impl Game<'_> {
                             title.drag(self.cursor, (b.width, b.height));
                             title.drag_field(&self.gui.atlas, self.cursor.0);
                         }
+                        self.drag_title_player();
                         if self.dragging && self.screen == Screen::Options {
                             let _ = b;
                             self.options_drag()?;
@@ -716,8 +732,11 @@ impl Game<'_> {
                         MouseScrollDelta::LineDelta(x, y) => (f64::from(x), f64::from(y)),
                         MouseScrollDelta::PixelDelta(p) => (p.x / 30.0, p.y / 30.0),
                     };
-                    // MouseHandler.onScroll: discrete scrolling and the wheel sensitivity.
-                    let discrete = self.settings.discrete_scroll;
+                    // MouseHandler.onScroll: discrete scrolling and the wheel sensitivity. A
+                    // phone's pixel scrolls are a finger's (touch.rs), which follow it instead.
+                    let finger =
+                        MOBILE_PLATFORM && matches!(delta, MouseScrollDelta::PixelDelta(_));
+                    let discrete = self.settings.discrete_scroll && !finger;
                     let wheel_sensitivity = f64::from(self.settings.mouse_wheel_sensitivity);
                     let scaled = |v: f64| {
                         (if discrete {
@@ -818,7 +837,7 @@ impl Game<'_> {
                         self.command_block_scroll(d);
                     }
                     if self.screen == Screen::Options && d != 0.0 {
-                        self.options_scroll(d)?;
+                        self.options_scroll(d, finger)?;
                     }
                     // AbstractContainerScreen.mouseScrolled: a bundle under the
                     // cursor takes the wheel before the screen's own scrolling.
@@ -911,7 +930,13 @@ impl Game<'_> {
                         title.release();
                         title.release_field();
                     }
+                    self.release_title_player();
                 }
+                WindowEvent::MouseInput {
+                    state: ElementState::Pressed,
+                    button: MouseButton::Left,
+                    ..
+                } if self.title_player_at(self.cursor) => self.press_title_player(),
                 WindowEvent::MouseInput {
                     state,
                     button: MouseButton::Left,
@@ -1075,6 +1100,7 @@ impl Game<'_> {
                                 self.creative_screen.release();
                             }
                             self.inventory_mouse_release(button == MouseButton::Right);
+                            self.bedrock_held = false;
                         }
                         Screen::Paused
                             if pressed && button == MouseButton::Left && self.pause_menu =>
@@ -1539,6 +1565,7 @@ impl Game<'_> {
                     self.extras_retry()?;
                     self.apply_mouse_look();
                     self.input_look(elapsed.as_secs_f32());
+                    self.kinetics_frame();
                     self.advance_flight();
                     self.tick_world_icon();
                     let ticked = Instant::now();
@@ -1580,6 +1607,7 @@ impl Game<'_> {
                             );
                         }
                     }
+                    let mut diagnostic_sample = None;
                     if let Some(r) = self.renderer.as_mut() {
                         let cpu = now.elapsed().saturating_sub(r.last_wait);
                         if rendered {
@@ -1627,8 +1655,34 @@ impl Game<'_> {
                                 .record_block_entities(r.static_block_entity_frame_stats());
                         }
                         self.frame_stats.record_gpu(&r.gpu_times);
+                        if rendered && crate::performance::active() {
+                            let ms = |d: Duration| d.as_secs_f32() * 1000.0;
+                            crate::performance::slow_frame(ms(cpu), &frame_spans);
+                            diagnostic_sample = crate::performance::record(
+                                ms(elapsed),
+                                ms(cpu),
+                                &r.gpu_times,
+                                [
+                                    ms(updated - now),
+                                    ms(ticked - updated),
+                                    ms(ticked
+                                        .elapsed()
+                                        .saturating_sub(r.last_wait + r.last_encode)),
+                                    ms(r.last_encode),
+                                ],
+                            );
+                            if let Some(row) = diagnostic_sample.as_mut() {
+                                row["gpu_passes"] = r.diagnostic_pass_times();
+                            }
+                        }
                         r.gpu_times.clear();
+                        self.platform_frame_hint(rendered, cpu);
                     }
+                    if let Some(sample) = diagnostic_sample {
+                        let context = self.diagnostic_context();
+                        crate::performance::submit(sample, context);
+                    }
+                    self.platform_diagnostic_heartbeat();
                     self.limit_frame();
                     let paused = self.pauses_game();
                     if paused != self.pause {
@@ -1666,12 +1720,26 @@ impl Game<'_> {
                     if let Some(result) = &finished
                         && let Some(reply) = self.pending_screenshot.take()
                     {
+                        let inline = self.inline_screenshot.take().map(|path| {
+                            let png = std::fs::read(&path);
+                            let _ = std::fs::remove_file(&path);
+                            png
+                        });
                         let _ = reply.send(
-                            match result {
-                                Ok([w, h]) => {
+                            match (result, inline) {
+                                (Ok([w, h]), None) => {
                                     serde_json::json!({ "ok": true, "width": w, "height": h })
                                 }
-                                Err(e) => serde_json::json!({ "error": e }),
+                                (Ok([w, h]), Some(Ok(png))) => serde_json::json!({
+                                    "ok": true,
+                                    "width": w,
+                                    "height": h,
+                                    "png_base64": horizon_client::control::base64(&png),
+                                }),
+                                (Ok(_), Some(Err(e))) => {
+                                    serde_json::json!({ "error": e.to_string() })
+                                }
+                                (Err(e), _) => serde_json::json!({ "error": e }),
                             }
                             .to_string(),
                         );
@@ -1699,6 +1767,8 @@ impl Game<'_> {
                                 "Horizon: first frame after {} ms",
                                 self.started.elapsed().as_millis()
                             );
+                            // Runs that skip the loading screen show the window here.
+                            self.platform_first_frame();
                         }
                         if self.title.is_some() {
                             self.perf.title_shown();
@@ -1848,6 +1918,23 @@ impl Game<'_> {
         if self.pending_save.is_some() {
             return;
         }
+        // The mouse and the keyboard as Android's input hook saw them (game/input_mode.rs).
+        #[cfg(target_os = "android")]
+        self.android_input_frame(event_loop);
+        self.touch_frame(event_loop);
+        self.poll_imports();
+        if let Some(folder) = &self.content_record
+            && world_content::record(folder, &world_content::running())
+        {
+            self.content_record = None;
+        }
+        #[cfg(target_os = "android")]
+        {
+            self.poll_files_offer();
+            self.poll_update_offer();
+            self.poll_native_builds();
+            self.poll_catalog();
+        }
         horizon_client::spans::time("pads", || self.poll_pads(event_loop));
         self.settle_after_run(event_loop);
         self.pause_if_inactive();
@@ -1856,6 +1943,14 @@ impl Game<'_> {
         {
             self.error = Some(format!("run timed out after {} s", limit.as_secs()).into());
             event_loop.exit();
+            return;
+        }
+        if self.renderer.as_ref().is_some_and(|r| r.detached) {
+            // No window to draw in (Android in the background): wake now and then for the
+            // control socket instead of spinning.
+            event_loop.set_control_flow(ControlFlow::WaitUntil(
+                Instant::now() + Duration::from_millis(100),
+            ));
             return;
         }
         if let Some(w) = &self.window {
@@ -1894,7 +1989,18 @@ impl Game<'_> {
 
 impl ApplicationHandler for Game<'_> {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        if self.window.is_some() {
+        if let Some(window) = &self.window {
+            // Back from the background (Android): the same window, a new native surface.
+            let size = window.inner_size();
+            if let Some(r) = &mut self.renderer
+                && let Err(e) = r.resume(size.width, size.height)
+            {
+                log::warn!("Horizon: the window's surface did not come back: {e}");
+            }
+            self.audio.resume_output();
+            window.request_redraw();
+            // The next time it goes, it saves again.
+            self.saved_for_background = false;
             return;
         }
         debug_keys::warm_debug_cpu();
@@ -1998,17 +2104,28 @@ impl ApplicationHandler for Game<'_> {
             if x != 0.0 || y != 0.0 {
                 self.pad_yield_input(event_loop);
             }
-            // MouseHandler.onMove with the pointer grabbed; applied once per frame.
-            self.note_input(
-                input_trace::InputOrigin::User,
-                input_trace::TraceKind::Motion { x, y },
-            );
-            self.mouse.on_move(0.0, 0.0, x, y, true, true);
-            self.last_input = Instant::now();
+            self.grabbed_mouse_motion(x, y);
         }
     }
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
         self.idle(event_loop);
+    }
+    /// Android took the window away (the app went to the background, the screen went off): its
+    /// surface goes now, the sound stops, and the world is saved unless losing the focus saved it
+    /// already, since the system may end the process at any time from here on. Android's UI
+    /// thread waits for this to return, so nothing here waits for the world's writes.
+    fn suspended(&mut self, _event_loop: &ActiveEventLoop) {
+        #[cfg(target_os = "android")]
+        {
+            crate::diagnostics::heartbeat("suspended", || serde_json::json!({}));
+            crate::diagnostics::request_flush();
+        }
+        if let Some(r) = &mut self.renderer {
+            r.suspend();
+        }
+        self.audio.suspend_output();
+        self.touch_release_all();
+        self.save_for_background();
     }
     /// The application is ending. On macOS, Quit (Cmd+Q) ends it through
     /// applicationWillTerminate without a CloseRequested; vanilla's GLFW

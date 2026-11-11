@@ -1,3 +1,4 @@
+// game-module-cfg: target_os = "android"
 //! Android: the offer, over the title screen, to keep the game folder in shared storage (a
 //! Starling folder any file manager opens). Android's "all files" setting does the allowing, in a
 //! task of its own; once allowed, a restart moves the player's files (android.rs

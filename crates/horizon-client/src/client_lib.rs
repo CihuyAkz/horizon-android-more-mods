@@ -17,49 +17,21 @@ pub use horizon_client_render::{
     block_entities, block_entity_anim, block_entity_render, block_sprites, block_states, bluemap,
     bluemap_detect, border_render, breaking, brewing, camera, chat, chunk, chunk_map, cit,
     cit_armor, cit_assets, cit_glint, client_resources, clouds, collisions, command_block,
-<<<<<<< HEAD
     containers, controller_ui, crash, custom_sky, datapack, dynamic_light, effects, elyby,
-    environment, extras, fast_hash, fluid_render, fog, font, gfx, graphics, graphics_style,
-    graphics_ui, hdr_calibration, hud, hud_kit, hud_layout, hud_overlays, inventory_effects,
-    java_text, jigsaw_block, json_folder, level_loading, light, lod, logging, menu_blur, mesher,
-    minimap, mipmap, mod_browser, mod_list, model_library, models, multiline_edit, native_emissive,
-    offline_name, options_file, options_fixes, options_ui, overlay, own_buttons, own_skin,
-    pack_browser, pack_screen, packs, pad_cursor, pad_glyph, par, particles, poi_sections,
-    post_chain, potent_sulfur, preedit, providers, pvp, pvp_hud, random_source, screen_draw,
-    screen_effects, sculk, section_mask, server_terrain, settings, shader_options,
-    shader_pack_list, signs, skins, social, sound_engine, sound_events, sound_preview, spans,
-    split_layout, split_map, split_profiles, sprites, streaming, structure_block, system_stats,
-    tab_list, telemetry, terrain_model, test_block, test_instance_block, testgen, title_edition,
-    trims, ui, vault, weather, widgets, world, worldborder, zip,
-||||||| c98a51a664
-    containers, controller_ui, crash, custom_sky, datapack, dynamic_light, effects, environment,
-    extras, fast_hash, fluid_render, fog, font, gfx, graphics, graphics_style, graphics_ui,
-    hdr_calibration, hud, hud_kit, hud_layout, hud_overlays, inventory_effects, java_text,
-    jigsaw_block, json_folder, level_loading, light, lod, logging, menu_blur, mesher, minimap,
-    mipmap, mod_browser, mod_list, model_library, models, multiline_edit, native_emissive,
-    options_file, options_fixes, options_ui, overlay, pack_browser, pack_screen, packs, pad_cursor,
-    pad_glyph, par, particles, poi_sections, post_chain, potent_sulfur, preedit, providers, pvp,
-    pvp_hud, random_source, screen_draw, screen_effects, sculk, section_mask, server_terrain,
-    settings, shader_options, shader_pack_list, signs, skins, social, sound_engine, sound_events,
-    sound_preview, spans, split_layout, split_map, split_profiles, sprites, streaming,
-    structure_block, tab_list, telemetry, terrain_model, test_block, test_instance_block, testgen,
-    title_edition, trims, ui, vault, weather, widgets, world, worldborder, zip,
-=======
-    containers, controller_ui, crash, custom_sky, datapack, dynamic_light, effects, environment,
-    extras, fast_hash, fluid_models, fluid_render, fog, font, gfx, graphics, graphics_style,
-    graphics_ui, hdr_calibration, hud, hud_kit, hud_layout, hud_overlays, inventory_effects,
-    java_text, jigsaw_block, json_folder, level_loading, light, lod, logging, menu_blur,
-    menu_style, mesher, minimap, mipmap, mod_browser, mod_chunk_tickets, mod_list, model_library,
-    models, mods_screen, monitor, multiline_edit, native_emissive, options_file, options_fixes,
-    options_ui, overlay, pack_browser, pack_formats, pack_hooks, pack_palette, pack_screen, packs,
-    pad_cursor, pad_glyph, par, particles, poi_sections, polytone_creative_tabs, polytone_post,
-    post_chain, potent_sulfur, preedit, providers, pvp, pvp_hud, random_source, resource_source,
-    screen_draw, screen_effects, sculk, section_mask, server_terrain, settings, shader_options,
-    shader_pack_list, signs, skins, social, sound_engine, sound_events, sound_preview, spans,
-    split_layout, split_map, split_profiles, sprites, streaming, structure_block, tab_list,
+    environment, extras, fast_hash, fluid_models, fluid_render, fog, font, gfx, graphics,
+    graphics_style, graphics_ui, hdr_calibration, hud, hud_kit, hud_layout, hud_overlays,
+    inventory_effects, java_text, jigsaw_block, json_folder, level_loading, light, lod, logging,
+    menu_blur, menu_style, mesher, minimap, mipmap, mod_browser, mod_chunk_tickets, mod_list,
+    model_library, models, mods_screen, monitor, multiline_edit, native_emissive, offline_name,
+    options_file, options_fixes, options_ui, overlay, own_buttons, own_skin, pack_browser,
+    pack_formats, pack_hooks, pack_palette, pack_screen, packs, pad_cursor, pad_glyph, par,
+    particles, poi_sections, polytone_creative_tabs, polytone_post, post_chain, potent_sulfur,
+    preedit, providers, pvp, pvp_hud, random_source, resource_source, screen_draw, screen_effects,
+    sculk, section_mask, server_terrain, settings, shader_options, shader_pack_list, signs, skins,
+    social, sound_engine, sound_events, sound_preview, spans, split_layout, split_map,
+    split_profiles, sprites, streaming, structure_block, system_stats, tab_list, telemetry,
     terrain_model, test_block, test_instance_block, testgen, title_edition, trims, ui, vault,
     weather, widgets, world, worldborder, zip,
->>>>>>> arismoko/main
 };
 pub mod attack_strength;
 pub mod attribute_updates;
@@ -130,13 +102,9 @@ pub mod item_render;
 pub mod item_sync;
 pub mod item_tooltip;
 pub mod join_seq;
-<<<<<<< HEAD
 pub mod kinetics;
-||||||| c98a51a664
-=======
 /// Game-owned JSON metadata conversion, shared by recipe and API adapters.
 pub use horizon_core::json_nbt;
->>>>>>> arismoko/main
 pub mod lan;
 pub mod landing;
 pub mod legacy_combat;
@@ -181,14 +149,9 @@ pub mod scoreboard_cmd;
 pub mod screen_layout;
 pub mod screen_narrator;
 pub mod social_screen;
-<<<<<<< HEAD
 pub mod sound_playback;
 pub mod starling_releases;
-||||||| c98a51a664
-pub mod sound_playback;
-=======
 pub mod world_geometry;
->>>>>>> arismoko/main
 pub use horizon_server_files as server;
 pub mod controller_notice;
 pub mod server_packs;
@@ -237,12 +200,8 @@ pub use horizon_client_input::gamepad;
 pub use horizon_client_input::gameplay_guide;
 pub use horizon_client_input::held;
 pub use horizon_client_input::input;
-<<<<<<< HEAD
 pub use horizon_client_input::input_mode;
-||||||| c98a51a664
-=======
 pub use horizon_client_input::input_source;
->>>>>>> arismoko/main
 pub use horizon_client_input::interaction_input;
 pub use horizon_client_input::key_names;
 pub use horizon_client_input::keybinds;

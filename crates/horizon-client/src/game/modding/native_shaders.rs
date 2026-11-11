@@ -19,10 +19,6 @@ use super::Game;
 const LOOK_EVERY: Duration = Duration::from_millis(500);
 const RED: u32 = 0xFF5555;
 
-<<<<<<< HEAD:crates/horizon-client/src/game/native_shaders.rs
-/// One of Horizon's own packs as it runs; a new choice starts it over (`game/shader_packs.rs`).
-||||||| c98a51a664:crates/horizon-client/src/game/native_shaders.rs
-=======
 thread_local! {
     // Loader outcomes survive renderer replacement; rejected files must not cause a rebuild loop.
     static OUTCOMES: std::cell::RefCell<std::collections::HashMap<PathBuf, (Option<u64>, Option<Api>)>> =
@@ -41,7 +37,6 @@ pub(super) fn refused(path: &Path, stamp: Option<u64>) -> bool {
     OUTCOMES.with_borrow(|packs| packs.get(path) == Some(&(stamp, None)))
 }
 
->>>>>>> arismoko/main:crates/horizon-client/src/game/modding/native_shaders.rs
 #[derive(Default)]
 pub(super) struct NativeShaders {
     /// The resolved pack path, of either kind (`game/interface/shader_packs.rs`); empty: none.

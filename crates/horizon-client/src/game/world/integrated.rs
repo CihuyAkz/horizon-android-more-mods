@@ -433,17 +433,7 @@ impl Game<'_> {
         creative: bool,
         create: Option<&WorldOptions>,
     ) -> Result<()> {
-<<<<<<< HEAD:crates/horizon-client/src/game/integrated.rs
-        // Signed in, a name chosen in Skin Customization goes before the account's: worlds take
-        // it, servers keep the account's (remote.rs `join_server`).
-        // The window's mod configs before the server's, as on NeoForge.
-        self.native_configs_client_start();
-||||||| c98a51a664:crates/horizon-client/src/game/integrated.rs
-        // The window's mod configs before the server's, as on NeoForge.
-        self.native_configs_client_start();
-=======
         self.client_logging_out();
->>>>>>> arismoko/main:crates/horizon-client/src/game/world/integrated.rs
         horizon_client::command::vanilla::set_horizon_commands(
             self.options.pregen || self.settings.extras.pregen,
         );
