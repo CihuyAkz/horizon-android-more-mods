@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#080b12">
-  <meta name="description" content="Download Horizon Android and view the latest release notes directly from GitHub.">
-  <title>Horizon Android — Download Center</title>
+  <meta name="description" content="Download Starling/Horizon and view the latest release notes directly from GitHub.">
+  <title>Starling/Horizon — Download Center</title>
   <style>
     :root {
       color-scheme: dark;
@@ -119,6 +119,7 @@
     }
     .release-top { display: flex; justify-content: space-between; align-items: center; gap: 15px; }
     .tag { display: inline-flex; align-items: center; gap: 7px; padding: 7px 10px; border-radius: 999px; background: rgba(109,224,208,.1); color: var(--cyan); font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .09em; }
+    .tag[hidden] { display: none; }
     .version { color: #dce8f8; font-size: 12px; font-weight: 700; }
     .release-title { font-size: 25px; font-weight: 760; letter-spacing: -.04em; margin: 18px 0 8px; }
     .release-meta { display: flex; flex-wrap: wrap; gap: 17px; color: var(--muted); font-size: 11px; }
@@ -318,7 +319,7 @@
   <header class="wrap topbar">
     <a class="brand" href="#">
       <span class="brand-mark">H</span>
-      <span>HORIZON <span style="color:var(--blue)">ANDROID</span></span>
+      <span>STARLING/HORIZON</span>
     </a>
     <nav class="nav" aria-label="Navigasi utama">
       <a href="#download">Downloads</a>
@@ -331,8 +332,8 @@
     <section class="hero">
       <div>
         <div class="eyebrow"><span class="pulse"></span> Community Android Port</div>
-        <h1>Horizon<br><span>Android.</span></h1>
-        <p class="hero-subtitle">Extra Mod</p>
+        <h1>Starling/<br><span>Horizon</span></h1>
+        <p class="hero-subtitle">Extras</p>
         <div class="credits" aria-label="Creator credits">
           <a class="credit-link" href="https://youtube.com/@cihuyakzyt?si=3n2hEokbUUMJXf61" target="_blank" rel="noopener noreferrer" aria-label="YouTube: @CihuyAkzYT">
             <svg viewBox="0 0 24 24" role="img" aria-hidden="true">
@@ -347,7 +348,7 @@
             <span>@CihuyAkz.</span>
           </a>
         </div>
-        <p class="lead">Horizon Android is an unofficial Android port of Horizon, a Rust engine for Minecraft Java. View the latest version information and download release files directly from GitHub.</p>
+        <p class="lead">Starling/Horizon is an unofficial Android port of Horizon, a Rust engine for Minecraft Java. View the latest version information and download release files directly from GitHub.</p>
         <div class="hero-actions">
           <a class="btn btn-primary" href="#download">↓ &nbsp; Download Latest</a>
           <a class="btn btn-secondary" href="https://github.com/CihuyAkz/horizon-android-more-mods" target="_blank" rel="noopener noreferrer">View Repository ↗</a>
@@ -370,6 +371,7 @@
       <article class="release-card">
         <div class="release-top">
           <span class="tag"><span class="pulse"></span> Latest stable</span>
+          <span class="tag" id="recently-updated" hidden>Recently Updated!</span>
           <span class="version" id="version">v0.7.8</span>
         </div>
         <div class="release-title" id="release-title">Updating to 0.7.8</div>
@@ -412,7 +414,7 @@
 
     <section id="about" style="padding-top:38px">
       <div class="section-head">
-        <div><h2>About the Project</h2><div class="sub">A brief overview of Horizon Android.</div></div>
+        <div><h2>About the Project</h2><div class="sub">A brief overview of Starling/Horizon.</div></div>
       </div>
       <div class="info-grid">
         <div class="info"><div class="info-icon">◈</div><strong>Vulkan Rendering</strong><span>Vulkan rendering mode and resolution scaling options.</span></div>
@@ -423,7 +425,7 @@
   </main>
 
   <footer class="wrap">
-    <span>© <span id="year">2026</span> Horizon Android Download Center</span>
+    <span>© <span id="year">2026</span> Starling/Horizon Download Center</span>
     <span>Unofficial community project · Not affiliated with Mojang or Microsoft.</span>
   </footer>
 
@@ -588,6 +590,15 @@
       if (!published.length) throw new Error("No public releases are available.");
 
       const latest = published[0];
+
+      const publishedAt = Date.parse(latest.published_at || "");
+      const releaseAge = Date.now() - publishedAt;
+      const threeDays = 3 * 24 * 60 * 60 * 1000;
+      $("recently-updated").hidden =
+        !Number.isFinite(publishedAt) ||
+        releaseAge < 0 ||
+        releaseAge >= threeDays;
+
       $("version").textContent = latest.tag_name || "Latest";
       $("release-title").textContent = latest.name || latest.tag_name || "Latest Release";
       $("published").textContent = formatDate(latest.published_at);
