@@ -351,7 +351,6 @@ impl Game<'_> {
                     },
                 );
             }
-<<<<<<< HEAD
             for change in connections {
                 self.pad_connection_notice(change);
             }
@@ -362,6 +361,17 @@ impl Game<'_> {
                 style == GlyphStyle::Nintendo && self.pad.by_letter(&self.settings.controller);
             self.ui.options.pad_driving = self.pad.in_use && self.pad_focus_mode();
         }
+        #[cfg(target_os = "android")]
+        let hardware = {
+            self.mobile.keypad.configure(&self.settings.keypad);
+            let keypad = if !self.settings.keypad.enabled || self.pad_in_menu() || !self.focused {
+                self.mobile.keypad.clear();
+                Default::default()
+            } else {
+                self.mobile.keypad.poll()
+            };
+            hardware.merge(&keypad)
+        };
         let mut state = hardware.merge(&self.pad.injected);
         let activity = self.pad.activity.observe(&state, &self.settings.controller);
         for (i, (stick, deadzone)) in [
@@ -378,50 +388,14 @@ impl Game<'_> {
                 *stick = [0.0; 2];
             }
         }
-||||||| 121742ad89
-            self.ui.options.pad_style = self.settings.controller.glyphs.resolve(self.pad.style);
-            hardware
-        } else {
-            self.pad_output_off();
-            PadState::default()
-        };
-        let state = hardware.merge(&self.pad.injected);
-        self.pad.virtual_input = self.pad.injected != PadState::default();
-=======
-            self.ui.options.pad_style = self.settings.controller.glyphs.resolve(self.pad.style);
-            hardware
-        } else {
-            self.pad_output_off();
-            PadState::default()
-        };
-        #[cfg(target_os = "android")]
-        let hardware = {
-            self.mobile.keypad.configure(&self.settings.keypad);
-            let keypad = if !self.settings.keypad.enabled || self.pad_in_menu() || !self.focused {
-                self.mobile.keypad.clear();
-                Default::default()
-            } else {
-                self.mobile.keypad.poll()
-            };
-            hardware.merge(&keypad)
-        };
-        let state = hardware.merge(&self.pad.injected);
-        self.pad.virtual_input = self.pad.injected != PadState::default();
->>>>>>> starling-client/starling
         for button in std::mem::take(&mut self.pad.taps) {
             self.pad.injected.set(button, false);
         }
         if activity && self.pad_focused() {
             self.last_input = Instant::now();
             self.input_used(InputMode::Pad);
-<<<<<<< HEAD
-            self.pad.in_use = true;
-            self.pad.keyboard_took_over = false;
-||||||| 121742ad89
-            self.pad.in_use = true;
-=======
             self.pad.in_use = self.input_mode == InputMode::Pad;
->>>>>>> starling-client/starling
+            self.pad.keyboard_took_over = false;
         }
         let state = state.merge(&self.pad.touch);
         for button in std::mem::take(&mut self.pad.touch_taps) {
@@ -602,22 +576,16 @@ impl Game<'_> {
                 }
                 Ok(())
             }
-<<<<<<< HEAD
-            Route::Sneak
-||||||| 121742ad89
-            "key.sneak"
-=======
             #[cfg(target_os = "android")]
-            "key.sneak" if self.touch_shown() && self.mobile.controls.vertical_movement => {
+            Route::Sneak if self.touch_shown() && self.mobile.controls.vertical_movement => {
                 self.toggles.0[SNEAK].is_down = down;
                 self.sync_toggle(SNEAK);
                 if down {
-                    self.key_pressed(KeyCode::ShiftLeft)?;
+                    self.key_pressed(KeyCode::ShiftLeft, KeyCode::ShiftLeft)?;
                 }
                 Ok(())
             }
-            "key.sneak"
->>>>>>> starling-client/starling
+            Route::Sneak
                 if self.settings.controller.toggle_sneak && !self.settings.toggle_crouch =>
             {
                 // A stick click flips sneaking instead of holding it, as
@@ -712,7 +680,6 @@ impl Game<'_> {
 
     /// B and Start: what Escape does where the pad is.
     pub(super) fn pad_back(&mut self) -> Result<()> {
-<<<<<<< HEAD
         // The death confirm's buttons wait a second, as its Escape does.
         if self
             .ui
@@ -723,13 +690,6 @@ impl Game<'_> {
         }
         if self.prompt_open() {
             return self.pad_prompt_back();
-||||||| 121742ad89
-=======
-        // A server dialog owns Back, even when it cannot be closed. Never
-        // open the pause screen underneath a login/confirmation form.
-        if self.dialog_open() {
-            return self.dialog_key(KeyCode::Escape, None, None);
->>>>>>> starling-client/starling
         }
         // The options open over the title screen too: they come first, as
         // for the keyboard's Escape.
@@ -811,15 +771,7 @@ impl Game<'_> {
         if yaw == 0.0 && pitch == 0.0 {
             return;
         }
-<<<<<<< HEAD
         self.look_turn(f64::from(yaw / 0.15), f64::from(pitch / 0.15));
-||||||| 121742ad89
-        self.turn_player(f64::from(yaw / 0.15), f64::from(pitch / 0.15));
-=======
-        self.tutorial
-            .mouse(f64::from(yaw / 0.15), f64::from(pitch / 0.15));
-        self.turn_player(f64::from(yaw / 0.15), f64::from(pitch / 0.15));
->>>>>>> starling-client/starling
     }
 
     /// Vibrate the active pad, when vibration is on and the pad is the one

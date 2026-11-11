@@ -66,18 +66,14 @@ struct Globals {
 // which then samples exactly as before.
 override SPRITE_ARRAYS: u32 = 1u;
 override SPRITE_SPLIT: u32 = 2048u;
-<<<<<<< HEAD
 // Whether the solid shaders carry HDR output's lighting (a pipeline constant): the
 // renderer builds its solid terrain without it for the frames HDR is off, where
 // `hdr_light.z` is 0, since even a branch never taken costs Apple GPUs ~15% of a
 // solid pixel's time (gfx.rs's `SolidPipeline`).
 override HDR_LIGHTING: bool = true;
-||||||| 121742ad89
-=======
 // Solid terrain in a frame whose instances are all whole sections, without RGSS
 // (gfx/solid_paths.rs): the same pixels from less work. Off, it takes nothing away.
 override SETTLED_TERRAIN: bool = false;
->>>>>>> starling-client/starling
 // A sprite sampled with the given gradients, from whichever array holds its layer.
 fn sprite_grad(uv: vec2<f32>, layer: u32, dx: vec2<f32>, dy: vec2<f32>) -> vec4<f32> {
     let l = i32(layer % SPRITE_SPLIT);
@@ -719,21 +715,13 @@ fn terrain_vertex(position: vec3<f32>, uv: vec2<f32>, layer: u32, color: vec4<f3
     out.cylindrical = max(length(pos.xz), abs(pos.y));
     out.fade = fade_code(w);
     const CHUNK_FULLY_VISIBLE_RANGE: f32 = 16.0;
-<<<<<<< HEAD
-    out.visibility = mix(1.0, instance_visibility(w),
-        clamp((length(pos) - CHUNK_FULLY_VISIBLE_RANGE) / CHUNK_FULLY_VISIBLE_RANGE, 0.0, 1.0));
-    // [world warp out]
-    // [end world warp out]
-||||||| 121742ad89
-    out.visibility = mix(1.0, instance_visibility(w),
-        clamp((length(pos) - CHUNK_FULLY_VISIBLE_RANGE) / CHUNK_FULLY_VISIBLE_RANGE, 0.0, 1.0));
-=======
     out.visibility = 1.0;
     if !SETTLED_TERRAIN {
         out.visibility = mix(1.0, instance_visibility(w),
             clamp((length(pos) - CHUNK_FULLY_VISIBLE_RANGE) / CHUNK_FULLY_VISIBLE_RANGE, 0.0, 1.0));
     }
->>>>>>> starling-client/starling
+    // [world warp out]
+    // [end world warp out]
     return out;
 }
 fn linear_fog(d: f32, start: f32, end: f32) -> f32 {

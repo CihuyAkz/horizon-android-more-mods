@@ -90,7 +90,13 @@ fn with_descriptor<R>(
         fragment: Some(wgpu::FragmentState {
             module: shader,
             entry_point: Some("fs_stars"),
-            compilation_options: Default::default(),
+            compilation_options: wgpu::PipelineCompilationOptions {
+                constants: &[(
+                    "HDR_WRITE_LIGHT",
+                    f64::from(u8::from(format == super::LINEAR_FRAME)),
+                )],
+                ..Default::default()
+            },
             targets: &[Some(wgpu::ColorTargetState {
                 format,
                 // RenderPipelines.STARS: the celestial blend (src alpha, one), with the
@@ -167,117 +173,11 @@ impl Stars {
             bind_group_layouts: &[Some(&layout)],
             ..Default::default()
         });
-<<<<<<< HEAD
-        let attributes = wgpu::vertex_attr_array![0 => Float32x3];
-        let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("Stars"),
-            layout: Some(&pipeline_layout),
-            vertex: wgpu::VertexState {
-                module: &shader,
-                entry_point: Some("vs_stars"),
-                compilation_options: Default::default(),
-                buffers: &[Some(wgpu::VertexBufferLayout {
-                    array_stride: 12,
-                    step_mode: wgpu::VertexStepMode::Vertex,
-                    attributes: &attributes,
-                })],
-            },
-            primitive: wgpu::PrimitiveState {
-                cull_mode: None,
-                ..Default::default()
-            },
-            depth_stencil: Some(wgpu::DepthStencilState {
-                format: wgpu::TextureFormat::Depth32Float,
-                depth_write_enabled: Some(false),
-                depth_compare: Some(wgpu::CompareFunction::Always),
-                stencil: Default::default(),
-                bias: Default::default(),
-            }),
-            multisample: Default::default(),
-            fragment: Some(wgpu::FragmentState {
-                module: &shader,
-                entry_point: Some("fs_stars"),
-                compilation_options: wgpu::PipelineCompilationOptions {
-                    constants: &[(
-                        "HDR_WRITE_LIGHT",
-                        f64::from(u8::from(format == super::LINEAR_FRAME)),
-                    )],
-                    ..Default::default()
-                },
-                targets: &[Some(wgpu::ColorTargetState {
-                    format,
-                    // RenderPipelines.STARS: the celestial blend (src alpha, one), with the
-                    // colour premultiplied in fs_stars, so its alpha can carry HDR's mark.
-                    blend: Some(wgpu::BlendState {
-                        color: wgpu::BlendComponent {
-                            src_factor: wgpu::BlendFactor::One,
-                            dst_factor: wgpu::BlendFactor::One,
-                            operation: wgpu::BlendOperation::Add,
-                        },
-                        alpha: wgpu::BlendComponent::REPLACE,
-                    }),
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
-            }),
-            multiview_mask: None,
-            cache: None,
-        });
-||||||| 121742ad89
-        let attributes = wgpu::vertex_attr_array![0 => Float32x3];
-        let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("Stars"),
-            layout: Some(&pipeline_layout),
-            vertex: wgpu::VertexState {
-                module: &shader,
-                entry_point: Some("vs_stars"),
-                compilation_options: Default::default(),
-                buffers: &[Some(wgpu::VertexBufferLayout {
-                    array_stride: 12,
-                    step_mode: wgpu::VertexStepMode::Vertex,
-                    attributes: &attributes,
-                })],
-            },
-            primitive: wgpu::PrimitiveState {
-                cull_mode: None,
-                ..Default::default()
-            },
-            depth_stencil: Some(wgpu::DepthStencilState {
-                format: wgpu::TextureFormat::Depth32Float,
-                depth_write_enabled: Some(false),
-                depth_compare: Some(wgpu::CompareFunction::Always),
-                stencil: Default::default(),
-                bias: Default::default(),
-            }),
-            multisample: Default::default(),
-            fragment: Some(wgpu::FragmentState {
-                module: &shader,
-                entry_point: Some("fs_stars"),
-                compilation_options: Default::default(),
-                targets: &[Some(wgpu::ColorTargetState {
-                    format,
-                    // RenderPipelines.STARS: the celestial blend (src alpha, one), with the
-                    // colour premultiplied in fs_stars, so its alpha can carry HDR's mark.
-                    blend: Some(wgpu::BlendState {
-                        color: wgpu::BlendComponent {
-                            src_factor: wgpu::BlendFactor::One,
-                            dst_factor: wgpu::BlendFactor::One,
-                            operation: wgpu::BlendOperation::Add,
-                        },
-                        alpha: wgpu::BlendComponent::REPLACE,
-                    }),
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
-            }),
-            multiview_mask: None,
-            cache: None,
-        });
-=======
         let pipeline = with_descriptor(
             (&pipeline_layout, &shader, format),
             ("Stars", "vs_stars", wgpu::CompareFunction::Always),
             |descriptor| device.create_render_pipeline(descriptor),
         );
->>>>>>> starling-client/starling
         Self {
             pipeline,
             layout: pipeline_layout,

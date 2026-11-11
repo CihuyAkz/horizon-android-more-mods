@@ -281,7 +281,6 @@ impl Game<'_> {
     /// A menu, a screen, the title, a sign or a book is open: the pad drives
     /// it instead of the player.
     pub(super) fn pad_in_menu(&self) -> bool {
-<<<<<<< HEAD
         self.key_focus_screen() || self.prompt_open()
     }
 
@@ -292,14 +291,6 @@ impl Game<'_> {
             || self.screen != Screen::Playing
             || self.sign_edit.is_some()
             || self.book.is_some()
-||||||| 121742ad89
-        self.title.is_some()
-            || self.screen != Screen::Playing
-            || self.sign_edit.is_some()
-            || self.book.is_some()
-=======
-        self.title.is_some() || self.screen != Screen::Playing || self.screen_over_playing()
->>>>>>> starling-client/starling
     }
 
     /// Which prompt is up: another one starts the controller's focus again.

@@ -58,7 +58,6 @@ pub struct Post {
     /// The world drawn below the screen's size, sharper than the bilinear copy.
     /// `HORIZON_WORLD_UPSCALE=off` keeps the copy.
     sharp: Option<wgpu::RenderPipeline>,
-<<<<<<< HEAD
     /// Contrast-adaptive sharpening of TAA's upscaled picture: the jittered frames are
     /// spread over more output pixels, and the blend softens edges.
     sharpen: wgpu::RenderPipeline,
@@ -66,11 +65,8 @@ pub struct Post {
     sharpness: f32,
     shader: wgpu::ShaderModule,
     pipeline_layout: wgpu::PipelineLayout,
-||||||| 121742ad89
-=======
     /// Whether the vanilla world goes up with `sharp` (`upscales_sharply`). A shader pack's always does.
     sharp_world: bool,
->>>>>>> starling-client/starling
     format: wgpu::TextureFormat,
     /// World resolution relative to the window (0.5..=2.0).
     pub scale: f32,
@@ -260,13 +256,9 @@ impl Post {
             fxaa: pipeline("fs_fxaa", &pipeline_layout, format),
             sharp: (std::env::var("HORIZON_WORLD_UPSCALE").as_deref() != Ok("off"))
                 .then(|| pipeline("fs_upscale", &pipeline_layout, format)),
-<<<<<<< HEAD
             sharpen: sharpen_pipeline(device, &shader, &pipeline_layout, format, 0.85),
             sharpness: 0.85,
-||||||| 121742ad89
-=======
             sharp_world,
->>>>>>> starling-client/starling
             layout,
             sampler,
             format,
@@ -679,7 +671,6 @@ impl Post {
     }
 }
 
-<<<<<<< HEAD
 /// `fs_sharpen` at `sharpness` (its override), drawing onto `format`.
 fn sharpen_pipeline(
     device: &wgpu::Device,
@@ -717,8 +708,8 @@ fn sharpen_pipeline(
         multiview_mask: None,
         cache: None,
     })
-||||||| 121742ad89
-=======
+}
+
 /// Whether a vanilla world drawn below the window's size goes up with the sharp filter. It takes five
 /// filtered samples for every pixel of the window, which on Mali costs about what the lower resolution
 /// saved: at 50% a Mali-G68 went from 70-80 fps with the copy to 55 with it. There, and on PowerVR, the
@@ -742,7 +733,6 @@ mod upscale_tests {
         assert!(upscales_sharply("Adreno (TM) 740"));
         assert!(upscales_sharply("NVIDIA GeForce RTX 4070"));
     }
->>>>>>> starling-client/starling
 }
 
 /// This frame's clip space to the previous frame's, for camera-relative projections:

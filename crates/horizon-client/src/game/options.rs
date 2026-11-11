@@ -265,24 +265,14 @@ impl Game<'_> {
     pub(super) fn draw_options(&mut self, batch: &mut HudBatch) {
         self.watch_pack_folder();
         self.poll_diagnostics();
-<<<<<<< HEAD
         let context = self.controller_settings_context();
-||||||| 121742ad89
-=======
         self.show_skin_cloud();
->>>>>>> starling-client/starling
         let mut ui = std::mem::take(&mut self.ui.options);
-<<<<<<< HEAD
         if ui.controller_open() {
             ui.controller.context = context;
         }
-        ui.draw(&self.settings, batch, &self.gui.atlas, self.cursor);
-||||||| 121742ad89
-        ui.draw(&self.settings, batch, &self.gui.atlas, self.cursor);
-=======
         let cursor = self.options_pointer(&mut ui);
         ui.draw(&self.settings, batch, &self.gui.atlas, cursor);
->>>>>>> starling-client/starling
         self.ui.options = ui;
         self.show_calibration(batch.height);
     }
@@ -410,8 +400,10 @@ impl Game<'_> {
             .options
             .shortcut(&self.gui.atlas, shortcut, &mut self.clipboard)
     }
-<<<<<<< HEAD
-    pub(super) fn options_scroll(&mut self, amount: f32) -> Result<()> {
+    /// The wheel on the options. A finger's scroll (`finger`) only scrolls: a list moved by a
+    /// finger that landed on a cycle button must not cycle it at each step, as a mouse wheel over it
+    /// does (`CycleButton.mouseScrolled`).
+    pub(super) fn options_scroll(&mut self, amount: f32, finger: bool) -> Result<()> {
         if self.pad_stick_scroll() {
             let size = self.gui_size();
             self.ui
@@ -419,14 +411,6 @@ impl Game<'_> {
                 .scroll_at(&self.settings, size, self.cursor, amount);
             return Ok(());
         }
-||||||| 121742ad89
-    pub(super) fn options_scroll(&mut self, amount: f32) -> Result<()> {
-=======
-    /// The wheel on the options. A finger's scroll (`finger`) only scrolls: a list moved by a
-    /// finger that landed on a cycle button must not cycle it at each step, as a mouse wheel over it
-    /// does (`CycleButton.mouseScrolled`).
-    pub(super) fn options_scroll(&mut self, amount: f32, finger: bool) -> Result<()> {
->>>>>>> starling-client/starling
         let framebuffer = self.renderer.as_ref().map_or([1280, 720], |r| {
             [r.config.width as i32, r.config.height as i32]
         });
@@ -530,7 +514,6 @@ impl Game<'_> {
                 Event::OpenModFolder => {
                     self.open_game_folder(&Self::game_dir().join(horizon_client::mod_list::DIR))
                 }
-<<<<<<< HEAD
                 // Horizon's own Add button: the screen picked a hit, the game
                 // owns the folder it lands in.
                 Event::DownloadPack(i) => {
@@ -541,13 +524,10 @@ impl Game<'_> {
                         browser.download(i, &dir, horizon_core::VANILLA_VERSION);
                     }
                 }
-||||||| 121742ad89
-=======
                 #[cfg(target_os = "android")]
                 Event::OpenCatalog(shelf) => self.open_catalog_on(catalog_shelf(shelf)),
                 #[cfg(not(target_os = "android"))]
                 Event::OpenCatalog(_) => {}
->>>>>>> starling-client/starling
                 Event::DataPacks(ids) => {
                     let resources = self.vanilla_root();
                     if let Some(title) = &mut self.title {

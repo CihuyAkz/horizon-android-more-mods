@@ -39,17 +39,11 @@ pub fn supply(runtime: Supplied) -> bool {
 /// 1.25 GB instead of 2 GB.
 pub(crate) const BATCH_OPTIONS: [&str; 2] = ["-XX:TieredStopAtLevel=1", "-XX:+UseSerialGC"];
 
-<<<<<<< HEAD
 /// The variables a JVM reads extra options from. A collector chosen there, such as a player's
 /// global `-XX:+UseZGC`, stops a JVM started with [`BATCH_OPTIONS`]: "Multiple garbage collectors
 /// selected" (#10067).
 const JVM_OPTION_VARS: [&str; 3] = ["JAVA_TOOL_OPTIONS", "_JAVA_OPTIONS", "JDK_JAVA_OPTIONS"];
 
-/// Exporters and JDK probes write to pipes or log files: on Windows they open no terminal. They
-/// run with [`BATCH_OPTIONS`] alone, whatever options the player's environment sets for Java.
-||||||| 121742ad89
-/// Exporters and JDK probes write to pipes or log files: on Windows they open no terminal.
-=======
 pub(crate) const SMALL_ANDROID: bool =
     cfg!(all(target_os = "android", target_pointer_width = "32"));
 
@@ -106,8 +100,8 @@ fn heap_for(heap: &str, limit: Option<u64>) -> String {
     }
 }
 
-/// Exporters and JDK probes write to pipes or log files: on Windows they open no terminal.
->>>>>>> starling-client/starling
+/// Exporters and JDK probes write to pipes or log files: on Windows they open no terminal. They
+/// run with [`BATCH_OPTIONS`] alone, whatever options the player's environment sets for Java.
 pub(crate) fn command(program: impl AsRef<OsStr>) -> Command {
     let mut command = Command::new(program);
     for var in JVM_OPTION_VARS {
@@ -545,7 +539,6 @@ mod tests {
     use super::*;
 
     #[test]
-<<<<<<< HEAD
     fn missing_timezone_data_explains_which_java_to_repair() {
         let dir = std::env::temp_dir().join(format!("horizon-java-tzdb-{}", std::process::id()));
         fs::create_dir_all(&dir).unwrap();
@@ -603,8 +596,9 @@ mod tests {
                 "{var} reaches the JVM"
             );
         }
-||||||| 121742ad89
-=======
+    }
+
+    #[test]
     fn small_android_caps_large_heaps_without_enlarging_small_requests() {
         for heap in ["2G", "1G", "768M"] {
             assert_eq!(heap_for(heap, Some(512)), "-Xmx512M");
@@ -626,7 +620,6 @@ mod tests {
         assert_eq!(small_heap_limit("MemTotal: 8388608 kB\n"), 512);
         assert_eq!(small_heap_limit("unavailable"), 384);
         assert_eq!(small_heap_limit("MemTotal: invalid kB"), 384);
->>>>>>> starling-client/starling
     }
 
     #[test]

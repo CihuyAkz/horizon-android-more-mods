@@ -362,15 +362,11 @@ pub enum Action {
     OpenFolder,
     /// The Done button (`onClose`: commit).
     Done,
-<<<<<<< HEAD
     /// Horizon's own: a Modrinth hit the player picked, to download into the
     /// packs folder. The screen does not know where that is.
     BrowsePick(usize),
-||||||| 121742ad89
-=======
     /// The Catalog button (Android).
     Catalog,
->>>>>>> starling-client/starling
 }
 
 /// The pack screen and its state.
@@ -1106,30 +1102,13 @@ impl PackScreen {
         for side in 0..2 {
             self.draw_list(&mut out, m, side, mouse);
         }
-<<<<<<< HEAD
-        self.draw_footer(
-            &mut out,
-            m,
-            mouse,
-            now_ms,
-            [&tr("pack.openFolder"), &tr("gui.done")],
-        );
-        self.draw_browser(&mut out, m, mouse, now_ms);
-||||||| 121742ad89
-        self.draw_footer(
-            &mut out,
-            m,
-            mouse,
-            now_ms,
-            [&tr("pack.openFolder"), &tr("gui.done")],
-        );
-=======
         let open_folder = if self.catalog {
             tr(SHORT_OPEN_FOLDER)
         } else {
             tr("pack.openFolder")
         };
         self.draw_footer(&mut out, m, mouse, now_ms, [&open_folder, &tr("gui.done")]);
+        self.draw_browser(&mut out, m, mouse, now_ms);
         if let Some((x, y, width)) = self.catalog_button() {
             let hover = d::inside(mouse, x, y, width, 20);
             crate::widgets::widget_cursor(hover, true);
@@ -1146,7 +1125,6 @@ impl PackScreen {
                 now_ms,
             );
         }
->>>>>>> starling-client/starling
         out
     }
     /// The Add button and the screen it opens. `None` leaves the click to

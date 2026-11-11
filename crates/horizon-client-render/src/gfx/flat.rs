@@ -188,21 +188,15 @@ pub fn wanted(adapter: &wgpu::Adapter, device: &wgpu::Device) -> bool {
 
 /// Whether frames without a shader pack's terrain draw flat: where the backend
 /// emulates multi-draw (Metal, past `MIN_SECTIONS`), on Intel Gen11/Gen12's Vulkan
-<<<<<<< HEAD
-/// driver, on Qualcomm's Adreno under DirectX 12, or with `HORIZON_FLAT_DRAWS=1`.
-/// Elsewhere per-section draws stay.
-||||||| 121742ad89
-/// driver, or with `HORIZON_FLAT_DRAWS=1`. Elsewhere per-section draws stay.
-=======
-/// driver, on Adreno's Vulkan, or with `HORIZON_FLAT_DRAWS=1`. Elsewhere per-section
-/// draws stay.
->>>>>>> starling-client/starling
+/// driver, on Qualcomm's Adreno under DirectX 12 or on Adreno's Vulkan, on PowerVR's Vulkan, or
+/// with `HORIZON_FLAT_DRAWS=1`. Elsewhere per-section draws stay.
 pub fn for_vanilla(info: &wgpu::AdapterInfo) -> bool {
     std::env::var("HORIZON_FLAT_DRAWS").as_deref() == Ok("1")
         || info.backend == wgpu::Backend::Metal
         || is_broken_intel_vulkan(info)
-<<<<<<< HEAD
         || is_adreno_dx12(info)
+        || is_powervr_vulkan(info)
+        || super::adreno::adreno_vulkan(info)
 }
 
 /// Qualcomm's Adreno under DirectX 12 (Windows on Snapdragon, where Auto picks DirectX 12),
@@ -212,10 +206,6 @@ pub fn for_vanilla(info: &wgpu::AdapterInfo) -> bool {
 /// Qualcomm `QCOM` (0x4D4F4351); Vulkan, 0x5143.
 pub fn is_adreno_dx12(info: &wgpu::AdapterInfo) -> bool {
     info.backend == wgpu::Backend::Dx12 && matches!(info.vendor, 0x4d4f_4351 | 0x5143)
-||||||| 121742ad89
-=======
-        || is_powervr_vulkan(info)
-        || super::adreno::adreno_vulkan(info)
 }
 
 /// PowerVR Rogue's Vulkan driver (the GE8320's 1.13) draws terrain in pieces with per-section
@@ -223,7 +213,6 @@ pub fn is_adreno_dx12(info: &wgpu::AdapterInfo) -> bool {
 pub fn is_powervr_vulkan(info: &wgpu::AdapterInfo) -> bool {
     info.backend == wgpu::Backend::Vulkan
         && (info.vendor == 0x1010 || info.name.contains("PowerVR"))
->>>>>>> starling-client/starling
 }
 
 /// Intel Gen11 (Ice Lake) and Gen12 (Tiger Lake, Rocket Lake, Alder Lake,

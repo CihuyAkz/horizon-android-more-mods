@@ -1566,10 +1566,10 @@ const ON_A_PHONE: bool = cfg!(target_os = "android");
 
 /// The Options page's entries, with Diagnostics on a phone. Apart from `OptionsUi::layout`:
 /// horizon-mixins refuses to hook a function with a `#[cfg]` in it (E_UNSUPPORTED_CFG).
-fn with_diagnostics<const N: usize>(
-    entries: [(&'static str, Option<Page>); N],
+fn with_diagnostics(
+    entries: impl Into<Vec<(&'static str, Option<Page>)>>,
 ) -> Vec<(&'static str, Option<Page>)> {
-    let mut all = Vec::from(entries);
+    let mut all = entries.into();
     if ON_A_PHONE {
         all.push(("starling.diagnostics.title", Some(Page::Diagnostics)));
     }
@@ -1892,19 +1892,7 @@ enum Act {
     Key(&'static str),
     ResetKey(&'static str),
     ResetKeys,
-<<<<<<< HEAD
-||||||| 121742ad89
-    /// Controller binds: wait for a button, reset one, reset all.
-    PadKey(&'static str),
-    ResetPadKey(&'static str),
-    ResetPadKeys,
-=======
     KeyboardProfile,
-    /// Controller binds: wait for a button, reset one, reset all.
-    PadKey(&'static str),
-    ResetPadKey(&'static str),
-    ResetPadKeys,
->>>>>>> starling-client/starling
     ToggleMod(usize),
     /// The Custom Buttons page, a new button there, one to change or take away, a control or a
     /// keyboard key for it, and its icon.
@@ -2089,7 +2077,6 @@ pub enum Event {
     /// Data Packs' Open Pack Folder: create the folder if needed and open it.
     OpenDataPackFolder(std::path::PathBuf),
     OpenModFolder,
-<<<<<<< HEAD
     /// Browse mods opened: read the registry's index into `mod_browser`.
     BrowseMods,
     /// Install (or update) the registry's content mod with this id.
@@ -2099,11 +2086,8 @@ pub enum Event {
     /// Accessibility's Help link: confirm and open
     /// `CommonLinks.ACCESSIBILITY_HELP` over the options screen.
     AccessibilityHelp,
-||||||| 121742ad89
-=======
     /// Android: a page's Catalog button (game/mod_catalog.rs).
     OpenCatalog(CatalogShelf),
->>>>>>> starling-client/starling
     /// The Shader Packs page opened: list `shaderpacks/` into `shader_packs`.
     ListShaderPacks,
     /// The Mods page opened: the native mods folder read again, for a mod copied in meanwhile.
@@ -4257,7 +4241,6 @@ impl OptionsUi {
             }
             Page::Font => pairs(&[Opt::ForceUnicode, Opt::JapaneseGlyphs]),
             Page::Mods => {
-<<<<<<< HEAD
                 let browse = button(
                     0.0,
                     0.0,
@@ -4265,131 +4248,16 @@ impl OptionsUi {
                     tr("horizon.mods.browse"),
                     Act::Push(Page::ModBrowser),
                 );
-                let mut rows = vec![Row::Buttons(browse, None)];
-                if let Some(note) = &self.mods_note {
-                    rows.extend(wrap(note, 64).into_iter().map(Row::Note));
-||||||| 121742ad89
-                if s.mods.installed.is_empty() {
-                    return vec![Row::Header("horizon.mods.empty")];
-=======
                 // Android: which game runs, above the mods.
                 let mut rows = native_game_rows(s);
-                if s.mods.installed.is_empty() {
-                    rows.push(Row::Header("horizon.mods.empty"));
-                    return rows;
->>>>>>> starling-client/starling
+                rows.push(Row::Buttons(browse, None));
+                if let Some(note) = &self.mods_note {
+                    rows.extend(wrap(note, 64).into_iter().map(Row::Note));
                 }
-<<<<<<< HEAD
                 if s.mods.installed.is_empty() {
                     rows.push(Row::Header("horizon.mods.empty"));
                     return rows;
                 }
-                rows.extend(s.mods.installed.iter().enumerate().map(|(i, installed)| {
-                    let mut label = Text::option_name_value(
-                        Text::literal(installed.title.clone()),
-                        on_off(s.mods.is_on(i)),
-                    );
-                    if installed.problem.as_deref() == Some(crate::mod_list::NOT_BUILT) {
-                        label = label.append(tr("horizon.mods.not_built"));
-                    } else if installed.problem.is_some() {
-                        label = label.append(tr("horizon.mods.stopped"));
-                    } else if installed.dev {
-                        label = label.append(tr("horizon.mods.dev"));
-                    }
-                    let frozen = self.mod_frozen(installed);
-                    if frozen {
-                        label = label.append(tr("horizon.mods.in_world"));
-                    }
-                    let dead = installed.dev || installed.id.is_empty() || frozen;
-                    // Only native mods with actual settings need a second button.
-                    if installed
-                        .native
-                        .as_ref()
-                        .is_some_and(|page| !page.keys.is_empty() || !page.buttons.is_empty())
-                    {
-                        let toggle = button(0.0, 0.0, 150.0, label, Act::ToggleMod(i));
-                        // A mod not in this game (Android): its one button, Compile, at once.
-                        let settings =
-                            if installed.problem.as_deref() == Some(crate::mod_list::NOT_BUILT) {
-                                button(
-                                    0.0,
-                                    0.0,
-                                    150.0,
-                                    Text::literal("Compile"),
-                                    Act::NativeButton(i, 0),
-                                )
-                            } else {
-                                button(
-                                    0.0,
-                                    0.0,
-                                    150.0,
-                                    tr("horizon.mods.settings"),
-                                    Act::ModSettings(i),
-                                )
-                            };
-                        Row::Buttons(if dead { inactive(toggle) } else { toggle }, Some(settings))
-||||||| 121742ad89
-                s.mods
-                    .installed
-                    .iter()
-                    .enumerate()
-                    .map(|(i, installed)| {
-                        let mut label = Text::literal(format!("{}: ", installed.title))
-                            .append(on_off(s.mods.is_on(i)));
-                        if installed.problem.as_deref() == Some(crate::mod_list::NOT_BUILT) {
-                            label = label.append(tr("horizon.mods.not_built"));
-                        } else if installed.problem.is_some() {
-                            label = label.append(tr("horizon.mods.stopped"));
-                        } else if installed.dev {
-                            label = label.append(tr("horizon.mods.dev"));
-                        }
-                        let dead = installed.dev || installed.id.is_empty();
-                        // Only native mods with actual settings need a second button.
-                        if installed
-                            .native
-                            .as_ref()
-                            .is_some_and(|page| !page.keys.is_empty() || !page.buttons.is_empty())
-                        {
-                            let toggle = button(0.0, 0.0, 150.0, label, Act::ToggleMod(i));
-                            // A mod not in this game (Android): its one button, Compile, at once.
-                            let settings = if installed.problem.as_deref()
-                                == Some(crate::mod_list::NOT_BUILT)
-                            {
-                                button(
-                                    0.0,
-                                    0.0,
-                                    150.0,
-                                    Text::literal("Compile"),
-                                    Act::NativeButton(i, 0),
-                                )
-                            } else {
-                                button(
-                                    0.0,
-                                    0.0,
-                                    150.0,
-                                    tr("horizon.mods.settings"),
-                                    Act::ModSettings(i),
-                                )
-                            };
-                            Row::Buttons(
-                                if dead { inactive(toggle) } else { toggle },
-                                Some(settings),
-                            )
-                        } else {
-                            let widget = button(0.0, 0.0, 310.0, label, Act::ToggleMod(i));
-                            Row::Buttons(if dead { inactive(widget) } else { widget }, None)
-                        }
-                    })
-                    .collect()
-            }
-            Page::NativeMod(i) => self.native_rows(s, i),
-            Page::ShaderPacks => {
-                use crate::shader_pack_list::Kind as PackKind;
-                let choice = s.horizon.shader_choice();
-                let pick = |on: bool, name: &str, act: Act| {
-                    let label = if on {
-                        format!("> {name} <")
-=======
                 let mods = s.mods.installed.iter().enumerate().map(|(i, installed)| {
                     let on = s.mods.is_on(i);
                     let not_built =
@@ -4403,7 +4271,10 @@ impl OptionsUi {
                         let tick = if on { '\u{2611}' } else { '\u{2610}' };
                         Text::literal(format!("{tick} {}", installed.title))
                     } else {
-                        Text::literal(format!("{}: ", installed.title)).append(on_off(on))
+                        Text::option_name_value(
+                            Text::literal(installed.title.clone()),
+                            on_off(on),
+                        )
                     };
                     if not_built {
                         if !compiled_here {
@@ -4414,7 +4285,11 @@ impl OptionsUi {
                     } else if installed.dev {
                         label = label.append(tr("horizon.mods.dev"));
                     }
-                    let dead = installed.dev || installed.id.is_empty();
+                    let frozen = self.mod_frozen(installed);
+                    if frozen {
+                        label = label.append(tr("horizon.mods.in_world"));
+                    }
+                    let dead = installed.dev || installed.id.is_empty() || frozen;
                     // Beside it: a warning, as Java's, for a native mod chosen and not in this
                     // game (nothing to press: Compile is the page's), Settings for one in it that
                     // has settings.
@@ -4445,21 +4320,6 @@ impl OptionsUi {
                     }
                 });
                 rows.extend(mods);
-                rows
-            }
-            Page::NativeMod(i) => self.native_rows(s, i),
-            Page::ShaderPacks => {
-                use crate::shader_pack_list::Kind as PackKind;
-                let choice = s.horizon.shader_choice();
-                let pick = |on: bool, name: &str, act: Act| {
-                    let label = if on {
-                        format!("> {name} <")
->>>>>>> starling-client/starling
-                    } else {
-                        let widget = button(0.0, 0.0, 310.0, label, Act::ToggleMod(i));
-                        Row::Buttons(if dead { inactive(widget) } else { widget }, None)
-                    }
-                }));
                 rows
             }
             Page::ModBrowser => self.mod_browser_rows(),
@@ -4780,7 +4640,6 @@ impl OptionsUi {
                     ("horizon.pages.open.mods", Some(Page::Mods)),
                     ("options.credits_and_attribution", Some(Page::Credits)),
                 ];
-<<<<<<< HEAD
                 // horizon-extras: without it, vanilla's last row instead of Horizon Settings and
                 // Mods: Telemetry Data (greyed: nothing is sent) and Credits & Attribution.
                 let plain;
@@ -4797,10 +4656,7 @@ impl OptionsUi {
                     .concat();
                     &plain
                 };
-||||||| 121742ad89
-=======
                 let entries = with_diagnostics(entries);
->>>>>>> starling-client/starling
                 let rows = entries.len().div_ceil(2) as f32;
                 let gy = (61.0 + 30.0f32).min(h - 33.0 - rows * 24.0);
                 for (i, (key, page)) in entries.iter().enumerate() {
@@ -4906,13 +4762,6 @@ impl OptionsUi {
                     list: false,
                     row: 0,
                 });
-<<<<<<< HEAD
-                let mut mappings: Vec<(&str, &str)> =
-                    all_mappings().map(|(n, _, c)| (*n, *c)).collect();
-||||||| 121742ad89
-                let mut mappings: Vec<(&str, &str)> =
-                    MAPPINGS.iter().map(|(n, _, c)| (*n, *c)).collect();
-=======
                 let keypad = s.keypad.enabled;
                 if ON_A_PHONE || keypad {
                     top = 64.0;
@@ -4940,9 +4789,8 @@ impl OptionsUi {
                         .map(|a| (a.0, "movement"))
                         .collect()
                 } else {
-                    MAPPINGS.iter().map(|(n, _, c)| (*n, *c)).collect()
+                    all_mappings().map(|(n, _, c)| (*n, *c)).collect()
                 };
->>>>>>> starling-client/starling
                 let query = self.settings_search.value.to_lowercase();
                 mappings.retain(|(name, _)| {
                     query.is_empty() || label(name).to_lowercase().contains(&query)
@@ -5059,20 +4907,14 @@ impl OptionsUi {
                     }
                     let reset_x = scrollbar_x - 50.0 - 10.0;
                     let change_x = reset_x - 5.0 - 75.0;
-<<<<<<< HEAD
-                    let name_static = all_mappings().find(|m| m.0 == name).map_or("", |m| m.0);
-||||||| 121742ad89
-                    let name_static = MAPPINGS.iter().find(|m| m.0 == name).map_or("", |m| m.0);
-=======
                     let name_static = if keypad {
                         crate::keypad::ACTIONS
                             .iter()
                             .find(|a| a.0 == name)
                             .map_or("", |a| a.0)
                     } else {
-                        MAPPINGS.iter().find(|m| m.0 == name).map_or("", |m| m.0)
+                        all_mappings().find(|m| m.0 == name).map_or("", |m| m.0)
                     };
->>>>>>> starling-client/starling
                     out.push(button(change_x, y, 75.0, message, Act::Key(name_static)));
                     if !conflicts.is_empty() {
                         out.push(Widget {
@@ -6025,14 +5867,11 @@ impl OptionsUi {
                     None => Event::OpenPackFolder,
                 }),
                 crate::pack_screen::Action::Done => events.extend(self.back(s)),
-<<<<<<< HEAD
                 crate::pack_screen::Action::BrowsePick(i) => {
                     events.push(Event::DownloadPack(i));
-||||||| 121742ad89
-=======
+                }
                 crate::pack_screen::Action::Catalog => {
                     events.push(Event::OpenCatalog(CatalogShelf::ResourcePacks));
->>>>>>> starling-client/starling
                 }
                 crate::pack_screen::Action::None => {}
             }
@@ -6268,50 +6107,12 @@ impl OptionsUi {
                         Act::NativeButton(i, b) => events.push(Event::NativeButton(i, b)),
                         Act::NativeGame(act) => events.push(Event::NativeGame(act)),
                         Act::OpenModFolder => events.push(Event::OpenModFolder),
-<<<<<<< HEAD
+                        Act::OpenCatalog(shelf) => events.push(Event::OpenCatalog(shelf)),
                         Act::ModProject(i) => {
                             if let Some(listing) = self.mod_browser.listings.get(i) {
                                 self.mod_project = listing.id.clone();
                                 self.push(Page::ModProject);
                             }
-||||||| 121742ad89
-                        Act::OpenShaderPackFolder => events.push(Event::OpenShaderPackFolder),
-                        Act::ShaderResolution => {
-                            const STEPS: [u32; 6] = [100, 75, 50, 40, 30, 25];
-                            let now = s.horizon.resolution_scale;
-                            let next = STEPS.iter().position(|&v| v == now).map_or(2, |i| i + 1);
-                            s.horizon.resolution_scale = STEPS[next % STEPS.len()];
-                            events.push(Event::ShaderPack);
-                            events.push(Event::Changed);
-                        }
-                        Act::ShaderFpsLimit => {
-                            const STEPS: [u32; 4] = [30, 40, 60, 260];
-                            let next = STEPS
-                                .iter()
-                                .position(|&v| v == s.max_fps)
-                                .map_or(0, |i| i + 1);
-                            s.max_fps = STEPS[next % STEPS.len()];
-                            events.push(Event::Changed);
-=======
-                        Act::OpenCatalog(shelf) => events.push(Event::OpenCatalog(shelf)),
-                        Act::OpenShaderPackFolder => events.push(Event::OpenShaderPackFolder),
-                        Act::ShaderResolution => {
-                            const STEPS: [u32; 6] = [100, 75, 50, 40, 30, 25];
-                            let now = s.horizon.resolution_scale;
-                            let next = STEPS.iter().position(|&v| v == now).map_or(2, |i| i + 1);
-                            s.horizon.resolution_scale = STEPS[next % STEPS.len()];
-                            events.push(Event::ShaderPack);
-                            events.push(Event::Changed);
-                        }
-                        Act::ShaderFpsLimit => {
-                            const STEPS: [u32; 4] = [30, 40, 60, 260];
-                            let next = STEPS
-                                .iter()
-                                .position(|&v| v == s.max_fps)
-                                .map_or(0, |i| i + 1);
-                            s.max_fps = STEPS[next % STEPS.len()];
-                            events.push(Event::Changed);
->>>>>>> starling-client/starling
                         }
                         Act::CustomButtons => {
                             self.push(Page::CustomButtons);
@@ -6692,7 +6493,8 @@ impl OptionsUi {
             return false;
         }
         if Self::graphics_page(self.page()).is_some() {
-            return self.graphics.row_button_at(s, size, cursor);
+            // Upstream's settings shell lays the rows out (FOLLOWUPS: a finger on a stepped row).
+            return false;
         }
         if matches!(
             self.page(),
@@ -7519,43 +7321,11 @@ impl OptionsUi {
                         Act::NativeButton(i, b) => events.push(Event::NativeButton(i, b)),
                         Act::NativeGame(act) => events.push(Event::NativeGame(act)),
                         Act::OpenModFolder => events.push(Event::OpenModFolder),
-<<<<<<< HEAD
+                        Act::OpenCatalog(shelf) => events.push(Event::OpenCatalog(shelf)),
                         Act::ModProject(i) => {
                             if let Some(listing) = self.mod_browser.listings.get(i) {
                                 self.mod_project = listing.id.clone();
                                 self.push(Page::ModProject);
-||||||| 121742ad89
-                        Act::PickShaderPack(i) => {
-                            let pick = match i {
-                                Some(i) => s.shader_packs.get(i).map(|p| p.file.clone()),
-                                None => Some(String::new()),
-                            };
-                            if let Some(pick) = pick {
-                                s.horizon.shader_pack = if s.horizon.shader_pack == pick {
-                                    String::new()
-                                } else {
-                                    pick
-                                };
-                                s.horizon.shader_profile.clear();
-                                self.refresh_shader_profiles(s);
-                                events.push(Event::ShaderPack);
-=======
-                        Act::OpenCatalog(shelf) => events.push(Event::OpenCatalog(shelf)),
-                        Act::PickShaderPack(i) => {
-                            let pick = match i {
-                                Some(i) => s.shader_packs.get(i).map(|p| p.file.clone()),
-                                None => Some(String::new()),
-                            };
-                            if let Some(pick) = pick {
-                                s.horizon.shader_pack = if s.horizon.shader_pack == pick {
-                                    String::new()
-                                } else {
-                                    pick
-                                };
-                                s.horizon.shader_profile.clear();
-                                self.refresh_shader_profiles(s);
-                                events.push(Event::ShaderPack);
->>>>>>> starling-client/starling
                             }
                         }
                         Act::InstallMod => {
@@ -11258,7 +11028,6 @@ mod tests {
         assert!(s.extras.music_off.is_empty());
     }
 
-<<<<<<< HEAD
     #[test]
     fn options_cycle_button_cycles_forward_and_shift_click_cycles_backward_with_wrapping() {
         let atlas = atlas();
@@ -11367,8 +11136,8 @@ mod tests {
         ui.click(&mut s, &atlas, px, py, size, [854, 480], false, false);
         assert_eq!(s.particles, 0);
         ui.shift = false;
-||||||| 121742ad89
-=======
+    }
+
     /// The GUI sizes a landscape phone has, across its GUI scales.
     const PHONE_GUI: [(f32, f32); 5] = [
         (427.0, 240.0),
@@ -11575,6 +11344,5 @@ mod tests {
         ui.update_pack_infos(vec![pack_info("file/new")]);
         assert_eq!(ui.pack_infos.len(), listed);
         assert!(!ui.pack_infos.iter().any(|p| p.id == "file/new"));
->>>>>>> starling-client/starling
     }
 }

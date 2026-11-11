@@ -62,12 +62,6 @@ impl AuthSession {
             ely: false,
         }
     }
-<<<<<<< HEAD
-
-    pub fn access_token(&self) -> &str {
-        &self.access_token
-||||||| 121742ad89
-=======
     pub fn ely(name: &str, uuid: u128, access_token: &str) -> Self {
         let mut session = Self::new(name, uuid, access_token);
         session.ely = true;
@@ -76,7 +70,10 @@ impl AuthSession {
     /// An Ely.by account: its skin is on Ely.by, not on Mojang's profile.
     pub fn is_ely(&self) -> bool {
         self.ely
->>>>>>> starling-client/starling
+    }
+
+    pub fn access_token(&self) -> &str {
+        &self.access_token
     }
     /// The session file's JSON: {"name", "uuid", "access_token", "user_type": "msa", "xuid"}.
     pub fn parse(text: &str) -> Result<Self, String> {

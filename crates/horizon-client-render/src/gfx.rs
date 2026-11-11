@@ -181,16 +181,12 @@ fn translucent_split(batching: bool, flat_draws: bool, terrain: bool, shadow: bo
     batching && !(flat_draws && (terrain || shadow))
 }
 
-<<<<<<< HEAD
 /// The compact layout of solid quads, unless `HORIZON_PACKED_QUADS=0` (A/B checks).
 fn packed_wanted() -> bool {
     std::env::var("HORIZON_PACKED_QUADS").as_deref() != Ok("0")
 }
 
-||||||| 121742ad89
-=======
 mod adreno;
->>>>>>> starling-client/starling
 mod animate;
 mod arena;
 pub mod capture;
@@ -207,23 +203,15 @@ mod gpu_culling;
 mod hdr;
 mod hdr_icc;
 mod hdr_stats;
-<<<<<<< HEAD
 pub(crate) mod hud_coverage;
-||||||| 121742ad89
-=======
 mod terrain_source;
->>>>>>> starling-client/starling
 pub use hdr::Calibration as HdrCalibration;
 mod hold;
 pub use hold::WorldHold;
 pub mod block_light;
-<<<<<<< HEAD
 mod custom_sky;
 mod displace;
-||||||| 121742ad89
-=======
 mod late_sky;
->>>>>>> starling-client/starling
 pub mod lightning;
 mod lod;
 mod native_material;
@@ -1228,18 +1216,10 @@ pub struct Renderer {
     pub config: wgpu::SurfaceConfiguration,
     solid: SolidPipeline,
     /// `solid` split in two passes for the world pass (terrain.wgsl's `opaque_quad`).
-<<<<<<< HEAD
     solid_opaque: SolidPipeline,
     solid_cutout: SolidPipeline,
-||||||| 121742ad89
-    solid_opaque: wgpu::RenderPipeline,
-    solid_cutout: wgpu::RenderPipeline,
-=======
-    solid_opaque: wgpu::RenderPipeline,
-    solid_cutout: wgpu::RenderPipeline,
     /// Cheaper pipelines for those two passes, on Adreno's Vulkan (`solid_paths`).
     solid_paths: Option<solid_paths::SolidPaths>,
->>>>>>> starling-client/starling
     translucent: wgpu::RenderPipeline,
     translucent_mark: wgpu::RenderPipeline,
     /// A native mod's world warp (`world_warp`): nothing made until a mod gives one.
@@ -2965,13 +2945,10 @@ impl Renderer {
         let gpu_timer = timing::GpuTimer::new(&device, &queue);
         let shader = kept.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Horizon terrain"),
-<<<<<<< HEAD
-            source: wgpu::ShaderSource::Wgsl(terrain_shader().into()),
-||||||| 121742ad89
-            source: wgpu::ShaderSource::Wgsl(include_str!("terrain.wgsl").into()),
-=======
-            source: wgpu::ShaderSource::Wgsl(terrain_source::terrain_shader(gl)),
->>>>>>> starling-client/starling
+            source: wgpu::ShaderSource::Wgsl(
+                (include_str!("hdr_light.wgsl").to_owned() + &terrain_source::terrain_shader(gl))
+                    .into(),
+            ),
         });
         let entry = |binding, visibility, ty| wgpu::BindGroupLayoutEntry {
             binding,
@@ -3511,18 +3488,9 @@ impl Renderer {
             ),
         };
         let mut mip_levels = 1;
-<<<<<<< HEAD
         let gl = adapter.get_info().backend == wgpu::Backend::Gl;
         // Keep every colour layer's companion, split by the same device limit. Native
         // material stages read the first array; terrain packs stitch all of them.
-||||||| 121742ad89
-        let gl = adapter.get_info().backend == wgpu::Backend::Gl;
-        // The resource packs' LabPBR maps, for native shader packs: one array each, cut to
-        // the layers the GPU has (`block_normal_map` gives the default past them).
-=======
-        // The resource packs' LabPBR maps, for native shader packs: one array each, cut to
-        // the layers the GPU has (`block_normal_map` gives the default past them).
->>>>>>> starling-client/starling
         let pbr_maps = prepared
             .pbr
             .map(|(normals, specular, levels, map_layers, size)| {
@@ -4870,13 +4838,9 @@ impl Renderer {
             // and cave culling can drop the listed count below MIN_SECTIONS on a normal view:
             // so Metal draws vanilla terrain flat at any count.
             let min_sections = if flat::is_broken_intel_vulkan(&info)
-<<<<<<< HEAD
                 || flat::is_adreno_dx12(&info)
                 || info.backend == wgpu::Backend::Metal
-||||||| 121742ad89
-=======
                 || flat::is_powervr_vulkan(&info)
->>>>>>> starling-client/starling
                 || std::env::var("HORIZON_FLAT_DRAWS").as_deref() == Ok("1")
             {
                 0
@@ -4902,7 +4866,6 @@ impl Renderer {
                 |layout, label, vertex, fragment| solid_in(layout, label, vertex, fragment, &[]),
             )
         });
-<<<<<<< HEAD
         // With flat draws' page groups the per-section solid draws read their vertices from
         // the page too (`Flat::page_group`), in either layout of the solid quads
         // (`mesher::packed`): only the origins stay a vertex buffer, at slot 1.
@@ -4960,13 +4923,10 @@ impl Renderer {
                 );
                 visbuffer::Visbuffer::new(&device, &bindings, f, frame_format, &sprite_constants)
             });
-||||||| 121742ad89
-=======
         let base_vertex = adapter
             .get_downlevel_capabilities()
             .flags
             .contains(wgpu::DownlevelFlags::BASE_VERTEX);
->>>>>>> starling-client/starling
         let multi_draw = device
             .features()
             .contains(wgpu::Features::INDIRECT_FIRST_INSTANCE)
@@ -5015,7 +4975,7 @@ impl Renderer {
                     &adreno::TerrainModule {
                         kept: &kept,
                         shader: &shader,
-                        format: config.format.remove_srgb_suffix(),
+                        format: frame_format,
                         constants: &sprite_constants,
                     },
                     &bindings,
@@ -5063,33 +5023,22 @@ impl Renderer {
         // broke now and then left most of the terrain out of a frame, or a chunk out for longer.
         let cull_on = cull.is_some() && (!cfg!(target_os = "android") || cull_env.is_ok());
         let depth = Self::depth(&device, &config);
-<<<<<<< HEAD
-        let world_post = world_post::Post::new(&device, frame_format);
-||||||| 121742ad89
-        let world_post = world_post::Post::new(&device, config.format.remove_srgb_suffix());
-=======
         let world_post = world_post::Post::new(
             &device,
-            config.format.remove_srgb_suffix(),
+            frame_format,
             &adapter.get_info().name,
         );
->>>>>>> starling-client/starling
         let uploads = upload::Uploads::new(&device);
         let section_uploads = upload::Uploads::with_chunk(&device, SECTION_UPLOAD_CHUNK);
-<<<<<<< HEAD
         let stars = stars::Stars::new(&device, frame_format);
         let custom_sky = custom_sky::CustomSky::new(&device, frame_format);
-||||||| 121742ad89
-        let stars = stars::Stars::new(&device, config.format.remove_srgb_suffix());
-=======
-        let stars = stars::Stars::new(&device, config.format.remove_srgb_suffix());
         let late_sky = adreno::adreno_vulkan(&adapter_info)
             .then(|| {
                 late_sky::LateSky::new(
                     &adreno::TerrainModule {
                         kept: &kept,
                         shader: &shader,
-                        format: config.format.remove_srgb_suffix(),
+                        format: frame_format,
                         constants: &sprite_constants,
                     },
                     &layout,
@@ -5099,25 +5048,12 @@ impl Renderer {
                 )
             })
             .flatten();
->>>>>>> starling-client/starling
         let entity_outline = entity_outline::EntityOutline::new(
             &device,
             (&entity_shader, &entity_layout, &entity_vertex),
             frame_format,
         );
-<<<<<<< HEAD
-        let panorama = panorama::Panorama::new(&device, frame_format, panorama_faces);
-||||||| 121742ad89
-        let panorama =
-            panorama::Panorama::new(&device, config.format.remove_srgb_suffix(), panorama_faces);
-=======
-        let panorama = panorama::Panorama::new(
-            &device,
-            config.format.remove_srgb_suffix(),
-            panorama_faces,
-            gl,
-        );
->>>>>>> starling-client/starling
+        let panorama = panorama::Panorama::new(&device, frame_format, panorama_faces, gl);
         drop(pipelines_step);
         reuse.finish(generation);
         if previous.is_some() {
@@ -9171,23 +9107,11 @@ impl Renderer {
         self.phase2_pages.clear();
         self.solid_runs.clear();
         self.phase2_runs.clear();
-<<<<<<< HEAD
-        // On Metal, phase 1 goes the opaque quads of every list, then the cutout
-        // ones (`Part`), each solid pass drawing its own: `[..opaque_draws]`,
-        // then the rest; phase 2 likewise. A fading list's quads all draw in the
-        // cutout pass.
-        let split_solid = self.info.backend == wgpu::Backend::Metal && !warp_on;
-||||||| 121742ad89
-        // On Metal, phase 1 goes the opaque quads of every list, then the cutout
-        // ones (`Part`), each solid pass drawing its own: `[..opaque_draws]`,
-        // then the rest. A fading list's quads all draw in the cutout pass.
-        let split_solid = self.info.backend == wgpu::Backend::Metal;
-=======
         // On Metal and phones, phase 1 goes the opaque quads of every list, then the
         // cutout ones (`Part`), each solid pass drawing its own: `[..opaque_draws]`,
-        // then the rest. A fading list's quads all draw in the cutout pass.
-        let split_solid = splits_solid(&self.info);
->>>>>>> starling-client/starling
+        // then the rest; phase 2 likewise. A fading list's quads all draw in the
+        // cutout pass.
+        let split_solid = splits_solid(&self.info) && !warp_on;
         let parts = |fading: bool| -> &'static [(u8, Quads)] {
             match (split_solid, fading) {
                 (false, _) => &[(0, Quads::All)],
@@ -10166,14 +10090,8 @@ impl Renderer {
                     && !gpu_frame
                     && !warp_on
                     && !self.draws.is_empty()
-<<<<<<< HEAD
-                    && (listed >= flat.min_sections
-||||||| 121742ad89
-                    && (self.drawn_sections >= flat.min_sections
-=======
                     && (((flat_by_count || flat.min_sections == 0)
-                        && self.drawn_sections >= flat.min_sections)
->>>>>>> starling-client/starling
+                        && listed >= flat.min_sections)
                         || pack_terrain
                         || shadow_view.is_some()) =>
             {
@@ -10722,7 +10640,6 @@ impl Renderer {
             .as_ref()
             .filter(|_| !frame.title && !warp_on)
             .and_then(|n| Some((n.material.as_ref()?, &n.frame.group)));
-<<<<<<< HEAD
         // Without HDR output, the solid shaders without its lighting (`SolidPipeline`).
         let hdr = self.hdr.is_some();
         // A world warp's pipelines in place of the terrain's and the entities' (`warp_on`).
@@ -10733,23 +10650,9 @@ impl Renderer {
             None => material.map_or(self.solid.get(hdr), |(m, _)| &m.solid),
         };
         // Two solid passes only where a discard costs the GPU its hidden surface
-        // removal: Apple's tiled GPUs, behind Metal. Elsewhere the second pass
-        // would double the solid draw calls and vertex work for nothing.
-        let split_solid = self.info.backend == wgpu::Backend::Metal && !warp_on;
-        let translucent_pipeline = match warped {
-            Some(w) => &w.translucent,
-            None => material.map_or(&self.translucent, |(m, _)| &m.translucent),
-        };
-||||||| 121742ad89
-        let solid_pipeline = material.map_or(&self.solid, |(m, _)| &m.solid);
-        // Two solid passes only where a discard costs the GPU its hidden surface
-        // removal: Apple's tiled GPUs, behind Metal. Elsewhere the second pass
-        // would double the solid draw calls and vertex work for nothing.
-        let split_solid = self.info.backend == wgpu::Backend::Metal;
-        let translucent_pipeline = material.map_or(&self.translucent, |(m, _)| &m.translucent);
-=======
-        let solid_pipeline = material.map_or(&self.solid, |(m, _)| &m.solid);
-        let split_solid = splits_solid(&self.info);
+        // removal: Apple's tiled GPUs, behind Metal, and Adreno's Vulkan (`splits_solid`).
+        // Elsewhere the second pass would double the solid draw calls and vertex work.
+        let split_solid = splits_solid(&self.info) && !warp_on;
         // What this frame's instances allow its two solid passes (`solid_paths`).
         let solid_passes = self
             .solid_paths
@@ -10759,8 +10662,10 @@ impl Renderer {
             .map_or_else(Default::default, |paths| {
                 paths.for_frame(&self.origins, self.texture_filtering)
             });
-        let translucent_pipeline = material.map_or(&self.translucent, |(m, _)| &m.translucent);
->>>>>>> starling-client/starling
+        let translucent_pipeline = match warped {
+            Some(w) => &w.translucent,
+            None => material.map_or(&self.translucent, |(m, _)| &m.translucent),
+        };
         let pack_flat = material.and_then(|(m, _)| m.flat.as_ref());
         // A material stage's translucent pass reads a copy of the depth the solid terrain
         // left: it is stored across the pass that ends before the copy.
@@ -11018,24 +10923,19 @@ impl Renderer {
                     let passes: &[(&wgpu::RenderPipeline, Calls, Calls)] = match pack_flat {
                         Some(p) => &[(&p.0, 0..flat.phase1_calls, 0..phase2_calls)],
                         None if split_solid => &[
-<<<<<<< HEAD
-                            (flat.solid_opaque.get(hdr), 0..opaque, 0..phase2_split),
                             (
-                                flat.solid_cutout.get(hdr),
-                                cutout..flat.phase1_calls,
-                                phase2_split..phase2_calls,
-||||||| 121742ad89
-                            (&flat.solid_opaque, 0..opaque),
-                            (&flat.solid_cutout, cutout..flat.phase1_calls),
-=======
-                            (
-                                solid_passes.opaque(true).unwrap_or(&flat.solid_opaque),
+                                solid_passes
+                                    .opaque(true)
+                                    .unwrap_or(flat.solid_opaque.get(hdr)),
                                 0..opaque,
+                                0..phase2_split,
                             ),
                             (
-                                solid_passes.cutout(true).unwrap_or(&flat.solid_cutout),
+                                solid_passes
+                                    .cutout(true)
+                                    .unwrap_or(flat.solid_cutout.get(hdr)),
                                 cutout..flat.phase1_calls,
->>>>>>> starling-client/starling
+                                phase2_split..phase2_calls,
                             ),
                         ],
                         None => &[(flat.solid.get(hdr), 0..flat.phase1_calls, 0..phase2_calls)],
@@ -11092,26 +10992,18 @@ impl Renderer {
                     let passes: &[(&wgpu::RenderPipeline, Draws, Draws)] = match material {
                         None if split_solid => &[
                             (
-<<<<<<< HEAD
-                                self.solid_opaque.get(hdr),
+                                solid_passes
+                                    .opaque(false)
+                                    .unwrap_or(self.solid_opaque.get(hdr)),
                                 0..opaque,
                                 phase1_draws..phase2_cutout,
                             ),
                             (
-                                self.solid_cutout.get(hdr),
+                                solid_passes
+                                    .cutout(false)
+                                    .unwrap_or(self.solid_cutout.get(hdr)),
                                 cutout..phase1_draws,
                                 phase2_cutout..solid_draws,
-||||||| 121742ad89
-                            (&self.solid_opaque, 0..opaque),
-                            (&self.solid_cutout, cutout..phase1_draws),
-=======
-                                solid_passes.opaque(false).unwrap_or(&self.solid_opaque),
-                                0..opaque,
-                            ),
-                            (
-                                solid_passes.cutout(false).unwrap_or(&self.solid_cutout),
-                                cutout..phase1_draws,
->>>>>>> starling-client/starling
                             ),
                         ],
                         _ => &[(solid_pipeline, 0..phase1_draws, phase1_draws..solid_draws)],
@@ -11267,7 +11159,6 @@ impl Renderer {
                 drop(pass);
                 pass = plain_pass(&mut encoder);
             }
-<<<<<<< HEAD
             // A world warp's entity pipelines read its group 2.
             if let Some(group) = warp_group {
                 pass.set_bind_group(2, group, &[]);
@@ -11275,8 +11166,6 @@ impl Renderer {
             let hdr_mark = warped.map_or(&self.hdr_mark_pipeline, |w| &w.hdr_mark);
             let hdr_entity_mark =
                 warped.map_or(&self.hdr_entity_mark_pipeline, |w| &w.hdr_entity_mark);
-||||||| 121742ad89
-=======
             // At the far plane, it reads the depth solids left, in the usual order of its parts.
             if let Some(sky) = late_sky.filter(|_| sky_visible) {
                 pass.set_pipeline(&sky.sky);
@@ -11303,7 +11192,6 @@ impl Renderer {
                     pass.draw(0..3, 0..1);
                 }
             }
->>>>>>> starling-client/starling
             if static_entity_quads > 0 {
                 pass.set_pipeline(
                     warped.map_or(&self.static_entity_pipeline, |w| &w.static_entities),

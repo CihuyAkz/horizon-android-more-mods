@@ -337,17 +337,9 @@ pub enum Mode {
         alert: Option<Alert>,
     },
     Multiplayer(crate::multiplayer::Screen),
-<<<<<<< HEAD
-    /// Starling's Microsoft account (`accounts`): signing in, the game's files.
-    Account,
-    Realms(crate::realms::Screen),
-||||||| 121742ad89
-    /// Starling's Microsoft account (`accounts`): signing in, the game's files.
-    Account,
-=======
     /// Starling's profiles (`accounts`): signing in, switching, the game's files.
     Account(account::Screen),
->>>>>>> starling-client/starling
+    Realms(crate::realms::Screen),
     /// SafetyScreen: the warning before the first Multiplayer click, with its
     /// "Do not show this screen again" box.
     MultiplayerWarning {
@@ -2592,8 +2584,7 @@ Would you like to enable the Narrator or visit the Accessibility Settings?",
                     ),
                 ),
             ),
-<<<<<<< HEAD
-            Mode::Account => ScreenInfo::new("account", "Microsoft Account"),
+            Mode::Account(_) => ScreenInfo::new("account", lang::get("starling.account.title")),
             Mode::Realms(screen) => {
                 let info = ScreenInfo::new("realms", lang::get("menu.online"));
                 // `AbstractSelectionList.updateNarration`: the selected entry is a
@@ -2603,11 +2594,6 @@ Would you like to enable the Narrator or visit the Accessibility Settings?",
                     None => info,
                 }
             }
-||||||| 121742ad89
-            Mode::Account => ScreenInfo::new("account", "Microsoft Account"),
-=======
-            Mode::Account(_) => ScreenInfo::new("account", lang::get("starling.account.title")),
->>>>>>> starling-client/starling
             Mode::Multiplayer(_) => return None,
         };
         Some(info)
@@ -3393,7 +3379,6 @@ Would you like to enable the Narrator or visit the Accessibility Settings?",
                 self.started,
                 cursor,
                 hide_server_address,
-<<<<<<< HEAD
             ),
             Mode::Realms(screen) => screen.draw(
                 batch,
@@ -3404,9 +3389,6 @@ Would you like to enable the Narrator or visit the Accessibility Settings?",
                 w,
                 h,
                 self.focused_button.is_none(),
-||||||| 121742ad89
-=======
->>>>>>> starling-client/starling
             ),
         }
         // The hovered button's `Tooltip`, drawn once the widgets are.
@@ -3824,16 +3806,8 @@ Would you like to enable the Narrator or visit the Accessibility Settings?",
                 self.mode = Mode::Multiplayer(crate::multiplayer::Screen::friend(true));
                 Action::None
             }
-<<<<<<< HEAD
             (Mode::Main, Some(80)) => {
-                self.mode = Mode::Account;
-||||||| 121742ad89
-            (Mode::Main, Some(8)) => {
-                self.mode = Mode::Account;
-=======
-            (Mode::Main, Some(8)) => {
                 self.mode = Mode::Account(account::Screen::default());
->>>>>>> starling-client/starling
                 Action::None
             }
             (Mode::Account(screen), Some(id)) => {
@@ -4536,7 +4510,6 @@ Would you like to enable the Narrator or visit the Accessibility Settings?",
     }
     /// Tab navigation through widgets and fields in either forward or reverse order.
     pub fn tab_dir(&mut self, reverse: bool, size: (f32, f32)) {
-<<<<<<< HEAD
         if let Mode::Realms(screen) = &mut self.mode {
             // `RealmsScreen`'s buttons take the keyboard like every other screen's: Tab
             // steps through the enabled ones (`MenuTabBar`'s tabs included). A product
@@ -4570,13 +4543,12 @@ Would you like to enable the Narrator or visit the Accessibility Settings?",
                 (None, false) => enabled.first().copied(),
                 (None, true) => enabled.last().copied(),
             };
-||||||| 121742ad89
-=======
+            return;
+        }
         if let Mode::Account(screen) = &mut self.mode
             && screen.tab(reverse)
         {
             self.focused_button = None;
->>>>>>> starling-client/starling
             return;
         }
         if self.rules.get_mut().is_some() {
@@ -5070,29 +5042,6 @@ Would you like to enable the Narrator or visit the Accessibility Settings?",
         let (Some(session), Some(key)) = (session, key) else {
             return;
         };
-<<<<<<< HEAD
-        self.allows_multiplayer = status.allows_multiplayer();
-        // `Minecraft`'s constructor: the account's `friendsPreferences` decide whether
-        // the friends service starts (`Minecraft.friendsEnabled`).
-        crate::social::init(
-            status.properties.friends_enabled,
-            status.properties.accept_friend_invites,
-        );
-        if !QUEUED.swap(true, Ordering::Relaxed) {
-            self.ban_queue
-                .extend(initial_notices(status, &session.name));
-        }
-        if matches!(self.mode, Mode::Main) {
-            self.next_ban_notice();
-||||||| 121742ad89
-        self.allows_multiplayer = status.allows_multiplayer();
-        if !QUEUED.swap(true, Ordering::Relaxed) {
-            self.ban_queue
-                .extend(initial_notices(status, &session.name));
-        }
-        if matches!(self.mode, Mode::Main) {
-            self.next_ban_notice();
-=======
         let cache = STATUS.get_or_init(Mutex::default);
         let status = {
             let mut entries = cache
@@ -5129,6 +5078,12 @@ Would you like to enable the Narrator or visit the Accessibility Settings?",
         };
         if let Some((status, first)) = status {
             self.allows_multiplayer = status.allows_multiplayer();
+            // `Minecraft`'s constructor: the account's `friendsPreferences` decide whether
+            // the friends service starts (`Minecraft.friendsEnabled`).
+            crate::social::init(
+                status.properties.friends_enabled,
+                status.properties.accept_friend_invites,
+            );
             if first {
                 self.ban_queue
                     .extend(initial_notices(&status, &session.name));
@@ -5136,7 +5091,6 @@ Would you like to enable the Narrator or visit the Accessibility Settings?",
             if matches!(self.mode, Mode::Main) {
                 self.next_ban_notice();
             }
->>>>>>> starling-client/starling
         }
     }
     pub fn escape(&mut self) {

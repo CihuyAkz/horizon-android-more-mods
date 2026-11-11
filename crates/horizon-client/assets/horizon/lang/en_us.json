@@ -704,7 +704,6 @@
   "horizon.emote_wheel.empty": "No emotes yet",
   "horizon.emote_wheel.help": "Release or click to play · 1–8 · Esc closes",
   "horizon.extras.cosmetics_others": "Other players' cosmetics",
-<<<<<<< HEAD
   "horizon.extras.cosmetics_others.tooltip": "What other Horizon players wear: everything, only their name tag styles, or nothing. Hidden unless you own cosmetics, until you choose. Hidden, the game never asks what they wear.",
   "horizon.extras.cosmetics_hide_fx": "Hide other players' trails and auras",
   "horizon.extras.cosmetics_hide_fx.tooltip": "Other players' trails and auras stay hidden; their other cosmetics still show. Off by default.",
@@ -1072,13 +1071,8 @@
   "starling.stick_prompt.dont_ask": "Don't ask again",
   "Sets distance, particles, shadows, sky and fog; changing one makes it Custom.": "Sets distance, particles, shadows, sky and fog; changing one makes it Custom.",
   "Full Stats": "Full Stats",
-||||||| 121742ad89
-  "horizon.extras.cosmetics_others.tooltip": "Shows the cosmetics other Horizon players wear. Off, the game never asks what they wear.",
-=======
-  "horizon.extras.cosmetics_others.tooltip": "Shows the cosmetics other Horizon players wear. Off, the game never asks what they wear.",
   "starling.credits.founders": "Starling, formerly Horizon Android, by JuanLuci and Vasysik",
   "starling.credits.horizon": "Built on Horizon by Ludovic Marie and the Horizon contributors, MIT License",
->>>>>>> starling-client/starling
   "starling.diagnostics.title": "Diagnostics",
   "starling.diagnostics.notice": "Reports stay on this device. Review before sharing.",
   "starling.diagnostics.export": "Export diagnostic ZIP",

@@ -16,13 +16,9 @@ pub const HELP: &[&str] = &[
     "section-cull [on|off]          occlusion culling of solid sections (A/B checks); replies the mode",
     "static-cutout [on|off]         cutouts without their fade while nothing fades, on Adreno's Vulkan (A/B checks); replies the mode",
     "section-sides [on|off]         leave out solid quads facing away from the eye (A/B checks); replies the mode",
-<<<<<<< HEAD
     "gpu-culling [on|off|auto]     GPU Culling as its setting sets it, not saved (A/B checks); replies the mode",
     "render-capture on|off|DIR      keep copies of the meshes drawn (on), or write the next frame's scene to DIR for scene_replay",
-||||||| 121742ad89
-=======
     "settled-terrain [on|off]       less work for whole sections without RGSS, on Adreno's Vulkan (A/B checks); replies the mode",
->>>>>>> starling-client/starling
 ];
 
 impl Game<'_> {

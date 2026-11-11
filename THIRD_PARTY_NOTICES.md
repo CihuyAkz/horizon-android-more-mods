@@ -293,7 +293,6 @@ The port uses Starling's existing logger, crash hook and GPU timers and exposes
 reports through the game's Diagnostics settings and an Android launcher shortcut,
 with a renderer-independent recovery window for interrupted startup.
 
-<<<<<<< HEAD
 ## JOML
 
 `crates/horizon-client-render/src/camera.rs` (`joml::Mat4::rotation`, `invert_orthonormal`) and
@@ -396,8 +395,7 @@ is preserved.
 [150a414b09a1](https://github.com/starling-client/starling/tree/150a414b09a18c900489d9462a7fc035dae744b7)
 (`android` branch), written mostly by Vasysik. Starling is licensed under the same MIT license as
 Horizon (Copyright (c) 2026 Ludovic Marie and the Horizon contributors).
-||||||| 121742ad89
-=======
+
 ## Horizon Android renderer paths
 
 What only Adreno on Android's Vulkan takes here is adapted from
@@ -451,4 +449,3 @@ Provider-aware profile selection and Ely.by authentication, refresh, 2FA and ses
 Per-account skin selection and the Microsoft profile skin upload are adapted from [Vasysik/horizon-android at fa548eb7abe91c194d3780e4580b9746323cd606](https://github.com/Vasysik/horizon-android/tree/fa548eb7abe91c194d3780e4580b9746323cd606), specifically `launcher/src/skins.rs`, `launcher/src/skins/library.rs`, `launcher/src/skins/cloud.rs` and `crates/horizon-client/src/android/wardrobe.rs` (behavior reference). MIT, copyright (c) 2026 Ludovic Marie and the Horizon contributors; the repository LICENSE retains the license text. Starling keeps its `skins/` folder and Skin Customization page in place of the wardrobe's image store and launcher panel, keys each choice by the profile, uploads through its own sealed session, and sends Ely.by accounts to ely.by as Horizon Android does.
 
 The mobile attack gauge side and offhand spacing in `crates/horizon-client-render/src/hud_layout.rs` are adapted from the same Horizon Android commit fa548eb7abe91c194d3780e4580b9746323cd606 under MIT.
->>>>>>> starling-client/starling

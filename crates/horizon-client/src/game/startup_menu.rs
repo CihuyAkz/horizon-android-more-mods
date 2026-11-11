@@ -902,19 +902,14 @@ impl Loading {
                     super::packs::open_uri(super::options::ACCESSIBILITY_HELP_LINK)
                 }
                 // Mods' settings pages open only in a running game.
-<<<<<<< HEAD
                 // The HUD editor needs a world: its button is inactive here.
-                Event::NativeSettings(_) | Event::NativeButton(..) | Event::HudEditor => {}
-||||||| 121742ad89
-                Event::NativeSettings(_) | Event::NativeButton(..) => {}
-=======
                 Event::NativeSettings(_)
                 | Event::NativeButton(..)
+                | Event::HudEditor
                 | Event::OpenCatalog(_)
                 | Event::NativeGame(_) => {}
                 // Saved by `Changed`; the game reads the native mods' set as it starts.
                 Event::ModToggled(_) => {}
->>>>>>> starling-client/starling
                 // Options.createSoundSliderOptionInstance: the preview plays without a level,
                 // once the menu's sound output is up.
                 Event::Volume(source, volume) => {

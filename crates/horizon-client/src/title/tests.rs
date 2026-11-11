@@ -1621,16 +1621,8 @@ fn tab_walks_the_edit_server_screen_through_its_buttons() {
 fn the_account_screen_offers_signing_in_and_goes_back() {
     let mut f = Fixture::new();
     // Only where the game signs in itself (Android): the title keeps vanilla's buttons here.
-<<<<<<< HEAD
     assert!(f.title.buttons(480.0, 262.0).iter().all(|b| b.id != 80));
-    f.title.mode = Mode::Account;
-||||||| 121742ad89
-    assert!(f.title.buttons(480.0, 262.0).iter().all(|b| b.id != 8));
-    f.title.mode = Mode::Account;
-=======
-    assert!(f.title.buttons(480.0, 262.0).iter().all(|b| b.id != 8));
     f.title.mode = Mode::Account(account::Screen::default());
->>>>>>> starling-client/starling
     let labels: Vec<String> = f
         .title
         .buttons(480.0, 262.0)
@@ -2782,7 +2774,6 @@ fn world_options_survive_the_restart_as_json() {
 }
 
 #[test]
-<<<<<<< HEAD
 fn native_field_visitor_excludes_preparing_and_game_rule_editors() {
     let mut f = Fixture::new();
     f.title.mode = Mode::Multiplayer(crate::multiplayer::Screen::Direct {
@@ -2869,8 +2860,9 @@ fn cancelling_a_realms_new_world_returns_to_the_realm() {
         crate::realms::SubScreen::Configure { .. }
     ));
     let _ = fs::remove_dir_all(&f.root);
-||||||| 121742ad89
-=======
+}
+
+#[test]
 fn account_secret_fields_accept_credentials_without_chat_filtering_or_debug_disclosure() {
     use winit::keyboard::KeyCode;
     let mut f = Fixture::new();
@@ -2897,5 +2889,4 @@ fn account_secret_fields_accept_credentials_without_chat_filtering_or_debug_disc
         assert!(!format!("{screen:?}").contains("Secret"));
     }
     assert!(!format!("{:?}", f.title.caret.borrow()).contains("Secret"));
->>>>>>> starling-client/starling
 }

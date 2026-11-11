@@ -421,7 +421,7 @@ impl Settings {
             .parent()
             .map(|dir| crate::mod_list::ModList::load(&crate::logging::shared_dir(dir)))
             .unwrap_or_default();
-<<<<<<< HEAD
+        let keypad = crate::keypad::Settings::load(&path.with_file_name("horizon-keypad.json"));
         let mut settings = match fs::read(path) {
             Ok(bytes) => {
                 let text = String::from_utf8_lossy(&bytes);
@@ -429,32 +429,12 @@ impl Settings {
                 Self {
                     horizon,
                     controller,
+                    keypad,
                     extras,
                     mods,
                     ..Self::parse(&text)
                 }
             }
-||||||| 121742ad89
-        let settings = match fs::read(path) {
-            Ok(bytes) => Self {
-                horizon,
-                controller,
-                extras,
-                mods,
-                ..Self::parse(&String::from_utf8_lossy(&bytes))
-            },
-=======
-        let keypad = crate::keypad::Settings::load(&path.with_file_name("horizon-keypad.json"));
-        let settings = match fs::read(path) {
-            Ok(bytes) => Self {
-                horizon,
-                controller,
-                keypad,
-                extras,
-                mods,
-                ..Self::parse(&String::from_utf8_lossy(&bytes))
-            },
->>>>>>> starling-client/starling
             Err(_) => Self {
                 horizon,
                 controller,
@@ -772,16 +752,10 @@ impl Settings {
         if let Some(dir) = path.parent() {
             self.horizon.save(dir);
             self.controller.save(dir);
-<<<<<<< HEAD
+            let _ = self.keypad.save(&dir.join("horizon-keypad.json"));
             let mut extras = self.extras.clone();
             extras.emote_key = self.keys.get("key.emote").to_owned();
             extras.save(dir);
-||||||| 121742ad89
-            self.extras.save(dir);
-=======
-            let _ = self.keypad.save(&dir.join("horizon-keypad.json"));
-            self.extras.save(dir);
->>>>>>> starling-client/starling
             self.mods.save(&crate::logging::shared_dir(dir));
         }
     }

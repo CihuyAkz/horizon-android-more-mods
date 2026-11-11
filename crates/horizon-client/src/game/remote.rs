@@ -8635,18 +8635,7 @@ impl Game<'_> {
                 }
                 r.trail
                     .push_back((pos, on_ground, r.last_input, Instant::now()));
-                let now = Instant::now();
-                match r.moved_at.replace(now).map(|at| now - at) {
-                    Some(gap) if gap >= GAP_LOGGED => log::info!(
-                        "Horizon: {} ms between two movement packets",
-                        gap.as_millis()
-                    ),
-                    Some(_) => {}
-                    None => log::info!(
-                        "Horizon: the first movement packet {} ms after the play phase began",
-                        r.play_began.map_or(0, |at| (now - at).as_millis())
-                    ),
-                }
+                log_movement_gap(&mut r.moved_at, r.play_began);
                 out.push(packet);
                 moved_or_rotated = true;
             }
@@ -8676,7 +8665,6 @@ impl Game<'_> {
             if crouching {
                 shared |= 0x02;
             }
-<<<<<<< HEAD
             if sprinting {
                 shared |= 0x08;
             }
@@ -8706,28 +8694,6 @@ impl Game<'_> {
                 );
                 r.session.record_clientbound(&pkt);
             }
-||||||| 121742ad89
-            r.trail
-                .push_back((pos, on_ground, r.last_input, Instant::now()));
-            let now = Instant::now();
-            match r.moved_at.replace(now).map(|at| now - at) {
-                Some(gap) if gap >= GAP_LOGGED => log::info!(
-                    "Horizon: {} ms between two movement packets",
-                    gap.as_millis()
-                ),
-                Some(_) => {}
-                None => log::info!(
-                    "Horizon: the first movement packet {} ms after the play phase began",
-                    r.play_began.map_or(0, |at| (now - at).as_millis())
-                ),
-            }
-            out.push(packet);
-=======
-            r.trail
-                .push_back((pos, on_ground, r.last_input, Instant::now()));
-            log_movement_gap(&mut r.moved_at, r.play_began);
-            out.push(packet);
->>>>>>> starling-client/starling
         }
         // Creative inventory edits are sent slot by slot (SetCreativeModeSlot).
         let mut creative_slots = Vec::new();
@@ -12383,13 +12349,7 @@ fn boat_interact_passes(chest: bool, sneaking: bool, out_of_control: bool, has_r
 /// server decides; this is the client's guess of whether to go on. A carrot or warped fungus
 /// on a stick is not here: `FoodOnAStickItem.use` passes on a client, and only the server's
 /// answer to a boost that can run swings the hand.
-<<<<<<< HEAD
 pub(super) fn item_has_use(info: &horizon_client::items::ItemInfo) -> bool {
-||||||| 121742ad89
-fn item_has_use(info: &horizon_client::items::ItemInfo) -> bool {
-=======
-pub(in crate::game) fn item_has_use(info: &horizon_client::items::ItemInfo) -> bool {
->>>>>>> starling-client/starling
     let id = info.id.trim_start_matches("minecraft:");
     id.ends_with("_spear")
         || info.consumable.is_some()

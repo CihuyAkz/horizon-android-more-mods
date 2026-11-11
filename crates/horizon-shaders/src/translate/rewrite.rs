@@ -477,13 +477,8 @@ impl Stage<'_> {
             if sampler_ty.contains_key(t)
                 || params.contains_key(t)
                 || uniforms.get(t).is_some_and(|ty| ty == "bool")
-<<<<<<< HEAD
-                || self.core_matrix(t).is_some()
-                || ((depth > 0 || !calls.is_empty()) && self.runtime_array_lengths.contains_key(t))
-||||||| 121742ad89
-=======
                 || core_matrix.is_some()
->>>>>>> starling-client/starling
+                || ((depth > 0 || !calls.is_empty()) && self.runtime_array_lengths.contains_key(t))
             {
                 let before = prev(i).map(|j| self.tokens[j]);
                 if before == Some(".") {
@@ -581,7 +576,6 @@ impl Stage<'_> {
                 write!(out, "(hz_bool_{t} != 0)").unwrap();
                 continue;
             }
-<<<<<<< HEAD
             // EXT_gpu_shader4's size names keep their dimension-specific signatures. Resolve
             // only a known sampler, leaving user functions and mismatched dimensions to naga.
             let size_sampler = match t {
@@ -647,11 +641,10 @@ impl Stage<'_> {
                     .is_some()
             {
                 out.push_str(helper);
-||||||| 121742ad89
-=======
+                continue;
+            }
             if let Some(matrix) = core_matrix {
                 out.push_str(matrix);
->>>>>>> starling-client/starling
                 continue;
             }
             let replaced: Option<String> = match t {

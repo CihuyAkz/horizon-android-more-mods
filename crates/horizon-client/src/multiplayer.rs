@@ -1330,7 +1330,6 @@ impl Screen {
                             let header = crate::lang::get_or("lanServer.title", "LAN World");
                             batch.text(atlas, &header, cx + 35.0, cy + 1.0, u32::MAX, false);
                             batch.text(atlas, &game.motd, cx + 35.0, cy + 12.0, gray, false);
-<<<<<<< HEAD
                             // NetworkServerEntry.extractContent: `hideServerAddress`
                             // draws HIDDEN_ADDRESS_TEXT in the address's place.
                             let hidden;
@@ -1342,15 +1341,6 @@ impl Screen {
                                 &game.address
                             };
                             batch.text(atlas, address, cx + 35.0, cy + 23.0, gray, false);
-||||||| 121742ad89
-                            batch.text(atlas, &game.address, cx + 35.0, cy + 23.0, gray, false);
-=======
-                            // LanServerEntry draws the address only while
-                            // `hideServerAddress` is off.
-                            if !hide_address {
-                                batch.text(atlas, &game.address, cx + 35.0, cy + 23.0, gray, false);
-                            }
->>>>>>> starling-client/starling
                         }
                     }
                 }
