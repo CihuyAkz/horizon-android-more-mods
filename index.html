@@ -593,11 +593,12 @@
 
       const publishedAt = Date.parse(latest.published_at || "");
       const releaseAge = Date.now() - publishedAt;
-      const threeDays = 3 * 24 * 60 * 60 * 1000;
+      const twoDays = 2 * 24 * 60 * 60 * 1000;
+
       $("recently-updated").hidden =
         !Number.isFinite(publishedAt) ||
         releaseAge < 0 ||
-        releaseAge >= threeDays;
+        releaseAge >= twoDays;
 
       $("version").textContent = latest.tag_name || "Latest";
       $("release-title").textContent = latest.name || latest.tag_name || "Latest Release";
