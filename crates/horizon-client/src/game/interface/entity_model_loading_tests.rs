@@ -253,35 +253,6 @@ fn equipment_assets_load_from_resource_namespaces_without_a_content_marker() {
         "humanoid_leggings": [{"texture": "gems:ruby"}]
     }}))
     .unwrap();
-<<<<<<< HEAD:crates/horizon-client/src/game/entity_model_loading_tests.rs
-    // Every namespace is read (a server's pack adds its own), content root or not.
-    assert!(
-        ArmorStandAssets::load(&root.0, None)
-            .equipment_layers
-            .contains_key("gems:ruby")
-    );
-    fs::write(
-        root.0.join(horizon_items::content_namespaces::MARKER),
-        br#"["gems"]"#,
-    )
-    .unwrap();
-    let assets = ArmorStandAssets::load(&root.0, None);
-    assert_eq!(
-        assets.equipment_layers["gems:ruby"]["humanoid_leggings"],
-        vec![("gems:entity/equipment/humanoid_leggings/ruby".into(), None)]
-||||||| c98a51a664:crates/horizon-client/src/game/entity_model_loading_tests.rs
-    // Not a content root: other namespaces stay unread, as before.
-    assert!(ArmorStandAssets::load(&root.0, None).equipment.is_empty());
-    fs::write(
-        root.0.join(horizon_items::content_namespaces::MARKER),
-        br#"["gems"]"#,
-    )
-    .unwrap();
-    let assets = ArmorStandAssets::load(&root.0, None);
-    assert_eq!(
-        assets.equipment["gems:ruby"]["humanoid_leggings"],
-        vec![("gems:entity/equipment/humanoid_leggings/ruby".into(), None)]
-=======
     fs::write(equipment.join("ruby.json"), &bytes).unwrap();
     // EquipmentAssetManager lists equipment in every resource namespace;
     // a resource pack needs no Horizon content-mod marker.
@@ -290,7 +261,6 @@ fn equipment_assets_load_from_resource_namespaces_without_a_content_marker() {
             .0
             .join(horizon_items::content_namespaces::MARKER)
             .exists()
->>>>>>> arismoko/main:crates/horizon-client/src/game/interface/entity_model_loading_tests.rs
     );
     let archive = root.0.join("equipment.zip");
     let mut zip = zip::ZipWriter::new(fs::File::create(&archive).unwrap());
@@ -307,7 +277,7 @@ fn equipment_assets_load_from_resource_namespaces_without_a_content_marker() {
     ] {
         let assets = ArmorStandAssets::load(&source, None);
         assert_eq!(
-            assets.equipment["gems:ruby"]["humanoid_leggings"],
+            assets.equipment_layers["gems:ruby"]["humanoid_leggings"],
             vec![("gems:entity/equipment/humanoid_leggings/ruby".into(), None)]
         );
     }

@@ -1,25 +1,13 @@
 //! Shader packs: the one picked on the Shader Packs page, with its profile
 //! (`Graphics::shader_choice`; `HORIZON_SHADER_PACK` for development), runs `shaderpacks/<name>`
 //! (a folder or a zip beside `options.txt`) over the world; Horizon's own packs go to
-<<<<<<< HEAD:crates/horizon-client/src/game/shader_packs.rs
-//! `game/native_shaders.rs`. The programs of the current dimension's folder are loaded when the
-//! dimension or the choice changes (spec 1.2).
-||||||| c98a51a664:crates/horizon-client/src/game/shader_packs.rs
-//! `game/native_shaders.rs`. The programs of the current dimension's folder are loaded when the
-//! dimension changes (spec 1.2).
-=======
 //! `game/modding/native_shaders.rs`. The programs of the current dimension's folder are loaded when the
-//! dimension changes (spec 1.2).
->>>>>>> arismoko/main:crates/horizon-client/src/game/interface/shader_packs.rs
+//! dimension or the choice changes (spec 1.2).
 
 use horizon_client::camera::CameraFluid;
 use horizon_client::gfx::pack_uniforms::{PackInputs, PlayerStatus};
-<<<<<<< HEAD:crates/horizon-client/src/game/shader_packs.rs
 use horizon_client::graphics::{AUTO_PROFILE, light_shader_pack};
-||||||| c98a51a664:crates/horizon-client/src/game/shader_packs.rs
-=======
 use horizon_client::mod_list::ModList;
->>>>>>> arismoko/main:crates/horizon-client/src/game/interface/shader_packs.rs
 use horizon_client::shader_options::ShaderOptions;
 use horizon_client::text::Text;
 use horizon_shader_api::Api;
@@ -521,44 +509,12 @@ impl Game<'_> {
                         );
                         let folder = dimension_folder_named(&pack, self.dim.id(), dimension);
                         let inputs = renderer.pack_inputs();
-<<<<<<< HEAD:crates/horizon-client/src/game/shader_packs.rs
                         let biomes: Vec<String> = world_biomes!(self)
                             .list
                             .iter()
                             .map(|b| b.name.clone())
                             .collect();
-                        let resources = self.options.resources.clone();
-||||||| c98a51a664:crates/horizon-client/src/game/shader_packs.rs
-                        let mut post = load_post(&pack, &folder, &properties, &macros, &inputs);
-                        // Textures that name one of the game's: from the resource packs over
-                        // the game's own resources.
-                        let resources = self.options.resources.clone();
-                        let read = |namespace: &str, path: &str| {
-                            std::fs::read(resources.join("assets").join(namespace).join(path)).ok()
-                        };
-                        for note in horizon_shaders::resolve_resources(&mut post.textures, &read) {
-                            log::warn!("shader pack {name}: {note}");
-                        }
-                        let biomes = world_biomes!(self);
-                        let names: Vec<&str> =
-                            biomes.list.iter().map(|b| b.name.as_str()).collect();
-                        post.custom.set_biomes(&names);
-=======
-                        let mut post = load_post(&pack, &folder, &properties, &macros, &inputs);
-                        // Textures that name one of the game's: from the resource packs over
-                        // the game's own resources.
                         let resources = self.pack.source.clone();
-                        let read = |namespace: &str, path: &str| {
-                            resources.read(&format!("assets/{namespace}/{path}")).ok()
-                        };
-                        for note in horizon_shaders::resolve_resources(&mut post.textures, &read) {
-                            log::warn!("shader pack {name}: {note}");
-                        }
-                        let biomes = world_biomes!(self);
-                        let names: Vec<&str> =
-                            biomes.list.iter().map(|b| b.name.as_str()).collect();
-                        post.custom.set_biomes(&names);
->>>>>>> arismoko/main:crates/horizon-client/src/game/interface/shader_packs.rs
                         let text = pack.read_text("block.properties").unwrap_or_default();
                         let ids = BlockIds::parse(&Properties::parse(&text, &macros));
                         for note in &ids.notes {
@@ -625,10 +581,7 @@ impl Game<'_> {
                                 // Textures that name one of the game's: from the resource packs
                                 // over the game's own resources.
                                 let read = |namespace: &str, path: &str| {
-                                    std::fs::read(
-                                        resources.join("assets").join(namespace).join(path),
-                                    )
-                                    .ok()
+                                    resources.read(&format!("assets/{namespace}/{path}")).ok()
                                 };
                                 if !post.skipped.is_empty() {
                                     let fell: Vec<&str> =
@@ -663,13 +616,7 @@ impl Game<'_> {
                         self.pack_making = Some(Making { ids: pack_ids });
                     }
                     Err(e) => {
-<<<<<<< HEAD:crates/horizon-client/src/game/shader_packs.rs
-||||||| c98a51a664:crates/horizon-client/src/game/shader_packs.rs
-                        self.pack_ids = None;
-=======
                         remember(&path, fingerprint(&path), None);
-                        self.pack_ids = None;
->>>>>>> arismoko/main:crates/horizon-client/src/game/interface/shader_packs.rs
                         log::warn!("shader pack {name}: {e}");
                         // Without a pack this can't fail.
                         let _ = renderer.set_shader_pack(dimension, None, &[]);

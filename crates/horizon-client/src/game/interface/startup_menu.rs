@@ -60,14 +60,8 @@ pub(super) struct StartupMenu {
     pub reload_packs: bool,
     /// Browse mods' worker (`mod_browser`).
     mod_jobs: super::mod_browser::Jobs,
-<<<<<<< HEAD:crates/horizon-client/src/game/startup_menu.rs
     pub perf: horizon_client::telemetry::Session,
     pub(super) diagnostic_frame: Option<Instant>,
-||||||| c98a51a664:crates/horizon-client/src/game/startup_menu.rs
-    pub perf: horizon_client::telemetry::Session,
-=======
-    perf: horizon_client::telemetry::Session,
->>>>>>> arismoko/main:crates/horizon-client/src/game/interface/startup_menu.rs
 }
 
 impl StartupMenu {
@@ -182,14 +176,8 @@ impl StartupMenu {
             game.ui.options = std::mem::take(&mut self.options);
             game.ui.options.resource_error =
                 game.ui.options.resource_error.take().or(resource_error);
-<<<<<<< HEAD:crates/horizon-client/src/game/startup_menu.rs
             game.ui.options.offer_catalog();
-            game.screen = Screen::Options;
-||||||| c98a51a664:crates/horizon-client/src/game/startup_menu.rs
-            game.screen = Screen::Options;
-=======
             game.set_screen(Screen::Options);
->>>>>>> arismoko/main:crates/horizon-client/src/game/interface/startup_menu.rs
             game.options_from_title = true;
             game.dragging = self.dragging;
         }
@@ -429,75 +417,6 @@ pub(super) fn spawn_loader(
         .name("resource-loader".into())
         .spawn(move || {
             let mut pack_error = None;
-<<<<<<< HEAD:crates/horizon-client/src/game/startup_menu.rs
-            // A content build takes a while (about 40 s on a phone for Create): the menu bundle
-            // goes first, so the loading screen can say what it waits for.
-            let registries = super::world_content::next_start().map(|next| &next.content);
-            let mut menu_sent = false;
-            let base = mods::content_root(
-                &vanilla_root,
-                &settings.mods.enabled,
-                &dev_mods,
-                registries,
-                &mut |note| {
-                    progress.note(Some(note.text()));
-                    if !std::mem::replace(&mut menu_sent, true)
-                        && let Ok(ui) = UiResources::load(&vanilla_root, &vanilla_root)
-                    {
-                        let _ = sender.send(LoaderMsg::Ui(ui, vanilla_root.clone()));
-                    }
-                },
-            );
-            progress.note(None);
-            let root = packs::startup_root(&vanilla_root, &base, &settings.resource_packs, &[])
-                .unwrap_or_else(|error| {
-                    pack_error = Some(error.to_string());
-                    base.clone()
-                });
-            let result = load_resources(
-                root,
-                world.as_deref(),
-                &vanilla_root,
-                &settings,
-                started,
-                true,
-                false,
-                &progress,
-                &mut |gui, root| {
-                    let _ = sender.send(LoaderMsg::Ui(gui, root.to_path_buf()));
-                },
-            )
-            .map(|mut loaded| {
-                loaded.pack_error = loaded.pack_error.or(pack_error);
-                loaded
-            })
-            .map_err(|error| error.to_string());
-||||||| c98a51a664:crates/horizon-client/src/game/startup_menu.rs
-            let base = mods::content_root(&vanilla_root, &settings.mods.enabled, &dev_mods);
-            let root = packs::startup_root(&vanilla_root, &base, &settings.resource_packs, &[])
-                .unwrap_or_else(|error| {
-                    pack_error = Some(error.to_string());
-                    base.clone()
-                });
-            let result = load_resources(
-                root,
-                world.as_deref(),
-                &vanilla_root,
-                &settings,
-                started,
-                true,
-                false,
-                &progress,
-                &mut |gui, root| {
-                    let _ = sender.send(LoaderMsg::Ui(gui, root.to_path_buf()));
-                },
-            )
-            .map(|mut loaded| {
-                loaded.pack_error = loaded.pack_error.or(pack_error);
-                loaded
-            })
-            .map_err(|error| error.to_string());
-=======
             let root =
                 packs::startup_root(&vanilla_root, &settings.resource_packs, &[], &mod_sources)
                     .or_else(|error| {
@@ -526,7 +445,6 @@ pub(super) fn spawn_loader(
                     loaded
                 })
                 .map_err(|error| error.to_string());
->>>>>>> arismoko/main:crates/horizon-client/src/game/interface/startup_menu.rs
             let _ = sender.send(LoaderMsg::Done(result));
         })?;
     Ok((receiver, handle))
@@ -842,7 +760,6 @@ impl Loading {
     fn menu_option_events(&mut self, events: Vec<Event>) {
         for event in events {
             match event {
-<<<<<<< HEAD:crates/horizon-client/src/game/startup_menu.rs
                 Event::DiagnosticsExport => super::diagnostics::export_diagnostics(),
                 Event::DiagnosticsOpen => super::diagnostics::open_diagnostics(),
                 Event::DiagnosticsRecord => {
@@ -859,11 +776,8 @@ impl Loading {
                     !crate::performance::gpu_profile(),
                     &horizon_client::logging::private_home(),
                 ),
-||||||| c98a51a664:crates/horizon-client/src/game/startup_menu.rs
-=======
                 // No world debug list exists before Game construction.
                 Event::DebugEntriesChanged => {}
->>>>>>> arismoko/main:crates/horizon-client/src/game/interface/startup_menu.rs
                 Event::Changed => {
                     self.save_menu_settings();
                     self.settings.keys.sync_action_bindings();
@@ -1031,9 +945,8 @@ impl Loading {
                 }
                 // Mods' settings pages open only in a running game.
                 // The HUD editor needs a world: its button is inactive here.
-<<<<<<< HEAD:crates/horizon-client/src/game/startup_menu.rs
                 Event::NativeSettings(_)
-                | Event::NativeButton(..)
+                | Event::NativeSetting(..)
                 | Event::HudEditor
                 | Event::OpenCatalog(_)
                 | Event::NativeGame(_) => {}
@@ -1049,21 +962,6 @@ impl Loading {
                 // The startup menu runs before the game opens a control socket, and has no music
                 // tracks to list or play.
                 Event::CopyAgentDetails
-||||||| c98a51a664:crates/horizon-client/src/game/startup_menu.rs
-                Event::NativeSettings(_) | Event::NativeButton(..) | Event::HudEditor => {}
-                // The startup menu runs before the game opens a control socket,
-                // and before its sound engine (no clicks, no volume previews,
-                // and no music tracks to list or play).
-                Event::ButtonClick
-                | Event::CopyAgentDetails
-=======
-                Event::NativeSettings(_) | Event::NativeSetting(..) | Event::HudEditor => {}
-                // The startup menu runs before the game opens a control socket,
-                // and before its sound engine (no clicks, no volume previews,
-                // and no music tracks to list or play).
-                Event::ButtonClick
-                | Event::CopyAgentDetails
->>>>>>> arismoko/main:crates/horizon-client/src/game/interface/startup_menu.rs
                 | Event::ToggleRecording
                 | Event::ExportRepro
                 | Event::ListMusicTracks
@@ -1601,8 +1499,7 @@ impl Loading {
                     raw
                 } * self.settings.mouse_wheel_sensitivity;
                 let size = self.menu_size();
-<<<<<<< HEAD:crates/horizon-client/src/game/startup_menu.rs
-                let batch = HudBatch::new(size);
+                let batch = HudBatch::new(size, self.settings.gui_scale_inputs());
                 if self.menu.options_open && finger {
                     self.menu.options.scroll_at(
                         &self.settings,
@@ -1611,13 +1508,6 @@ impl Loading {
                         amount,
                     );
                 } else if self.menu.options_open {
-||||||| c98a51a664:crates/horizon-client/src/game/startup_menu.rs
-                let batch = HudBatch::new(size);
-                if self.menu.options_open {
-=======
-                let batch = HudBatch::new(size, self.settings.gui_scale_inputs());
-                if self.menu.options_open {
->>>>>>> arismoko/main:crates/horizon-client/src/game/interface/startup_menu.rs
                     let events = self.menu.options.wheel(
                         &mut self.settings,
                         (batch.width, batch.height),
@@ -1887,7 +1777,6 @@ mod tests {
     }
 
     #[test]
-<<<<<<< HEAD:crates/horizon-client/src/game/startup_menu.rs
     fn retry_after_a_delivered_failure_reads_the_new_loader_result() {
         let (sender, receiver) = std::sync::mpsc::channel();
         sender
@@ -1917,8 +1806,9 @@ mod tests {
             matches!(loading.loaded, Some(Err(_))),
             "the replacement loader's result must be delivered even if the first attempt failed"
         );
-||||||| c98a51a664:crates/horizon-client/src/game/startup_menu.rs
-=======
+    }
+
+    #[test]
     #[ignore = "needs prepared resources in HORIZON_TEST_RESOURCES"]
     fn queued_creation_is_reconciled_at_handoff() {
         use horizon_client::gamerules::Value;
@@ -2013,7 +1903,6 @@ mod tests {
         first.apply_menu_settings();
         assert_eq!(view(&first), (4.0, 240.0, 180.0));
         assert_eq!(first.menu.cursor, (100.0, 50.0));
->>>>>>> arismoko/main:crates/horizon-client/src/game/interface/startup_menu.rs
     }
 
     #[test]

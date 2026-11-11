@@ -3,12 +3,8 @@
 use super::{Game, ResizeState, Screen};
 use horizon_client::{
     Result,
-<<<<<<< HEAD:crates/horizon-client/src/game/options.rs
     graphics::Graphics,
-||||||| c98a51a664:crates/horizon-client/src/game/options.rs
-=======
     hdr_calibration::WindowState,
->>>>>>> arismoko/main:crates/horizon-client/src/game/interface/options.rs
     hud::HudBatch,
     lang,
     options_ui::{Event, Page, SkinAction},
@@ -277,18 +273,12 @@ impl Game<'_> {
         if ui.controller_open() {
             ui.set_controller_context(context);
         }
-<<<<<<< HEAD:crates/horizon-client/src/game/options.rs
         let cursor = self.options_pointer(&mut ui);
-        ui.draw(&self.settings, batch, &self.gui.atlas, cursor);
-||||||| c98a51a664:crates/horizon-client/src/game/options.rs
-        ui.draw(&self.settings, batch, &self.gui.atlas, self.cursor);
-=======
         let output = self
             .renderer
             .as_ref()
             .map_or(Default::default(), |r| r.output());
-        ui.draw(&self.settings, output, batch, &self.gui.atlas, self.cursor);
->>>>>>> arismoko/main:crates/horizon-client/src/game/interface/options.rs
+        ui.draw(&self.settings, output, batch, &self.gui.atlas, cursor);
         self.ui.options = ui;
         self.show_calibration((batch.width, batch.height));
     }
@@ -535,26 +525,14 @@ impl Game<'_> {
                     self.settings.save(&Self::options_path());
                     self.reload_packs();
                 }
-<<<<<<< HEAD:crates/horizon-client/src/game/options.rs
-                Event::OpenPackFolder => self.open_game_folder(&super::packs::packs_dir()),
-                Event::OpenModFolder => {
-                    self.open_game_folder(&Self::game_dir().join(horizon_client::mod_list::DIR))
-||||||| c98a51a664:crates/horizon-client/src/game/options.rs
-                Event::OpenPackFolder => {
-                    let dir = super::packs::packs_dir();
-                    let _ = std::fs::create_dir_all(&dir);
-                    super::packs::open_folder(&dir);
-=======
                 Event::PackOptions { entries, chosen } => {
                     super::packs::save_pack_options(&entries, chosen);
                     self.ui.options.pack_configs = super::packs::pack_configs(&self.vanilla_root());
                     self.reload_packs();
                 }
-                Event::OpenPackFolder => {
-                    let dir = super::packs::packs_dir();
-                    let _ = std::fs::create_dir_all(&dir);
-                    super::packs::open_folder(&dir);
->>>>>>> arismoko/main:crates/horizon-client/src/game/interface/options.rs
+                Event::OpenPackFolder => self.open_game_folder(&super::packs::packs_dir()),
+                Event::OpenModFolder => {
+                    self.open_game_folder(&Self::game_dir().join(horizon_client::mod_list::DIR))
                 }
                 // Horizon's own Add button: the screen picked a hit, the game
                 // owns the folder it lands in.
@@ -637,23 +615,8 @@ impl Game<'_> {
                     }
                 }
                 Event::OpenShaderPackFolder => self.open_game_folder(&Self::shader_packs_dir()),
-                Event::NativeButton(i, b) => {
-                    // Android: the Native mods row's button opens its card (native_builds.rs).
-                    #[cfg(target_os = "android")]
-                    let card = self.native_builds_button(i);
-                    #[cfg(not(target_os = "android"))]
-                    let card = false;
-                    if !card {
-                        self.native_settings_event(i, b);
-                    }
-                }
                 Event::NativeSettings(i) => self.native_settings_refresh(i),
-<<<<<<< HEAD:crates/horizon-client/src/game/options.rs
-||||||| c98a51a664:crates/horizon-client/src/game/options.rs
-                Event::NativeButton(i, b) => self.native_settings_event(i, b),
-=======
                 Event::NativeSetting(i, j) => self.native_setting_event(i, j),
->>>>>>> arismoko/main:crates/horizon-client/src/game/interface/options.rs
                 Event::Credits => self.open_win_screen(false, super::win::Finish::Options),
                 Event::HudEditor => self.open_hud_editor(true),
                 // AccessibilityOptionsScreen's link button: ConfirmLinkScreen

@@ -522,15 +522,9 @@ impl Game<'_> {
         else {
             return;
         };
-<<<<<<< HEAD:crates/horizon-client/src/game/creative_screen.rs
-        let batch = HudBatch::new(size);
+        let batch = HudBatch::new(size, self.settings.gui_scale_inputs());
         self.bedrock_side(self.cursor.0, batch.width);
         self.bedrock_held = true;
-||||||| c98a51a664:crates/horizon-client/src/game/creative_screen.rs
-        let batch = HudBatch::new(size);
-=======
-        let batch = HudBatch::new(size, self.settings.gui_scale_inputs());
->>>>>>> arismoko/main:crates/horizon-client/src/game/interface/creative_screen.rs
         let (ox, oy) = Self::creative_origin(&batch);
         let (cx, cy) = self.cursor;
         let panel = self.bedrock_items.is_some();

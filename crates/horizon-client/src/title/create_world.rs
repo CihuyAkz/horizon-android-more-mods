@@ -57,10 +57,13 @@ pub struct WorldOptions {
     /// The folder of packs for the new world (vanilla's `mcworld-`
     /// temporary folder), made when Data Packs first opens.
     pub pack_dir: Option<std::path::PathBuf>,
-<<<<<<< HEAD
     /// Starling: the content mods adding blocks or items the world plays with; none chosen, the
     /// ones running now (world_content.rs).
     pub mods: Option<std::collections::BTreeSet<String>>,
+    /// Additional repository sources retained for this creation configuration (not kept in the
+    /// JSON a restart reads back).
+    #[serde(skip)]
+    pub additional_data_packs: std::sync::Arc<[std::sync::Arc<crate::datapack::DataPack>]>,
 }
 
 /// The rules by name as their text, set back through [`GameRules::set_string`].
@@ -89,11 +92,6 @@ mod rules_text {
         }
         Ok(rules)
     }
-||||||| c98a51a664
-=======
-    /// Additional repository sources retained for this creation configuration.
-    pub additional_data_packs: std::sync::Arc<[std::sync::Arc<crate::datapack::DataPack>]>,
->>>>>>> arismoko/main
 }
 impl Default for WorldOptions {
     fn default() -> Self {
@@ -117,12 +115,8 @@ impl Default for WorldOptions {
             rules: crate::gamerules::GameRules::default(),
             data_packs: vec!["vanilla".into()],
             pack_dir: None,
-<<<<<<< HEAD
             mods: None,
-||||||| c98a51a664
-=======
             additional_data_packs: std::sync::Arc::from([]),
->>>>>>> arismoko/main
         }
     }
 }

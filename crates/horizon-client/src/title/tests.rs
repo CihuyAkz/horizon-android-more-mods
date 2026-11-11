@@ -2836,7 +2836,6 @@ fn the_multiplayer_screens_have_their_own_ids() {
 }
 
 #[test]
-<<<<<<< HEAD
 fn world_options_survive_the_restart_as_json() {
     let mut options = WorldOptions {
         hardcore: true,
@@ -2857,26 +2856,6 @@ fn world_options_survive_the_restart_as_json() {
 }
 
 #[test]
-fn native_field_visitor_excludes_preparing_and_game_rule_editors() {
-    let mut f = Fixture::new();
-    f.title.mode = Mode::Multiplayer(crate::multiplayer::Screen::Direct {
-        address: "safe".into(),
-    });
-    f.title.preparing = true;
-    assert!(
-        !f.title
-            .edit_focused_text_field(|_| panic!("preparing has no editable native field"))
-||||||| c98a51a664
-fn native_field_visitor_excludes_preparing_and_game_rule_editors() {
-    let mut f = Fixture::new();
-    f.title.mode = Mode::Multiplayer(crate::multiplayer::Screen::Direct {
-        address: "safe".into(),
-    });
-    f.title.preparing = true;
-    assert!(
-        !f.title
-            .edit_focused_text_field(|_| panic!("preparing has no editable native field"))
-=======
 fn creation_rules_keep_injected_registry_and_selected_values() {
     use crate::gamerules::{GameRules, Rule, RuleRegistry, Value};
     use std::sync::Arc;
@@ -2899,7 +2878,6 @@ fn creation_rules_keep_injected_registry_and_selected_values() {
     assert_eq!(
         options.rules.get("example:enabled"),
         Some(Value::Bool(true))
->>>>>>> arismoko/main
     );
     fixture.title.close_rules(Exit::Apply(vec![(
         "example:enabled".into(),

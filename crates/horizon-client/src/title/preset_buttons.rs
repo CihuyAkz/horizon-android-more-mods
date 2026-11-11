@@ -94,6 +94,11 @@ impl Title {
                     button.icon = Some((icon, 15.0));
                     buttons.push(button);
                 }
+                // Starling's account, where the game signs in itself: in the top left corner,
+                // clear of the logo, so vanilla's buttons stay as they are.
+                if crate::accounts::in_game() {
+                    buttons.push(b(4.0, 4.0, 120.0, &account::main_label(), true, 80));
+                }
                 buttons
             }
             Mode::Select { worlds, selected } => {
@@ -508,6 +513,11 @@ impl Title {
                     .collect()
             }
             Mode::Backup { .. } => Vec::new(),
+            Mode::Account(screen) => screen
+                .buttons(w, h)
+                .into_iter()
+                .map(|(x, y, bw, label, enabled, id)| b(x, y, bw, &label, enabled, id))
+                .collect(),
             Mode::Multiplayer(screen) => screen
                 .buttons(w, h)
                 .into_iter()

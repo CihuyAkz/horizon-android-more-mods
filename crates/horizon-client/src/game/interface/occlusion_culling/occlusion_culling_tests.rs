@@ -28,13 +28,9 @@ fn vanilla_models_and_animations_stay_inside_the_precheck_envelope() {
         entity_tags: Default::default(),
         pois: Default::default(),
         species_placements: Default::default(),
-<<<<<<< HEAD:crates/horizon-client/src/game/occlusion_culling_tests.rs
         armor_atlases: Default::default(),
         equipment: Default::default(),
-||||||| c98a51a664:crates/horizon-client/src/game/occlusion_culling_tests.rs
-=======
         mod_spawns: Default::default(),
->>>>>>> arismoko/main:crates/horizon-client/src/game/interface/occlusion_culling/occlusion_culling_tests.rs
     };
     let camera = glam::DVec3::new(3.0, 62.0, -4.0);
     let mut checked = 0;

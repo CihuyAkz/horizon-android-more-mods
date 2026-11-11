@@ -1288,7 +1288,7 @@ pub fn main(app: AndroidApp) {
         log::warn!("Could not initialize diagnostics: {error}");
     }
     crate::diagnostics::collect_exits(&private);
-    crate::entry::start(Default::default(), || {
+    crate::entry::set_after_log(move || {
         log::info!(
             "Horizon: Android, game folder {}, private files {}, arguments {args:?}, environment {env:?}",
             home.display(),
@@ -1303,6 +1303,18 @@ pub fn main(app: AndroidApp) {
         crate::accounts::resume();
         winit::platform::android::set_input_hook(input::hook);
     });
+    // No code mods on a phone: the native set is empty and nothing registers.
+    crate::entry::start(
+        Default::default(),
+        |_, _| (Vec::new(), ()),
+        crate::entry::CodeRuntime {
+            initialize: |_| {},
+            refusal: |_| None,
+            startup_refused: |_| false,
+        },
+        &[],
+        crate::entry::prepare(),
+    );
     finish_and_exit()
 }
 

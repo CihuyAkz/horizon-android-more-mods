@@ -746,41 +746,8 @@ impl Game<'_> {
     ) -> Vec<horizon_client::font::Patch> {
         // Options.getBackgroundOpacity(0.25) black, as ARGB.color.
         const BACKGROUND: u32 = 0x3F00_0000;
-<<<<<<< HEAD:crates/horizon-client/src/game/names.rs
         let axes = self.camera_text_axes();
         let away = axes.away;
-        let mut batch = HudBatch::new([1, 1]);
-||||||| c98a51a664:crates/horizon-client/src/game/names.rs
-        // The camera's facing (Camera.rotation()), turned round in third-person
-        // front view, so the text reads the right way from where it is seen.
-        let (view_yaw, view_pitch) = match self.posed_rotation {
-            // The frame's camera, already turned round in front view.
-            Some(rotation) => rotation,
-            None if self.camera_type == super::perspective::CameraType::ThirdPersonFront => {
-                (self.yaw + 180.0, -self.pitch)
-            }
-            None => (self.yaw, self.pitch),
-        };
-        let forward = glam::DVec3::from_array(view_vector(view_yaw, view_pitch));
-        let right = forward.cross(glam::DVec3::Y).normalize_or_zero();
-        let up = right.cross(forward).normalize_or_zero();
-        let away = forward.as_vec3() * 0.002;
-        let mut batch = HudBatch::new([1, 1]);
-=======
-        // The camera's facing (Camera.rotation()), turned round in third-person
-        // front view, so the text reads the right way from where it is seen.
-        let (view_yaw, view_pitch) = match self.posed_rotation {
-            // The frame's camera, already turned round in front view.
-            Some(rotation) => rotation,
-            None if self.camera_type == mod_api::CameraType::ThirdPersonFront => {
-                (self.yaw + 180.0, -self.pitch)
-            }
-            None => (self.yaw, self.pitch),
-        };
-        let forward = glam::DVec3::from_array(view_vector(view_yaw, view_pitch));
-        let right = forward.cross(glam::DVec3::Y).normalize_or_zero();
-        let up = right.cross(forward).normalize_or_zero();
-        let away = forward.as_vec3() * 0.002;
         let mut batch = HudBatch::new(
             [1, 1],
             horizon_client::hud::GuiScale {
@@ -788,7 +755,6 @@ impl Game<'_> {
                 unicode: false,
             },
         );
->>>>>>> arismoko/main:crates/horizon-client/src/game/interface/names.rs
         let last = lines.len().saturating_sub(1);
         for (n, (text, lift)) in lines.iter().enumerate() {
             let o = (o + glam::DVec3::new(0.0, *lift, 0.0)).as_vec3();
@@ -883,7 +849,7 @@ impl Game<'_> {
         let (view_yaw, view_pitch) = match self.posed_rotation {
             // The frame's camera, already turned round in front view.
             Some(rotation) => rotation,
-            None if self.camera_type == super::perspective::CameraType::ThirdPersonFront => {
+            None if self.camera_type == mod_api::CameraType::ThirdPersonFront => {
                 (self.yaw + 180.0, -self.pitch)
             }
             None => (self.yaw, self.pitch),

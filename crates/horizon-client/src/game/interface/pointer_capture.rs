@@ -27,15 +27,8 @@ impl Game<'_> {
         let pointer = self.captured || self.agent_pointer || self.touch_turns();
         let grabbed = pointer
             && self.screen == Screen::Playing
-<<<<<<< HEAD:crates/horizon-client/src/game/pointer_capture.rs
-            && (self.player.is_some() || self.studio_freecam.active);
-        let active = self.focused || self.agent_pointer || self.touch_turns();
-||||||| c98a51a664:crates/horizon-client/src/game/pointer_capture.rs
-            && (self.player.is_some() || self.studio_freecam.active);
-        let active = self.focused || self.agent_pointer;
-=======
             && (self.player.is_some() || self.studio.flying());
-        let active = self.focused || self.agent_pointer;
+        let active = self.focused || self.agent_pointer || self.touch_turns();
         if active
             && grabbed
             && mod_api::__private::listened(mod_api::HookId::CalculatePlayerTurn)
@@ -48,7 +41,6 @@ impl Game<'_> {
                 &mut look.smooth_camera,
             );
         }
->>>>>>> arismoko/main:crates/horizon-client/src/game/interface/pointer_capture.rs
         if let Some((xo, yo)) = self
             .mouse
             .handle_accumulated_movement(time, active, grabbed, look)
@@ -207,7 +199,7 @@ impl Game<'_> {
             || window.inner_size().into(),
             |r| [r.config.width, r.config.height],
         );
-        let scale = HudBatch::new(size).scale;
+        let scale = HudBatch::new(size, self.settings.gui_scale_inputs()).scale;
         let was_grabbed = self.captured;
         // Android grabs the mouse as the activity's pointer capture, which comes a moment later
         // (a loss the system makes comes back: game/input_mode.rs). Only a mouse player asks:
@@ -235,27 +227,11 @@ impl Game<'_> {
         let warp = |window: &Window| {
             let _ = window.set_cursor_position(centre);
         };
-<<<<<<< HEAD:crates/horizon-client/src/game/pointer_capture.rs
         #[cfg(not(target_os = "android"))]
-        if self.options.offscreen && !self.split_window {
-            // A genuinely hidden `--offscreen` run leaves the system pointer where
-            // the person at the computer has it. Its grab is internal (an
-            // agent turns the view with `mouse-move`).
-||||||| c98a51a664:crates/horizon-client/src/game/pointer_capture.rs
-        let scale = HudBatch::new(size).scale;
-        let was_grabbed = self.captured;
-        if self.options.offscreen && !self.split_window {
-            // A genuinely hidden `--offscreen` run leaves the system pointer where
-            // the person at the computer has it. Its grab is internal (an
-            // agent turns the view with `mouse-move`).
-=======
-        let scale = HudBatch::new(size, self.settings.gui_scale_inputs()).scale;
-        let was_grabbed = self.captured;
         if self.internal_grab() {
             // Its grab is internal (an agent turns the view with `mouse-move`). A grab the
             // window already held when a scripted run began stays the system's until the
             // run ends (`settle_after_run`).
->>>>>>> arismoko/main:crates/horizon-client/src/game/interface/pointer_capture.rs
             if capture {
                 self.mouse.set_ignore_first_move();
             }

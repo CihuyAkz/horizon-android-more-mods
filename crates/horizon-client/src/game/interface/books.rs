@@ -3,13 +3,7 @@
 //! pixels, 1024 characters, 100 pages), signing it into a written book,
 //! reading written books, and lecterns (placing a book, turning its pages
 //! with a redstone pulse, the comparator output and taking the book).
-<<<<<<< HEAD:crates/horizon-client/src/game/books.rs
-use super::{Game, Screen, lan::LanHost, screen_info};
-||||||| c98a51a664:crates/horizon-client/src/game/books.rs
-use super::{Game, lan::LanHost, screen_info};
-=======
-use super::{Game, screen_info};
->>>>>>> arismoko/main:crates/horizon-client/src/game/interface/books.rs
+use super::{Game, Screen, screen_info};
 use horizon_client::{
     containers::{BlockEntity, Lectern},
     first_person::Hand,

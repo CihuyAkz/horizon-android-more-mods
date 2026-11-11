@@ -973,36 +973,14 @@ impl Game<'_> {
         // A spectator preview still draws its own model: the poses'
         // visibility hides body parts, leaving the head and its layers.
         let body = self.own_body_visible() || self.spectator();
-        let (data, armour) = (self.res.mob_data(), self.player_armor_layers());
+        let data = self.res.mob_data();
+        let armour = if in_world {
+            self.player_armor_layers()
+        } else {
+            Vec::new()
+        };
         // A screen preview: custom entity model animations see is_in_gui = 1.
         horizon_client::mobs::cem_anim::in_gui(|| {
-<<<<<<< HEAD:crates/horizon-client/src/game/perspective.rs
-            render(
-                &m,
-                1.0,
-                camera,
-                &lookup,
-                240 | 240 << 8,
-                data,
-                &if in_world {
-                    self.player_armor_layers()
-                } else {
-                    Vec::new()
-                },
-                &mut verts,
-            );
-||||||| c98a51a664:crates/horizon-client/src/game/perspective.rs
-            render(
-                &m,
-                1.0,
-                camera,
-                &lookup,
-                240 | 240 << 8,
-                self.res.mob_data(),
-                &self.player_armor_layers(),
-                &mut verts,
-            );
-=======
             let light = 240 | 240 << 8;
             if body {
                 horizon_client::mobs::render::render_with(
@@ -1013,7 +991,6 @@ impl Game<'_> {
                     &m, 1.0, camera, &lookup, light, data, &armour, None, &mut verts,
                 );
             }
->>>>>>> arismoko/main:crates/horizon-client/src/game/interface/perspective.rs
         });
         let chest = self.armor[1]
             .as_ref()
@@ -2047,14 +2024,10 @@ mod preview_tests {
             blinks: Default::default(),
             pois: Default::default(),
             species_placements: Default::default(),
-<<<<<<< HEAD:crates/horizon-client/src/game/perspective.rs
             armor_atlases: Default::default(),
             equipment: Default::default(),
-||||||| c98a51a664:crates/horizon-client/src/game/perspective.rs
-=======
             mod_spawns: Default::default(),
             pathfindable_overrides: Default::default(),
->>>>>>> arismoko/main:crates/horizon-client/src/game/interface/perspective.rs
         };
         let draw = |body: bool| {
             let mut out = Vec::new();

@@ -11,16 +11,10 @@ use horizon_client::{
     Result,
     controller_notice::{Notice, NoticeId, Priority},
     controller_ui::Device,
-<<<<<<< HEAD:crates/horizon-client/src/game/pad.rs
-    gamepad::{self, Button, Edges, GlyphStyle, HealthWatch, PadState, Route, Rumble},
-    input_mode::InputMode,
-||||||| c98a51a664:crates/horizon-client/src/game/pad.rs
-    gamepad::{self, Button, Edges, GlyphStyle, HealthWatch, PadState, Route, Rumble},
-=======
     gamepad::{
         self, Button, Edges, GlyphOf, GlyphStyle, HealthWatch, MenuJob, PadState, Route, Rumble,
     },
->>>>>>> arismoko/main:crates/horizon-client/src/game/interface/pad/mod.rs
+    input_mode::InputMode,
     keymapping::SNEAK,
     pad_glyph::{Glyph, Glyphs},
 };
@@ -207,7 +201,7 @@ pub(in crate::game) enum PadEvent {
 /// Android's controllers, from the system's events: gilrs (the `controllers` feature) has no
 /// Android backend.
 #[cfg(all(target_os = "android", not(feature = "controllers")))]
-#[path = "pad/android.rs"]
+#[path = "android.rs"]
 mod hardware;
 
 /// The splitscreen's pad router where there are no gilrs pads to route (the server build, Android):
@@ -426,48 +420,22 @@ impl Game<'_> {
         let enabled = self.settings.controller.enabled;
         let hardware = if enabled {
             match self.pad.feed {
+                // A scripted run leaves the person's pad at rest and unread, as the window drops
+                // their keys and mouse: a read makes a newly touched pad the active one, which lets
+                // go of the run's A held in a menu. A held button lets go as the run starts and is
+                // held again after it.
+                _ if self.scripted_run() => PadState::default(),
                 Some(state) => state,
                 None => self.pad.read(),
             }
         } else {
             self.pad_output_off();
-<<<<<<< HEAD:crates/horizon-client/src/game/pad.rs
-||||||| c98a51a664:crates/horizon-client/src/game/pad.rs
-            self.pad_cancel_inputs(event_loop);
-            self.pad.state = PadState::default();
-=======
-            self.pad_cancel_inputs(event_loop);
             // The radial menu closed with the pad: its overlay fades out, as for a cancel.
             self.pad
                 .radial_look
                 .observe(None, std::time::Instant::now());
-            self.pad.state = PadState::default();
->>>>>>> arismoko/main:crates/horizon-client/src/game/interface/pad/mod.rs
             self.pad.in_use = false;
-<<<<<<< HEAD:crates/horizon-client/src/game/pad.rs
             PadState::default()
-||||||| c98a51a664:crates/horizon-client/src/game/pad.rs
-            // The keyboard's menu focus follows its widget all the same.
-            self.pad_menu_frame(event_loop);
-            return;
-        }
-        let hardware = match self.pad.feed {
-            Some(state) => state,
-            None => self.pad.read(),
-=======
-            // The keyboard's menu focus follows its widget all the same.
-            self.pad_menu_frame(event_loop);
-            return;
-        }
-        let hardware = match self.pad.feed {
-            // A scripted run leaves the person's pad at rest and unread, as the window drops
-            // their keys and mouse: a read makes a newly touched pad the active one, which lets
-            // go of the run's A held in a menu. A held button lets go as the run starts and is
-            // held again after it.
-            _ if self.scripted_run() => PadState::default(),
-            Some(state) => state,
-            None => self.pad.read(),
->>>>>>> arismoko/main:crates/horizon-client/src/game/interface/pad/mod.rs
         };
         // A Nintendo pad going by its letters is read that way: its own, or the one
         // splitscreen's router feeds this player.
@@ -493,14 +461,9 @@ impl Game<'_> {
             for change in connections {
                 self.pad_connection_notice(change);
             }
-            let style = self.settings.controller.glyphs.resolve(self.pad.style);
-            self.ui.options.pad_style = style;
-            // Nintendo glyphs on a pad going by its letters name the button playing each part.
-            self.ui.options.pad_by_letter =
-                style == GlyphStyle::Nintendo && self.pad.by_letter(&self.settings.controller);
+            self.ui.options.pad_glyphs = Glyphs::of(&self.settings.controller, self.pad.style);
             self.ui.options.pad_driving = self.pad.in_use && self.pad_focus_mode();
         }
-<<<<<<< HEAD:crates/horizon-client/src/game/pad.rs
         #[cfg(target_os = "android")]
         let hardware = {
             self.mobile.keypad.configure(&self.settings.keypad);
@@ -512,23 +475,6 @@ impl Game<'_> {
             };
             hardware.merge(&keypad)
         };
-||||||| c98a51a664:crates/horizon-client/src/game/pad.rs
-        for change in std::mem::take(&mut self.pad.connections) {
-            self.pad_connection_notice(change);
-        }
-        let style = self.settings.controller.glyphs.resolve(self.pad.style);
-        self.ui.options.pad_style = style;
-        // Nintendo glyphs on a pad going by its letters name the button playing each part.
-        self.ui.options.pad_by_letter =
-            style == GlyphStyle::Nintendo && self.pad.by_letter(&self.settings.controller);
-        self.ui.options.pad_driving = self.pad.in_use && self.pad_focus_mode();
-=======
-        for change in std::mem::take(&mut self.pad.connections) {
-            self.pad_connection_notice(change);
-        }
-        self.ui.options.pad_glyphs = Glyphs::of(&self.settings.controller, self.pad.style);
-        self.ui.options.pad_driving = self.pad.in_use && self.pad_focus_mode();
->>>>>>> arismoko/main:crates/horizon-client/src/game/interface/pad/mod.rs
         let mut state = hardware.merge(&self.pad.injected);
         let activity = self.pad.activity.observe(&state, &self.settings.controller);
         for (i, (stick, deadzone)) in [
@@ -562,19 +508,11 @@ impl Game<'_> {
         let threshold = self.settings.controller.trigger_threshold;
         let edges = self.pad.edges.update(&state, threshold);
         self.pad.state = state;
-<<<<<<< HEAD:crates/horizon-client/src/game/pad.rs
         if enabled {
+            self.pad_radial_frame();
             self.pad_drop_frame();
             self.pad_output_frame();
         }
-||||||| c98a51a664:crates/horizon-client/src/game/pad.rs
-        self.pad_drop_frame();
-        self.pad_output_frame();
-=======
-        self.pad_radial_frame();
-        self.pad_drop_frame();
-        self.pad_output_frame();
->>>>>>> arismoko/main:crates/horizon-client/src/game/interface/pad/mod.rs
         // Damage from any source, here or on a server; nothing counts on
         // the title screen.
         let health = self
@@ -931,17 +869,10 @@ impl Game<'_> {
     /// controls' stick, which plays through the pad.
     pub(super) fn pad_move(&self) -> Option<[f32; 2]> {
         let settings = &self.settings.controller;
-<<<<<<< HEAD:crates/horizon-client/src/game/pad.rs
-        if self.pad_in_menu() || !self.pad_focused() {
-||||||| c98a51a664:crates/horizon-client/src/game/pad.rs
-        if !settings.enabled || self.pad_in_menu() || !self.pad_focused() {
-=======
-        if !settings.enabled
-            || self.pad_in_menu()
+        if self.pad_in_menu()
             || !self.pad_focused()
             || (self.pad_radial_captures() && self.pad_radial_selects(0))
         {
->>>>>>> arismoko/main:crates/horizon-client/src/game/interface/pad/mod.rs
             return None;
         }
         let stick = if settings.enabled {

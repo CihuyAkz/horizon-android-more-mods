@@ -179,16 +179,10 @@ impl Game<'_> {
         raw: KeyCode,
         source: Source,
     ) -> Result<()> {
-<<<<<<< HEAD:crates/horizon-client/src/game/play_input.rs
         if self.mobile_holds_key(key, pressed) {
             return Ok(());
         }
-        if self.screen == Screen::Playing && self.studio_replay.is_some() {
-||||||| c98a51a664:crates/horizon-client/src/game/play_input.rs
-        if self.screen == Screen::Playing && self.studio_replay.is_some() {
-=======
         if self.screen == Screen::Playing && self.replay.playing() {
->>>>>>> arismoko/main:crates/horizon-client/src/game/interface/play_input.rs
             if !pressed {
                 self.keys.release(&key, source);
                 return Ok(());

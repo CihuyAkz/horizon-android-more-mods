@@ -43,23 +43,12 @@ pub(crate) fn set_preference(dir: &Path, key: &str, value: Option<&str>) {
 
 /// The overlays' palette (`menu_style`) in the HUD's colour encoding, plus the
 /// translucent plates the overlays draw over the game.
-<<<<<<< HEAD
 pub mod color {
-    use horizon_theme::DARK as P;
-    pub const fn hex(c: u32, a: u8) -> u32 {
-        (a as u32) << 24 | (c & 0xff) << 16 | (c >> 8 & 0xff) << 8 | (c >> 16 & 0xff)
-||||||| c98a51a664
-pub(crate) mod color {
-    use horizon_theme::DARK as P;
-    pub const fn hex(c: u32, a: u8) -> u32 {
-        (a as u32) << 24 | (c & 0xff) << 16 | (c >> 8 & 0xff) << 8 | (c >> 16 & 0xff)
-=======
-pub(crate) mod color {
     use horizon_client_render::menu_style::{self, OverlayColours};
+    use horizon_theme::DARK as P;
     pub use menu_style::hud_colour as hex;
     fn p() -> &'static OverlayColours {
         &menu_style::get().overlay
->>>>>>> arismoko/main
     }
     /// The page, under every veil.
     pub fn bg() -> u32 {
@@ -84,20 +73,6 @@ pub(crate) mod color {
         hex(p().ink, 255)
     }
     /// Values and secondary text (`ink_soft`).
-<<<<<<< HEAD
-    pub const MUTED: u32 = hex(P.ink_soft, 255);
-    pub const ACCENT: u32 = hex(P.accent, 255);
-    pub const ON_ACCENT: u32 = hex(P.on_accent, 255);
-    pub const DANGER: u32 = hex(P.danger, 255);
-    pub const SUCCESS: u32 = hex(P.success, 255);
-    pub const WHITE: u32 = hex(0xffffff, 255);
-    pub fn with_alpha(c: u32, a: f32) -> u32 {
-||||||| c98a51a664
-    pub const MUTED: u32 = hex(P.ink_soft, 255);
-    pub const ACCENT: u32 = hex(P.accent, 255);
-    pub const ON_ACCENT: u32 = hex(P.on_accent, 255);
-    pub(crate) fn with_alpha(c: u32, a: f32) -> u32 {
-=======
     pub fn muted() -> u32 {
         hex(p().ink_soft, 255)
     }
@@ -107,8 +82,14 @@ pub(crate) mod color {
     pub fn on_accent() -> u32 {
         hex(p().on_accent, 255)
     }
-    pub(crate) fn with_alpha(c: u32, a: f32) -> u32 {
->>>>>>> arismoko/main
+    // Starling's overlays (touch controls, imports, setup) take these as constants.
+    pub const MUTED: u32 = hex(P.ink_soft, 255);
+    pub const ACCENT: u32 = hex(P.accent, 255);
+    pub const ON_ACCENT: u32 = hex(P.on_accent, 255);
+    pub const DANGER: u32 = hex(P.danger, 255);
+    pub const SUCCESS: u32 = hex(P.success, 255);
+    pub const WHITE: u32 = hex(0xffffff, 255);
+    pub fn with_alpha(c: u32, a: f32) -> u32 {
         let base = (c >> 24) as f32;
         (c & 0x00ff_ffff) | ((base * a.clamp(0.0, 1.0)).round() as u32) << 24
     }

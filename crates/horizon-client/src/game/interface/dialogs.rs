@@ -328,26 +328,6 @@ impl Game<'_> {
                 _ => None,
             })
             .collect();
-<<<<<<< HEAD:crates/horizon-client/src/game/dialogs.rs
-        self.dialogs.open = Some(Open {
-            dialog,
-            values,
-            fields,
-            focus: None,
-            scroll: ui::Scroll::default(),
-            local: false,
-            dragging: None,
-            selecting: None,
-||||||| c98a51a664:crates/horizon-client/src/game/dialogs.rs
-        self.dialogs.open = Some(Open {
-            dialog,
-            values,
-            fields,
-            focus: None,
-            scroll: ui::Scroll::default(),
-            dragging: None,
-            selecting: None,
-=======
         self.open_screen_overlay("dialog", |game| {
             game.dialogs.open = Some(Open {
                 dialog,
@@ -355,6 +335,7 @@ impl Game<'_> {
                 fields,
                 focus: None,
                 scroll: ui::Scroll::default(),
+                local: false,
                 dragging: None,
                 selecting: None,
             });
@@ -364,7 +345,6 @@ impl Game<'_> {
             game.left = false;
             game.right = false;
             game.capture(false);
->>>>>>> arismoko/main:crates/horizon-client/src/game/interface/dialogs.rs
         });
     }
 
