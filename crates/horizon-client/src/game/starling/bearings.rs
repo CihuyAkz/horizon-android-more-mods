@@ -10,7 +10,7 @@
 use super::Game;
 use horizon_core::position::BlockPos;
 use horizon_world::level::flags;
-use horizon_world::nbt::Tag;
+use horizon_core::nbt::Tag;
 use horizon_world::registry::BlockStateId;
 use std::collections::{HashMap, HashSet, VecDeque};
 
@@ -278,7 +278,7 @@ impl Game<'_> {
                 let drops =
                     self.res
                         .items()
-                        .block_drops(registry, state, None, &mut self.world.random);
+                        .block_drops(registry, state, Default::default(), &mut self.world.random, None);
                 for stack in drops {
                     self.spawn_item(stack, at.map(|v| f64::from(v) + 0.5), [0.0; 3], 10);
                 }

@@ -470,7 +470,7 @@ impl Game<'_> {
     /// The title screen's player's layout in the window as it is now.
     fn title_layout_now(&self) -> Option<TitleLayout> {
         let r = self.renderer.as_ref()?;
-        let b = HudBatch::new([r.config.width, r.config.height]);
+        let b = HudBatch::new([r.config.width, r.config.height], horizon_client::hud::GuiScale { requested: 0, unicode: false });
         self.title_layout(b.width, b.height)
     }
 

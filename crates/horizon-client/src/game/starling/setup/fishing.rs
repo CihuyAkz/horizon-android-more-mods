@@ -535,9 +535,9 @@ fn pill(ui: &mut Ui<'_>, cx: f32, y: f32, text: &str, bold: bool) {
         tw + 32.0,
         34.0,
         17.0,
-        color::with_alpha(color::BG, 0.82),
+        color::with_alpha(color::bg(), 0.82),
     );
-    ui.text_centered(face, 15.0, cx, y + 8.0, color::TEXT, text);
+    ui.text_centered(face, 15.0, cx, y + 8.0, color::text(), text);
 }
 
 #[cfg(test)]

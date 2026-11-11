@@ -3171,7 +3171,7 @@ struct Game<'a> {
     bedrock_held: bool,
     /// What the creative window drawn last found under the cursor, for the tooltips over it all.
     creative_hovered: Option<(ItemStack, bool)>,
-    creative_effect_tip: Option<[(String, u32); 2]>,
+    creative_effect_tip: Option<Vec<(horizon_client::text::Text, u32)>>,
     /// A new world's folder, until its level.dat is there to keep its content mods beside
     /// (world_content.rs).
     content_record: Option<String>,
@@ -17600,7 +17600,7 @@ fn run_loading(
         std::thread::spawn(move || {
             // Starling: a phone's setup before 0.1.6 left the sounds out.
             horizon_client::preparer::complete_sounds(&root);
-            horizon_client::sound_events::SoundRegistry::load(&root)
+            horizon_client::sound_events::SoundRegistry::load(&horizon_assets::resource_source::ResourceSource::directory(root))
         })
     });
     let loading = Loading {

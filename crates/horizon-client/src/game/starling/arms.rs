@@ -9,7 +9,7 @@ use super::Game;
 use super::machine_entities::Kind;
 use horizon_client::items::ItemStack;
 use horizon_core::geometry::Direction;
-use horizon_world::nbt::Tag;
+use horizon_core::nbt::Tag;
 
 /// `mechanicalArmRange`.
 const RANGE: f64 = 5.0;
@@ -295,7 +295,7 @@ impl Game<'_> {
                 ("create.mechanical_arm.deselected", "Deselected")
             }
         };
-        self.message = Some((self.translate(key, fallback), std::time::Instant::now()));
+        self.message = Some((horizon_client::lang::get_or(key, fallback), std::time::Instant::now()));
         true
     }
 

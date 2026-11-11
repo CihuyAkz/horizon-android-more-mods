@@ -304,7 +304,7 @@ pub(super) fn draw_editor(
     let (w, h) = (layout.width, layout.height);
     // The movement control as it moves the player now.
     let dpad = layout.dpad;
-    ui.fill(0.0, 0.0, w / d, h / d, color::with_alpha(color::BG, 0.45));
+    ui.fill(0.0, 0.0, w / d, h / d, color::with_alpha(color::bg(), 0.45));
     for (target, place, c, r) in LayoutEditor::targets(config, w, h) {
         // As it will look (at least faintly, to be found again), outlined if a ghost.
         let a = (place.opacity * config.opacity).max(0.35);
@@ -364,7 +364,7 @@ pub(super) fn draw_editor(
             .map(|(_, p, ..)| p.show)
     });
     for (chip, c, r) in editor.chips(config, w, h) {
-        circle(ui, c, r, color::with_alpha(color::BG, 0.85));
+        circle(ui, c, r, color::with_alpha(color::bg(), 0.85));
         let text = match chip {
             Chip::Smaller => "-",
             Chip::Bigger => "+",
@@ -390,7 +390,7 @@ pub(super) fn draw_editor(
         (x1 - x0) / d,
         0.16 * u / d,
         0.08 * u / d,
-        color::with_alpha(color::BG, 0.85),
+        color::with_alpha(color::bg(), 0.85),
     );
     ui.rounded(
         x0 / d,
@@ -424,7 +424,7 @@ pub(super) fn draw_editor(
             | EditorAction::Interact
             | EditorAction::Vibrate
             | EditorAction::Gyro
-            | EditorAction::ThreeFingers => color::with_alpha(color::BG, 0.85),
+            | EditorAction::ThreeFingers => color::with_alpha(color::bg(), 0.85),
         };
         circle(ui, c, r, fill);
         let text = match action {
@@ -522,7 +522,7 @@ impl Game<'_> {
     fn touch_layout(&self) -> Layout {
         let [w, h] = self.touch_size();
         // The scale the HUD is drawn at, which the GUI Scale option only caps.
-        let scale = HudBatch::new([w, h]).scale;
+        let scale = HudBatch::new([w, h], horizon_client::hud::GuiScale { requested: 0, unicode: false }).scale;
         let mut layout = match &self.touch.config {
             Some(config) => Layout::from_config(config, w as f32, h as f32, scale),
             None => Layout::new(w as f32, h as f32, scale),
@@ -547,12 +547,12 @@ impl Game<'_> {
                 && self.touch_shown()
                 && !self.mobile.controls.crosshair()
                 && self.mobile.controls.editor.is_none()
-                && self.camera_type.first_person();
+                && self.camera_type.is_first_person();
         }
         self.touch.live
             && self.touch.editor.is_none()
             && self.touch_shown()
-            && self.camera_type.first_person()
+            && self.camera_type.is_first_person()
             && self
                 .touch
                 .config
@@ -834,7 +834,7 @@ impl Game<'_> {
                 self.touch.pointer.prefer_scroll();
             }
             // Lists follow the finger one to one at this GUI scale.
-            let gui_scale = HudBatch::new(self.touch_size()).scale;
+            let gui_scale = HudBatch::new(self.touch_size(), horizon_client::hud::GuiScale { requested: 0, unicode: false }).scale;
             self.touch
                 .pointer
                 .set_gui_scale(gui_scale, self.settings.mouse_wheel_sensitivity);
@@ -1022,11 +1022,11 @@ impl Game<'_> {
             return;
         }
         let Some(context) = self.text_context() else {
-            let batch = HudBatch::new(self.touch_size());
+            let batch = HudBatch::new(self.touch_size(), horizon_client::hud::GuiScale { requested: 0, unicode: false });
             self.touch.field_tap = Some([p[0] / batch.scale, p[1] / batch.scale]);
             return;
         };
-        let batch = HudBatch::new(self.touch_size());
+        let batch = HudBatch::new(self.touch_size(), horizon_client::hud::GuiScale { requested: 0, unicode: false });
         let gui = (p[0] / batch.scale, p[1] / batch.scale);
         self.touch.field_tap = Some([gui.0, gui.1]);
         let cursor = std::mem::replace(&mut self.cursor, gui);
@@ -1166,7 +1166,7 @@ impl Game<'_> {
     /// The text field's box in GUI pixels, a little larger for a finger, on the screens that
     /// draw one at a known place (vanilla's layouts).
     fn text_field_rect(&self, context: &str) -> Option<[f32; 4]> {
-        let batch = HudBatch::new(self.touch_size());
+        let batch = HudBatch::new(self.touch_size(), horizon_client::hud::GuiScale { requested: 0, unicode: false });
         let w = batch.width;
         match context {
             // SignEditScreen and HangingSignEditScreen's board, around (w / 2, 90..125).
@@ -1192,7 +1192,7 @@ impl Game<'_> {
     /// Whether a finger landing at window pixel `p` is on a scrollbar's track, which it should
     /// drag like a held mouse instead of scrolling the list.
     pub(super) fn on_scrollbar(&self, p: [f32; 2]) -> bool {
-        let batch = HudBatch::new(self.touch_size());
+        let batch = HudBatch::new(self.touch_size(), horizon_client::hud::GuiScale { requested: 0, unicode: false });
         let (x, y) = (p[0] / batch.scale, p[1] / batch.scale);
         // A custom button's canvas: a finger paints, it doesn't scroll.
         if self.screen == Screen::Options && self.ui.options.painting() {
@@ -1219,7 +1219,7 @@ impl Game<'_> {
             .renderer
             .as_ref()
             .map_or([1280, 720], |r| [r.config.width, r.config.height]);
-        let batch = HudBatch::new(size);
+        let batch = HudBatch::new(size, horizon_client::hud::GuiScale { requested: 0, unicode: false });
         let cursor = (p[0] / batch.scale, p[1] / batch.scale);
         self.ui
             .options
@@ -1417,7 +1417,7 @@ impl Game<'_> {
         let face_of = |key: &str| self.touch.faces.iter().find(|f| f.key == key);
         if closable {
             let (c, r) = layout.close;
-            circle(&mut ui, c, r, color::with_alpha(color::BG, 0.7));
+            circle(&mut ui, c, r, color::with_alpha(color::bg(), 0.7));
             label(&mut ui, c, r, "X", ink(1.0));
         } else if let (Some(editor), Some(config)) = (&self.touch.editor, &self.touch.config) {
             let face = |target: Target| match target {
@@ -1552,7 +1552,7 @@ impl Game<'_> {
                         shape,
                         c,
                         half[1],
-                        color::with_alpha(color::BG, 0.85),
+                        color::with_alpha(color::bg(), 0.85),
                     );
                     label(
                         &mut ui,
@@ -1642,7 +1642,7 @@ impl Game<'_> {
         if !self.chat_bar_shown() {
             return None;
         }
-        let batch = HudBatch::new(self.touch_size());
+        let batch = HudBatch::new(self.touch_size(), horizon_client::hud::GuiScale { requested: 0, unicode: false });
         let lift = self.keyboard_height() as f32 / batch.scale;
         let (x, y) = (p[0] / batch.scale, p[1] / batch.scale + lift);
         Self::chat_bar(&batch)
@@ -1738,7 +1738,7 @@ impl Game<'_> {
             Some("tap") => &[TouchPhase::Started, TouchPhase::Ended],
             _ => return Err("touch down|move|up|tap X Y [FINGER]".into()),
         };
-        let scale = HudBatch::new(self.touch_size()).scale;
+        let scale = HudBatch::new(self.touch_size(), horizon_client::hud::GuiScale { requested: 0, unicode: false }).scale;
         let location = winit::dpi::PhysicalPosition::new(
             number(2)? * f64::from(scale),
             number(3)? * f64::from(scale),
@@ -1945,7 +1945,7 @@ impl Game<'_> {
 
 /// A custom button's size until it is placed, on a window this big.
 pub(super) fn custom_button_size(w: f32, h: f32) -> f32 {
-    let scale = HudBatch::new([w as u32, h as u32]).scale;
+    let scale = HudBatch::new([w as u32, h as u32], horizon_client::hud::GuiScale { requested: 0, unicode: false }).scale;
     WIDE_HEIGHT / 2.0 * scale / touch::unit(w, h)
 }
 

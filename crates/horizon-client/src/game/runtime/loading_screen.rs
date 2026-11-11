@@ -514,7 +514,7 @@ impl Loading {
                 && let Some(registry) = self.sound_registry.take()
             {
                 let registry = registry.join().unwrap_or_default();
-                let mut audio = Audio::with_registry(&self.vanilla_root, registry);
+                let mut audio = Audio::with_registry(&horizon_assets::resource_source::ResourceSource::directory(self.vanilla_root.clone()), registry);
                 audio.master = self.settings.master_volume;
                 // As Game::apply_ui_settings: the master volume is the engine's own.
                 let mut volumes = self.settings.volumes;
@@ -551,7 +551,7 @@ impl Loading {
         let Some(gui) = &self.gui else { return };
         let mut ui = Ui::new(&gui.atlas, batch, (0.0, 0.0));
         let (w, h) = (ui.w, ui.h);
-        ui.fill(0.0, 0.0, w, h, color::BG);
+        ui.fill(0.0, 0.0, w, h, color::bg());
         let (left, max) = (32.0, w - 64.0);
         let mut y = h * 0.25;
         ui.text(
@@ -559,7 +559,7 @@ impl Loading {
             22.0,
             left,
             y,
-            color::TEXT,
+            color::text(),
             "Horizon could not start",
         );
         y += 40.0;

@@ -946,7 +946,7 @@ impl Remote {
         self.carried.set(None);
         self.loaded_sent = false;
         self.predictions = Default::default();
-        self.menu = None;
+        self.menu = ClientMenu::default();
         self.menu_title = None;
         self.state_id = 0;
         self.use_target = None;
@@ -970,9 +970,7 @@ impl Remote {
         self.placing = None;
         self.death_message = None;
         self.synced = vec![None; CREATIVE_SYNCED];
-        self.clock = None;
-        self.clock_rate = 1.0;
-        self.clock_partial = 0.0;
+        self.clocks.clear();
         self.clock_game_time = 0;
         self.chunk_center = (0, 0);
     }

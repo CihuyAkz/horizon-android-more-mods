@@ -92,7 +92,7 @@ impl Game<'_> {
     }
 
     fn touch_gui_batch(&self) -> HudBatch {
-        HudBatch::new(self.touch_size())
+        HudBatch::new(self.touch_size(), horizon_client::hud::GuiScale { requested: 0, unicode: false })
     }
 
     /// The slot under a window position, and whether it is outside the window.

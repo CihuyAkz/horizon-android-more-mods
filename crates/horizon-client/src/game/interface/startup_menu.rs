@@ -616,7 +616,7 @@ impl Loading {
         if !self.menu.options_open || self.gui.is_none() {
             return false;
         }
-        let batch = HudBatch::new(self.menu_size());
+        let batch = HudBatch::new(self.menu_size(), horizon_client::hud::GuiScale { requested: 0, unicode: false });
         let cursor = (
             touch.location.x as f32 / batch.scale,
             touch.location.y as f32 / batch.scale,

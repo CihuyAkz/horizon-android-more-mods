@@ -359,7 +359,7 @@ impl Game<'_> {
             let drops = self
                 .res
                 .items()
-                .block_drops(registry, state, None, &mut self.world.random);
+                .block_drops(registry, state, Default::default(), &mut self.world.random, None);
             if falls_over {
                 fallen.push(super::falling_trees::Fallen {
                     pos,
@@ -417,7 +417,7 @@ impl Game<'_> {
         let mut out = self.res.create_recipes().find_all("cutting", item).to_vec();
         let stack = ItemStack::new(item, 1);
         for s in &self.res.stations().recipes.stonecutting {
-            if s.input.test(&stack) {
+            if s.input.test_in(&self.loop_context, &stack) {
                 out.push(Arc::new(Recipe {
                     time: 50.0,
                     results: vec![(s.result.item.clone(), s.result.count, 1.0)],

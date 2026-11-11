@@ -7,7 +7,7 @@
 use super::{Game, spill};
 use horizon_client::items::ItemStack;
 use horizon_client::kinetics::{KineticPart, Machine};
-use horizon_world::nbt::Tag;
+use horizon_core::nbt::Tag;
 
 /// A machine's block entity, as its tag keeps it.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -200,7 +200,7 @@ pub(super) fn read(
 
 impl Game<'_> {
     /// The machine at `pos`, when one is there.
-    pub(super) fn machine_kind(&self, pos: [i32; 3]) -> Option<Kind> {
+    pub(in crate::game) fn machine_kind(&self, pos: [i32; 3]) -> Option<Kind> {
         let table = self.res.kinetics();
         let state = self.world.block(pos[0], pos[1], pos[2]);
         Kind::of(table.machine(state), table.get(state).map(|p| p.kind))

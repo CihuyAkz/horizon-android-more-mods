@@ -335,8 +335,8 @@ pub(super) fn advance_with(
 }
 
 /// The belt items of a belt's start, as its tag keeps them (`Belt`).
-pub(super) fn read_items(tag: &horizon_world::nbt::Tag) -> Vec<Transported> {
-    use horizon_world::nbt::Tag;
+pub(super) fn read_items(tag: &horizon_core::nbt::Tag) -> Vec<Transported> {
+    use horizon_core::nbt::Tag;
     let Some(Tag::List(list)) = tag.get("Belt") else {
         return Vec::new();
     };
@@ -360,8 +360,8 @@ pub(super) fn read_items(tag: &horizon_world::nbt::Tag) -> Vec<Transported> {
 }
 
 /// `read_items`'s inverse.
-pub(super) fn items_tag(items: &[Transported]) -> horizon_world::nbt::Tag {
-    use horizon_world::nbt::Tag;
+pub(super) fn items_tag(items: &[Transported]) -> horizon_core::nbt::Tag {
+    use horizon_core::nbt::Tag;
     Tag::List(
         items
             .iter()

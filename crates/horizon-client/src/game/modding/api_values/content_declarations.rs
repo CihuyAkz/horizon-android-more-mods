@@ -39,6 +39,7 @@ impl TryIntoEngine<()> for mod_api::BlockProperties {
             }),
             occludes: self.occludes,
             destroy_overlay: self.destroy_overlay,
+            shape: None,
         })
     }
 }
@@ -72,6 +73,9 @@ impl TryIntoEngine<()> for mod_api::Block {
     fn try_into_engine(&self, _: &()) -> Result<Self::Engine, Self::Error> {
         Ok(engine::Block {
             state_light: None,
+            kinetic: None,
+            machine: None,
+            models: Vec::new(),
             id: self.id.clone(),
             template: self.template.clone(),
             pick_item: self.pick_item.clone(),

@@ -511,7 +511,7 @@ impl Game<'_> {
     /// A hopper's item into the machine at `at` (its inventory's `insertItem`): a depot's held
     /// stack, a millstone's input, a basin's inputs. None when no machine with an inventory is
     /// there; else what did not go in.
-    pub(super) fn machine_insert(
+    pub(in crate::game) fn machine_insert(
         &mut self,
         at: [i32; 3],
         stack: ItemStack,
@@ -529,7 +529,7 @@ impl Game<'_> {
     /// One item a hopper under the machine at `at` takes (its inventory's `extractItem`): its
     /// outputs, then a depot's held stack when no press is working on it. None when no machine
     /// with an inventory is there; else the item, if any.
-    pub(super) fn machine_take_one(&mut self, at: [i32; 3]) -> Option<Option<ItemStack>> {
+    pub(in crate::game) fn machine_take_one(&mut self, at: [i32; 3]) -> Option<Option<ItemStack>> {
         let (kind, mut e) = self.machine_entity(at)?;
         let slots: Vec<usize> = match kind {
             Kind::Depot => {

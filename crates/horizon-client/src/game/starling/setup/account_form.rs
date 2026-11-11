@@ -197,14 +197,14 @@ impl Form {
         let x = (w - cw) / 2.;
         let y = ((available_h - ch) / 2.).max(8.);
         let inner = cw - 32.;
-        ui.rounded(x, y, cw, ch, 14., color::BG);
-        ui.border(x, y, cw, ch, 14., color::BORDER);
+        ui.rounded(x, y, cw, ch, 14., color::bg());
+        ui.border(x, y, cw, ch, 14., color::border());
         ui.text(
             Face::Semibold,
             18.,
             x + 16.,
             y + 14.,
-            color::TEXT,
+            color::text(),
             &tr(if self.kind == Kind::Ely {
                 "setup.ely_title"
             } else {
@@ -227,7 +227,7 @@ impl Form {
                     ["login", "password", "otp"][i]
                 }),
             );
-            ui.rounded(rect[0], rect[1], rect[2], rect[3], 6., color::RAISED);
+            ui.rounded(rect[0], rect[1], rect[2], rect[3], 6., color::raised());
             if self.focus == Some(i) {
                 ui.border(rect[0], rect[1], rect[2], rect[3], 6., color::ACCENT);
             }
@@ -248,7 +248,7 @@ impl Form {
                 14.,
                 rect[0] + 8.,
                 rect[1] + 8.,
-                color::TEXT,
+                color::text(),
                 &chars.iter().collect::<String>(),
             );
             if self.focus == Some(i) && self.fields[i].cursor_visible() {
@@ -259,7 +259,7 @@ impl Form {
                     .min(chars.len());
                 let before: String = chars.iter().take(cursor).collect();
                 let cx = rect[0] + 8. + ui.measure(Face::Regular, 14., &before);
-                ui.fill(cx, rect[1] + 8., 1., 16., color::TEXT);
+                ui.fill(cx, rect[1] + 8., 1., 16., color::text());
             }
         }
         self.rects.set(rects);
@@ -299,7 +299,7 @@ impl Form {
                 rect[2],
                 rect[3],
                 8.,
-                if i == 0 { color::ACCENT } else { color::RAISED },
+                if i == 0 { color::ACCENT } else { color::raised() },
             );
             ui.text_centered(
                 Face::Semibold,
@@ -309,7 +309,7 @@ impl Form {
                 if i == 0 {
                     color::ON_ACCENT
                 } else {
-                    color::TEXT
+                    color::text()
                 },
                 &label,
             );

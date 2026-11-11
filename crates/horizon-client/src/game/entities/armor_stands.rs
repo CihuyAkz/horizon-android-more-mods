@@ -250,9 +250,9 @@ impl ArmorStandAssets {
                         kinds.insert(kind.to_owned(), layers);
                     }
                 }
+                trim_overrides.insert(id.clone(), TrimOverride::list(&v));
+                equipment_layers.insert(id, kinds);
             }
-            trim_overrides.insert(id.clone(), TrimOverride::list(&v));
-            equipment_layers.insert(id, kinds);
         }
         Self {
             main: load("minecraft:armor_stand#main").map(Arc::new),

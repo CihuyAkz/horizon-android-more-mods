@@ -336,7 +336,7 @@ impl Imports {
             y - 30.0,
             w,
             h + 30.0,
-            color::with_alpha(color::BG, 0.98),
+            color::with_alpha(color::bg(), 0.98),
         );
         ui.fill(0.0, y - 30.0, w, h + 30.0, color::with_alpha(accent, 0.18));
         for (i, alpha) in [0.32, 0.18, 0.09, 0.04].into_iter().enumerate() {
@@ -418,7 +418,7 @@ impl Imports {
             20.0,
             text_x,
             title_y,
-            color::TEXT,
+            color::text(),
             &banner.title,
         );
         for (i, line) in lines.iter().enumerate() {
@@ -683,7 +683,7 @@ impl super::Loading {
             return;
         }
         let audio = self.audio.get_or_insert_with(|| {
-            let mut audio = super::Audio::with_registry(&self.vanilla_root, Default::default());
+            let mut audio = super::Audio::with_registry(&horizon_assets::resource_source::ResourceSource::directory(self.vanilla_root.clone()), Default::default());
             audio.master = self.settings.master_volume;
             audio
         });

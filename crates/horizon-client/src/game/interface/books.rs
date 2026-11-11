@@ -300,7 +300,7 @@ impl Game<'_> {
                 }
                 Screen::Creative => {
                     if let Some(c) = self.carried.take() {
-                        let _ = self.give(c);
+                        let _ = self.add_stack_to_inventory(c);
                     }
                     self.screen = Screen::Playing;
                 }

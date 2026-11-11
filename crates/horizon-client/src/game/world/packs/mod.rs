@@ -449,9 +449,6 @@ impl Game<'_> {
             frame_models,
             sounds,
             ui_metadata,
-            armor,
-            villager_hats,
-            waypoint_styles,
             language,
         } = staged;
         let loop_context = self.prepare_loop_context(&root)?;
@@ -723,9 +720,6 @@ pub(super) fn stage_pack(
         frame_models,
         sounds,
         ui_metadata,
-        armor,
-        villager_hats,
-        waypoint_styles,
         language,
     })
 }
@@ -750,9 +744,6 @@ pub(super) struct StagedPack {
     /// The root's sound events, GUI sprite metadata and current language.
     pub sounds: horizon_client::sound_events::SoundRegistry,
     pub ui_metadata: horizon_client::ui::UiMetadata,
-    pub armor: super::armor_stands::ArmorStandAssets,
-    pub villager_hats: horizon_client::mobs::villager_hats::VillagerHats,
-    pub waypoint_styles: horizon_client::locator_bar::WaypointStyles,
     pub language: lang::Language,
 }
 

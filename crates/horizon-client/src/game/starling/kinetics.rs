@@ -171,7 +171,7 @@ impl Game<'_> {
             let start = chain.start();
             let tag = super::spill::saved_entity(&self.world, start);
             let since = match tag.as_ref().and_then(|t| t.get("Since")) {
-                Some(horizon_world::nbt::Tag::Long(v)) => *v,
+                Some(horizon_core::nbt::Tag::Long(v)) => *v,
                 _ => 0,
             };
             let stale = self
@@ -758,7 +758,7 @@ impl Game<'_> {
         };
         let name = self.res.facts().get(*state).name.clone();
         let (ns, path) = name.split_once(':').unwrap_or(("minecraft", &name));
-        let block = self.translate(&format!("block.{ns}.{path}"), path);
+        let block = horizon_client::lang::get_or(&format!("block.{ns}.{path}"), path);
         let mut owner = ns.to_owned();
         if let Some(first) = owner.get_mut(0..1) {
             first.make_ascii_uppercase();

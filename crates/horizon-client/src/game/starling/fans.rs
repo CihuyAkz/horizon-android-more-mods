@@ -233,8 +233,9 @@ impl Game<'_> {
     /// to it; an empty list when it burns it away (food in a blast).
     fn fan_results(&mut self, kind: Processing, stack: &ItemStack) -> Option<Vec<ItemStack>> {
         let res = std::sync::Arc::clone(&self.res);
+        let context = std::sync::Arc::clone(&self.loop_context);
         let cooked = |kind: &str| {
-            res.recipes().cook(kind, stack).map(|c| ItemStack {
+            res.recipes().cook(&context, kind, stack).map(|c| ItemStack {
                 count: c.result.count * stack.count,
                 ..c.result.clone()
             })

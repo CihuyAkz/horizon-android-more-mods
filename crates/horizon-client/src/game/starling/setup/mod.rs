@@ -471,7 +471,7 @@ impl Loading {
         }
         // The fishing's sounds, on an output of its own: the game's sounds are not there yet.
         if self.audio.is_none() && self.setup.pond.get().is_some() {
-            let mut audio = Audio::with_registry(&self.vanilla_root, Default::default());
+            let mut audio = Audio::with_registry(&horizon_assets::resource_source::ResourceSource::directory(self.vanilla_root.clone()), Default::default());
             audio.master = self.settings.master_volume;
             self.audio = Some(audio);
         }
@@ -488,7 +488,7 @@ impl Loading {
         if !self.setup.skinned {
             self.setup.skinned = true;
             if let Some(root) = preparer::skin() {
-                match UiResources::load(&root, &root) {
+                match UiResources::load(&horizon_assets::resource_source::ResourceSource::directory(root.clone())) {
                     Ok(gui) => self.set_ui(gui, root),
                     Err(e) => log::warn!("Horizon: the setup's skin did not load: {e}"),
                 }
@@ -528,7 +528,7 @@ impl Loading {
         let mut ui = Ui::new(&gui.atlas, batch, (-1.0, -1.0));
         let (w, h) = (ui.w, ui.h);
         if let Some(form) = &self.setup.form {
-            ui.fill(0., 0., w, h, color::BG);
+            ui.fill(0., 0., w, h, color::bg());
             let mut drawn = [None; 5];
             #[cfg(target_os = "android")]
             let available_h =
@@ -537,13 +537,13 @@ impl Loading {
             let available_h = h;
             form.draw(&mut ui, &mut drawn, available_h);
             let rect = [(w - 160.).max(16.), 8., 144., 32.];
-            ui.rounded(rect[0], rect[1], rect[2], rect[3], 8., color::RAISED);
+            ui.rounded(rect[0], rect[1], rect[2], rect[3], 8., color::raised());
             ui.text_centered(
                 Face::Semibold,
                 13.,
                 rect[0] + 72.,
                 rect[1] + 8.,
-                color::TEXT,
+                color::text(),
                 &horizon_client::lang::get("starling.diagnostics.title"),
             );
             drawn[4] = Some((rect, Action::Diagnostics));
@@ -557,7 +557,7 @@ impl Loading {
         if pond.is_some() {
             self.setup.fishing.draw_water(&mut ui, w, h, now);
         } else {
-            ui.fill(0.0, 0.0, w, h, color::BG);
+            ui.fill(0.0, 0.0, w, h, color::bg());
         }
         // Out fishing, the card only says how far it is; Back is in the corner.
         let actions = if pond.is_some() {
@@ -606,13 +606,13 @@ impl Loading {
             ((w - card_w) / 2.0, ((h - card_h) / 2.0).max(8.0))
         };
         let card = if pond.is_some() {
-            color::with_alpha(color::BG, 0.88)
+            color::with_alpha(color::bg(), 0.88)
         } else {
-            color::BG
+            color::bg()
         };
         ui.rounded(x, y, card_w, card_h, 14.0, card);
-        ui.border(x, y, card_w, card_h, 14.0, color::BORDER);
-        ui.text(Face::Semibold, 18.0, x + pad, y + pad, color::TEXT, title);
+        ui.border(x, y, card_w, card_h, 14.0, color::border());
+        ui.text(Face::Semibold, 18.0, x + pad, y + pad, color::text(), title);
         let mut ty = y + pad + 26.0 + 12.0;
         for line in &lines {
             ui.text(Face::Regular, 14.0, x + pad, ty, color::MUTED, line);
@@ -624,14 +624,14 @@ impl Loading {
                 30.0,
                 x + card_w / 2.0,
                 ty + 8.0,
-                color::TEXT,
+                color::text(),
                 code,
             );
             ty += 52.0;
         }
         if let Some(done) = bar {
             ty += 6.0;
-            ui.rounded(x + pad, ty, inner, 8.0, 4.0, color::RAISED);
+            ui.rounded(x + pad, ty, inner, 8.0, 4.0, color::raised());
             ui.rounded(
                 x + pad,
                 ty,
@@ -668,7 +668,7 @@ impl Loading {
                 let (fill, ink) = if i == 0 {
                     (color::ACCENT, color::ON_ACCENT)
                 } else {
-                    (color::RAISED, color::TEXT)
+                    (color::raised(), color::text())
                 };
                 ui.rounded(rect[0], rect[1], rect[2], rect[3], 10.0, fill);
                 ui.text_centered(
@@ -706,27 +706,27 @@ impl Loading {
                 rect[2],
                 rect[3],
                 18.0,
-                color::with_alpha(color::BG, 0.88),
+                color::with_alpha(color::bg(), 0.88),
             );
             ui.text_centered(
                 Face::Semibold,
                 15.0,
                 rect[0] + rect[2] / 2.0,
                 rect[1] + 9.0,
-                color::TEXT,
+                color::text(),
                 "Back",
             );
             drawn[0] = Some((rect, Action::Back));
         }
         // Reports must be reachable even before sign-in or resource preparation.
         let rect = [(w - 160.0).max(16.0), 16.0, 144.0, 36.0];
-        ui.rounded(rect[0], rect[1], rect[2], rect[3], 10.0, color::RAISED);
+        ui.rounded(rect[0], rect[1], rect[2], rect[3], 10.0, color::raised());
         ui.text_centered(
             Face::Semibold,
             15.0,
             rect[0] + rect[2] / 2.0,
             rect[1] + 8.0,
-            color::TEXT,
+            color::text(),
             &horizon_client::lang::get("starling.diagnostics.title"),
         );
         drawn[4] = Some((rect, Action::Diagnostics));

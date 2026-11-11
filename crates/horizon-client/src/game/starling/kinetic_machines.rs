@@ -753,7 +753,7 @@ impl Game<'_> {
         let drops = self
             .res
             .items()
-            .block_drops(registry, state, None, &mut self.world.random);
+            .block_drops(registry, state, Default::default(), &mut self.world.random, None);
         let air = self.world.air;
         let at = BlockPos::new(pos[0], pos[1], pos[2]);
         self.with_level(|b, level, ticks| b.set_block(level, ticks, at, air, 3));
@@ -895,13 +895,13 @@ impl Game<'_> {
     }
 
     /// Whether a crushing controller is at `pos` (a hopper facing it puts items in it).
-    pub(super) fn crusher_at(&self, pos: [i32; 3]) -> bool {
+    pub(in crate::game) fn crusher_at(&self, pos: [i32; 3]) -> bool {
         self.machines.controllers.contains_key(&pos)
     }
 
     /// A hopper's item into the crushing controller at `pos` when one is there and empty (its
     /// inventory takes items); true when it took it.
-    pub(super) fn controller_insert(&mut self, pos: [i32; 3], stack: &ItemStack) -> bool {
+    pub(in crate::game) fn controller_insert(&mut self, pos: [i32; 3], stack: &ItemStack) -> bool {
         let free = self
             .machines
             .controllers
