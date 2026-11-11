@@ -19,6 +19,8 @@ brings the library here when it ends, so it is served as any other.
     STATE_DIRECTORY        where results stay (systemd's StateDirectory); without it nothing stays
     STORE_BYTES            how much of them, default 10 GiB
     GATEWAY_PUBLIC_URL     where GitHub's runners reach this; without it, or the token, no GitHub builds
+    GITHUB_AT_ONCE         GitHub runs at once, default 8; GITHUB_LINE, waiting here beyond them, 24
+    GITHUB_BUILDS_PER_DAY  GitHub builds in any 24 hours, everyone's together, default 300
     CREDENTIALS_DIRECTORY  systemd's LoadCredential: github-token, allowed to run mod-builds' workflows
 """
 import calendar
@@ -75,9 +77,10 @@ GITHUB_API = os.environ.get("GITHUB_API", "https://api.github.com")
 GITHUB_REPO = os.environ.get("GITHUB_BUILDS_REPO", "starling-client/mod-builds")
 GITHUB_WORKFLOW = "build.yml"
 PUBLIC_URL = os.environ.get("GATEWAY_PUBLIC_URL", "")
-# Runs at once: the rest wait here, where their place in line can be told.
-GITHUB_AT_ONCE = 8
-GITHUB_LINE = 24
+# Runs at once: the rest wait here, where their place in line can be told. A free organization runs
+# 20 jobs at once in all, its other repositories' CI included.
+GITHUB_AT_ONCE = int(os.environ.get("GITHUB_AT_ONCE", "8"))
+GITHUB_LINE = int(os.environ.get("GITHUB_LINE", "24"))
 # GitHub's machines cost nothing, but a repository that keeps them busy all day may be asked to stop.
 GITHUB_PER_ADDRESS = 32
 GITHUB_PER_DAY = int(os.environ.get("GITHUB_BUILDS_PER_DAY", "300"))
