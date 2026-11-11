@@ -61,6 +61,9 @@ TARGETS = {
 LIBRARY = "horizon_android"
 # Every LOAD segment aligned for 16 KB pages, which Android 15 devices may use.
 PAGE_FLAGS = "-C link-arg=-Wl,-z,max-page-size=16384"
+# A BuildId in the library, so the native tombstones in diagnostic ZIPs name it and its frames can be matched to
+# the unstripped copy kept beside the APK (`lib<LIBRARY>-symbols.so`, docs/android-diagnostics.md).
+BUILD_ID_FLAGS = "-C link-arg=-Wl,--build-id=sha1"
 ICONS = {
     "mipmap-mdpi": "48x48",
     "mipmap-xxhdpi": "128x128",
@@ -117,7 +120,7 @@ def build_library(profile, ndk, sdk, abi=ABI):
             ["git", "status", "--porcelain"], cwd=ROOT, text=True))).lower()
     except (OSError, subprocess.CalledProcessError):
         pass  # An exported source archive may not have Git metadata.
-    env["RUSTFLAGS"] = (env.get("RUSTFLAGS", "") + " " + PAGE_FLAGS).strip()
+    env["RUSTFLAGS"] = (env.get("RUSTFLAGS", "") + " " + PAGE_FLAGS + " " + BUILD_ID_FLAGS).strip()
     run(
         "cargo", "ndk", "-t", abi, "--platform", MIN_SDK,
         "build", "--profile", profile, "-p", "horizon-android",
@@ -346,6 +349,10 @@ def main():
         run(ndk_tool(ndk, "llvm-strip"), "--strip-unneeded", "-o", library, built)
     if args.library_only:
         return
+    if not args.keep_symbols:
+        # The same library with its symbols, never shipped: CI keeps it to read crash frames. Native-mod
+        # builds (--library-only) don't need one.
+        shutil.copyfile(built, out / f"lib{LIBRARY}-symbols.so")
 
     variant = "dev" if args.dev else "preview" if args.preview else None
     link_resources(tool(build_tools, "aapt2"), android_jar, out, assets(out), variant, args.abi)

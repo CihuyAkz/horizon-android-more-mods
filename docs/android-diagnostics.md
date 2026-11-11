@@ -43,6 +43,19 @@ system traces, at most 1 MiB each, stay in private app storage. Binary native
 traces contribute only a bounded crashed-thread summary to the ZIP; register and
 memory dumps remain private. No replacement signal handler is installed.
 
+The game library carries a BuildId, and every CI build keeps the same library
+unstripped as the `starling-symbols-<abi>` artifact (90 days). To read the
+`libhorizon_android.so` frames of a tombstone summary, take the artifact of the
+build whose BuildId matches and run, with the NDK's tools:
+
+```sh
+llvm-readelf -n libhorizon_android-symbols.so        # its Build ID, to match the summary's
+llvm-addr2line -f -C -e libhorizon_android-symbols.so 0x312e71c 0x30b30c4
+```
+
+The addresses are the summary's `pc` values. Release libraries have no line
+tables, so this names functions, not lines.
+
 Performance JSONL files in private `performance/` are capped at 8 MiB and 30
 minutes, with three retained reports and an eight-sample writer queue. Diagnostic
 ZIP payloads are capped at 4 MiB, 32 source files and 256 KiB per ordinary input;
