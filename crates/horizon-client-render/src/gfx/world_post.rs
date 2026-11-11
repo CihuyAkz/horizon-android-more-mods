@@ -58,6 +58,7 @@ pub struct Post {
     /// The world drawn below the screen's size, sharper than the bilinear copy.
     /// `HORIZON_WORLD_UPSCALE=off` keeps the copy.
     sharp: Option<wgpu::RenderPipeline>,
+<<<<<<< HEAD
     /// Contrast-adaptive sharpening of TAA's upscaled picture: the jittered frames are
     /// spread over more output pixels, and the blend softens edges.
     sharpen: wgpu::RenderPipeline,
@@ -65,6 +66,11 @@ pub struct Post {
     sharpness: f32,
     shader: wgpu::ShaderModule,
     pipeline_layout: wgpu::PipelineLayout,
+||||||| 121742ad89
+=======
+    /// Whether the vanilla world goes up with `sharp` (`upscales_sharply`). A shader pack's always does.
+    sharp_world: bool,
+>>>>>>> starling-client/starling
     format: wgpu::TextureFormat,
     /// World resolution relative to the window (0.5..=2.0).
     pub scale: f32,
@@ -86,7 +92,12 @@ pub struct Post {
 }
 
 impl Post {
-    pub fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Self {
+    pub fn new(device: &wgpu::Device, format: wgpu::TextureFormat, gpu: &str) -> Self {
+        let sharp_world = upscales_sharply(gpu);
+        log::info!(
+            "Horizon renderer: a world below the window's size goes up {}",
+            if sharp_world { "sharp" } else { "simple" }
+        );
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Horizon post"),
             source: wgpu::ShaderSource::Wgsl(include_str!("../world_post.wgsl").into()),
@@ -249,8 +260,13 @@ impl Post {
             fxaa: pipeline("fs_fxaa", &pipeline_layout, format),
             sharp: (std::env::var("HORIZON_WORLD_UPSCALE").as_deref() != Ok("off"))
                 .then(|| pipeline("fs_upscale", &pipeline_layout, format)),
+<<<<<<< HEAD
             sharpen: sharpen_pipeline(device, &shader, &pipeline_layout, format, 0.85),
             sharpness: 0.85,
+||||||| 121742ad89
+=======
+            sharp_world,
+>>>>>>> starling-client/starling
             layout,
             sampler,
             format,
@@ -627,7 +643,7 @@ impl Post {
         } else {
             self.sharp
                 .as_ref()
-                .filter(|_| self.scale < 1.0)
+                .filter(|_| self.scale < 1.0 && self.sharp_world)
                 .unwrap_or(&self.copy)
         };
         self.draw_onto(encoder, screen, group, pipeline, timing);
@@ -663,6 +679,7 @@ impl Post {
     }
 }
 
+<<<<<<< HEAD
 /// `fs_sharpen` at `sharpness` (its override), drawing onto `format`.
 fn sharpen_pipeline(
     device: &wgpu::Device,
@@ -700,6 +717,32 @@ fn sharpen_pipeline(
         multiview_mask: None,
         cache: None,
     })
+||||||| 121742ad89
+=======
+/// Whether a vanilla world drawn below the window's size goes up with the sharp filter. It takes five
+/// filtered samples for every pixel of the window, which on Mali costs about what the lower resolution
+/// saved: at 50% a Mali-G68 went from 70-80 fps with the copy to 55 with it. There, and on PowerVR, the
+/// copy's one sample stays. `HORIZON_WORLD_UPSCALE`: `on` and `off` choose on any GPU.
+fn upscales_sharply(gpu: &str) -> bool {
+    match std::env::var("HORIZON_WORLD_UPSCALE").as_deref() {
+        Ok("on") => true,
+        Ok("off") => false,
+        _ => !gpu.contains("Mali") && !gpu.contains("PowerVR"),
+    }
+}
+
+#[cfg(test)]
+mod upscale_tests {
+    use super::upscales_sharply;
+
+    #[test]
+    fn only_tiled_mobile_gpus_too_weak_for_it_skip_the_sharp_filter() {
+        assert!(!upscales_sharply("Mali-G68 MC4"));
+        assert!(!upscales_sharply("PowerVR Rogue GE8320"));
+        assert!(upscales_sharply("Adreno (TM) 740"));
+        assert!(upscales_sharply("NVIDIA GeForce RTX 4070"));
+    }
+>>>>>>> starling-client/starling
 }
 
 /// This frame's clip space to the previous frame's, for camera-relative projections:
@@ -843,7 +886,7 @@ mod tests {
         let Some((device, _)) = test_device() else {
             return;
         };
-        let post = Post::new(&device, wgpu::TextureFormat::Rgba8Unorm);
+        let post = Post::new(&device, wgpu::TextureFormat::Rgba8Unorm, "test");
         // Copy and FXAA pipelines always compile; TAA compiles if supported by backend.
         let _ = post.supports_taa();
     }

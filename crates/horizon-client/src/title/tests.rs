@@ -1621,16 +1621,38 @@ fn tab_walks_the_edit_server_screen_through_its_buttons() {
 fn the_account_screen_offers_signing_in_and_goes_back() {
     let mut f = Fixture::new();
     // Only where the game signs in itself (Android): the title keeps vanilla's buttons here.
+<<<<<<< HEAD
     assert!(f.title.buttons(480.0, 262.0).iter().all(|b| b.id != 80));
     f.title.mode = Mode::Account;
+||||||| 121742ad89
+    assert!(f.title.buttons(480.0, 262.0).iter().all(|b| b.id != 8));
+    f.title.mode = Mode::Account;
+=======
+    assert!(f.title.buttons(480.0, 262.0).iter().all(|b| b.id != 8));
+    f.title.mode = Mode::Account(account::Screen::default());
+>>>>>>> starling-client/starling
     let labels: Vec<String> = f
         .title
         .buttons(480.0, 262.0)
         .into_iter()
         .map(|b| b.label)
         .collect();
-    assert_eq!(labels, ["Sign in", "Done"]);
-    assert_eq!(f.click_with_sound("Done"), (Action::None, true));
+    assert!(labels.contains(&lang::get("starling.account.add")));
+    assert_eq!(f.click(&lang::get("starling.account.add")), Action::None);
+    let labels: Vec<String> = f
+        .title
+        .buttons(480.0, 262.0)
+        .into_iter()
+        .map(|b| b.label)
+        .collect();
+    assert!(labels.contains(&"Microsoft".to_owned()));
+    assert!(labels.contains(&"Ely.by".to_owned()));
+    assert!(labels.contains(&lang::get("starling.account.offline")));
+    f.title.escape();
+    assert_eq!(
+        f.click_with_sound(&lang::get("starling.account.done")),
+        (Action::None, true)
+    );
     assert!(matches!(f.title.mode, Mode::Main));
 }
 
@@ -2760,6 +2782,7 @@ fn world_options_survive_the_restart_as_json() {
 }
 
 #[test]
+<<<<<<< HEAD
 fn native_field_visitor_excludes_preparing_and_game_rule_editors() {
     let mut f = Fixture::new();
     f.title.mode = Mode::Multiplayer(crate::multiplayer::Screen::Direct {
@@ -2846,4 +2869,33 @@ fn cancelling_a_realms_new_world_returns_to_the_realm() {
         crate::realms::SubScreen::Configure { .. }
     ));
     let _ = fs::remove_dir_all(&f.root);
+||||||| 121742ad89
+=======
+fn account_secret_fields_accept_credentials_without_chat_filtering_or_debug_disclosure() {
+    use winit::keyboard::KeyCode;
+    let mut f = Fixture::new();
+    f.title.mode = Mode::Account(account::Screen::default());
+    f.click(&lang::get("starling.account.add"));
+    f.click("Ely.by");
+    f.title.type_text("player@example.test");
+    f.title.tab_dir(false, (480.0, 262.0));
+    assert!(f.title.password_focused());
+    f.title.type_text("Secret§123");
+    f.title.field_key(KeyCode::ArrowLeft, false, false);
+    f.title.type_text("!");
+    assert_eq!(f.title.focused_field().unwrap().1, "Secret§12!3");
+    f.title.set_account_field("Secret§ABC", 7, 10);
+    assert_eq!(f.title.account_field_selection(), Some((7, 10)));
+    f.title.type_text("XYZ");
+    assert_eq!(f.title.focused_field().unwrap().1, "Secret§XYZ");
+    if let Mode::Account(screen) = &f.title.mode {
+        assert!(!format!("{screen:?}").contains("Secret"));
+    }
+    assert!(!format!("{:?}", f.title.caret.borrow()).contains("Secret"));
+    f.title.escape();
+    if let Mode::Account(screen) = &f.title.mode {
+        assert!(!format!("{screen:?}").contains("Secret"));
+    }
+    assert!(!format!("{:?}", f.title.caret.borrow()).contains("Secret"));
+>>>>>>> starling-client/starling
 }

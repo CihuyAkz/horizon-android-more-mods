@@ -1553,10 +1553,1651 @@ impl Screen for GraphicsScreen {
         }
         s.file.fullscreen_resolution = b.file.fullscreen_resolution.clone();
     }
+<<<<<<< HEAD
     /// Calibration can change what Undo puts back, as a row does.
     fn changes(&self, outputs: &[Output]) -> bool {
         let calibrates = outputs.contains(&Output::Push(OptionsPage::HdrCalibration));
         calibrates || shell::changes_settings(outputs)
+||||||| 121742ad89
+
+    pub fn draw(
+        &mut self,
+        s: &Settings,
+        batch: &mut HudBatch,
+        atlas: &HudAtlas,
+        cursor: (f32, f32),
+        in_world: bool,
+    ) {
+        self.keep(s);
+        let (w, h) = (batch.width, batch.height);
+        let (cols, lines, content) = self.layout(s, w, h);
+        ui::menu_background(batch, atlas, 0.0, 0.0, w, h, in_world);
+        style::fill(batch, atlas, [0.0, 0.0, w, h], style::VEIL);
+        let current = self.current(&lines);
+        self.draw_side(batch, atlas, &cols, &lines, current, cursor);
+        self.draw_search(batch, atlas, &cols, cursor);
+
+        // The plate, with the open page's name (or the search's) over its list.
+        let [px, py, pw, _] = cols.plate;
+        style::panel(batch, atlas, cols.plate);
+        let query = self.search.value.trim();
+        let heading = if query.is_empty() {
+            lang::get(current.unwrap_or(self.page).name())
+        } else {
+            lang::get("Results for \"%s\"").replace("%s", query)
+        };
+        let heading = Text::literal(style::fit(atlas, &heading, pw - 24.0));
+        batch.text_styled(atlas, &heading, px + 12.0, py + 10.0, style::WHITE, true);
+        style::fill(
+            batch,
+            atlas,
+            [px + 8.0, py + 24.0, pw - 16.0, 1.0],
+            style::HEAD_RULE,
+        );
+
+        // The list, clipped to its view: each group's panel, then its rows on it.
+        let over_list = cursor.1 >= cols.top && cursor.1 < cols.bottom;
+        let start = batch.vertices.len();
+        let mark = crate::widgets::targets_mark();
+        let mut described = None;
+        let shows = |y: f32, h: f32| y + h > cols.top && y < cols.bottom;
+        for line in &lines {
+            let y = self.row_y(&cols, line);
+            if let Some((_, panel)) = line.group
+                && shows(y + style::GROUP_ROW, panel)
+            {
+                let rect = [cols.list_x, y + style::GROUP_ROW, cols.list_w, panel];
+                style::group(batch, atlas, rect);
+            }
+        }
+        // A group's first row, which has no rule over it.
+        let mut first = false;
+        for line in &lines {
+            let y = self.row_y(&cols, line);
+            let after_name = std::mem::replace(&mut first, line.group.is_some());
+            if !shows(y, line.h()) {
+                continue;
+            }
+            let Some(setting) = line.setting else {
+                let (name, color, dy) = match line.group {
+                    Some((name, _)) => (name, style::MUTED, 3.0),
+                    None => (line.page.name(), style::ACCENT, 4.0),
+                };
+                let name = Text::literal(lang::get(name));
+                batch.text_styled(atlas, &name, cols.list_x + 2.0, y + dy, color, true);
+                continue;
+            };
+            let item = setting.item;
+            if !after_name {
+                let rule = [cols.list_x + 8.0, y, cols.list_w - 16.0, 1.0];
+                style::fill(batch, atlas, rule, style::ROW_RULE);
+            }
+            let rect = [cols.list_x, y, cols.list_w, style::ROW];
+            let hover = over_list && ui::hovered(cursor, rect[0], rect[1], rect[2], rect[3]);
+            let focused = self.focus == Some(Target::Item(item));
+            // The pointer's row wins over the keyboard's.
+            if hover || self.dragging == Some(item) || (focused && described.is_none()) {
+                described = Some(setting);
+            }
+            self.draw_row(batch, atlas, s, &cols, item, y, hover, focused);
+        }
+        if lines.is_empty() {
+            let none = Text::literal(lang::get("No settings match."));
+            batch.text_styled(
+                atlas,
+                &none,
+                cols.list_x + 2.0,
+                cols.top + 4.0,
+                style::MUTED,
+                true,
+            );
+        }
+        batch.clip_since(
+            start,
+            cols.list_x,
+            cols.top,
+            cols.list_x + cols.list_w,
+            cols.bottom,
+        );
+        crate::widgets::clip_targets(mark, cols.top, cols.bottom);
+        self.draw_scroller(batch, atlas, &cols, content);
+        self.draw_dock(batch, atlas, s, &cols, described, current);
+
+        let hovered = |[x, y, w, h]: [f32; 4]| ui::hovered(cursor, x, y, w, h);
+        let mut foot = vec![(cols.button(0), "Done", Target::Done)];
+        // Undo only once there is something to undo.
+        if self.changed {
+            foot.push((cols.button(1), "Undo", Target::Undo));
+        }
+        for (rect, label, target) in foot {
+            let label = Text::literal(lang::get(label));
+            let focused = self.focus == Some(target);
+            let hover = hovered(rect) || focused;
+            crate::widgets::record(&label.plain(), rect, true);
+            crate::widgets::narratable(|| {
+                crate::widgets::Narratable::button(label.plain(), rect, true)
+                    .hovered(hovered(rect))
+                    .focused(focused)
+            });
+            crate::widgets::widget_cursor(hovered(rect), true);
+            crate::widgets::target(rect);
+            let primary = target == Target::Done;
+            style::button(batch, atlas, rect, &label, (hover, true, primary));
+        }
+    }
+    /// The mark over the search field, and the page list: the open page on a
+    /// plate with the accent's bar beside it, the others bare text.
+    fn draw_side(
+        &self,
+        batch: &mut HudBatch,
+        atlas: &HudAtlas,
+        cols: &Columns,
+        lines: &[Line],
+        current: Option<Page>,
+        cursor: (f32, f32),
+    ) {
+        let (x, y) = (cols.side_x, cols.side_y);
+        style::fill(batch, atlas, [x, y + 2.0, 6.0, 6.0], style::ACCENT);
+        let horizon = Text::literal("Horizon");
+        batch.text_styled(atlas, &horizon, x + 10.0, y, style::WHITE, true);
+        let title = Text::literal(lang::get("Graphics"));
+        batch.text_styled(atlas, &title, x, y + 10.0, style::MUTED, true);
+        for (i, page) in Page::ALL.into_iter().enumerate() {
+            let rect = cols.page(i);
+            let [px, py, pw, ph] = rect;
+            let has = self.has(page, lines);
+            let open = current == Some(page);
+            let name = Text::literal(lang::get(page.name()));
+            crate::widgets::record(&name.plain(), rect, has);
+            let hover = has && ui::hovered(cursor, px, py, pw, ph);
+            let focused = self.focus == Some(Target::Page(page));
+            crate::widgets::narratable(|| {
+                crate::widgets::Narratable::button(name.plain(), rect, has)
+                    .hovered(hover)
+                    .focused(focused)
+            });
+            crate::widgets::widget_cursor(hover, has);
+            if has {
+                crate::widgets::target_as(rect, crate::widgets::Kind::Tab(open));
+            }
+            if open {
+                style::fill(batch, atlas, rect, style::OPEN);
+                style::fill(batch, atlas, [px, py, 2.0, ph], style::ACCENT);
+            }
+            let color = match (open || hover, has) {
+                (true, _) => style::WHITE,
+                (false, true) => style::SOFT,
+                (false, false) => style::MUTED,
+            };
+            let ty = py + ((ph - 8.0) / 2.0).floor();
+            let name = Text::literal(style::fit(atlas, &name.plain(), pw - 12.0));
+            batch.text_styled(atlas, &name, px + 8.0, ty, color, true);
+            if focused {
+                style::ring(batch, atlas, rect, style::WHITE);
+            }
+        }
+    }
+    fn draw_search(
+        &mut self,
+        batch: &mut HudBatch,
+        atlas: &HudAtlas,
+        cols: &Columns,
+        cursor: (f32, f32),
+    ) {
+        let rect = cols.search();
+        style::well(batch, atlas, rect);
+        let focused = self.focus == Some(Target::Search);
+        self.search.focused = focused;
+        let [x, y, w, h] = rect;
+        let clear = cols.clear();
+        (self.search.x, self.search.y) = (x + 5.0, y + ((h - 8.0) / 2.0).floor());
+        self.search.width = clear[0] - self.search.x;
+        self.search.text_color = style::WHITE;
+        self.search.draw(batch, atlas, None);
+        if self.search.value.is_empty() && !focused {
+            let hint = Text::literal(self.search.message.clone());
+            batch.text_styled(atlas, &hint, x + 5.0, self.search.y, style::MUTED, true);
+        }
+        if !self.search.value.is_empty() {
+            let hover = ui::hovered(cursor, clear[0], clear[1], clear[2], clear[3]);
+            crate::widgets::widget_cursor(hover, true);
+            let color = if hover { style::WHITE } else { style::MUTED };
+            let cy = y + ((h - 8.0) / 2.0).floor();
+            ui::centered_text(
+                batch,
+                atlas,
+                &Text::literal("×"),
+                clear[0],
+                cy,
+                clear[2],
+                color,
+            );
+        }
+        if focused {
+            style::ring(batch, atlas, [x, y, w, h], style::WHITE);
+        }
+    }
+    #[allow(clippy::too_many_arguments)]
+    fn draw_row(
+        &self,
+        batch: &mut HudBatch,
+        atlas: &HudAtlas,
+        s: &Settings,
+        cols: &Columns,
+        item: Item,
+        y: f32,
+        hover: bool,
+        focused: bool,
+    ) {
+        let rect = [cols.list_x, y, cols.list_w, style::ROW];
+        let live = item.blocked(s).is_none();
+        let label = item.label(s).plain();
+        let (name, value) = parts(item, s, self.binding.is_some());
+        let (tx, tw) = cols.track();
+        let right = tx + tw;
+        let control = [
+            tx,
+            y + (style::ROW - style::CONTROL_H) / 2.0,
+            tw,
+            style::CONTROL_H,
+        ];
+        let active = live && (hover || focused || self.dragging == Some(item));
+        if active {
+            let lit = [rect[0] + 2.0, y + 1.0, rect[2] - 4.0, style::ROW - 2.0];
+            style::fill(batch, atlas, lit, style::HOVER);
+        }
+        crate::widgets::widget_cursor(hover, live);
+        let slider = item.slider(s);
+        let switch = item.switch(s);
+        // The control socket's widget tree, the narrator and a controller's focus.
+        let kind = match slider {
+            Some(value) => crate::widgets::Kind::Slider {
+                value,
+                track: [tx + 5.0, tw - 10.0],
+            },
+            None => crate::widgets::Kind::Button,
+        };
+        crate::widgets::record_as(&label, rect, live, kind);
+        crate::widgets::narratable(|| {
+            match (switch, slider) {
+                (Some(on), _) => crate::widgets::Narratable::checkbox(name.clone(), on, rect, live),
+                (_, Some(_)) => crate::widgets::Narratable::slider(label.clone(), rect, live),
+                _ => crate::widgets::Narratable::button(label.clone(), rect, live),
+            }
+            .hovered(hover)
+            .focused(focused)
+        });
+        if live {
+            crate::widgets::target_as(rect, kind);
+        }
+        let color = if live { style::WHITE } else { style::MUTED };
+        let soft = if live { style::SOFT } else { style::MUTED };
+        let ty = y + ((style::ROW - 8.0) / 2.0).floor();
+        let lit = live && (hover || self.dragging == Some(item));
+        let left = rect[0] + style::INSET;
+        // An action (Calibrate...) is a button across the row, as vanilla's lists have them.
+        if switch.is_none() && slider.is_none() && value.is_none() {
+            let wide = [left, control[1], right - left, style::CONTROL_H];
+            style::button(batch, atlas, wide, &Text::literal(name), (lit, live, false));
+        } else {
+            let value = value.unwrap_or_default();
+            let vw = atlas.font.width(&value);
+            // Where the control starts, and the value's text for a slider at rest.
+            let start = match (switch, slider) {
+                (Some(_), _) => right - style::CONTROL_H,
+                (None, Some(_)) if active => tx,
+                (None, Some(_)) => right - vw,
+                (None, None) => right - vw - 18.0,
+            };
+            match (switch, slider) {
+                (Some(on), _) => style::checkbox(batch, atlas, right, y, on, live),
+                // A slider shows its track, the value on it, while it is pointed at, focused or held.
+                (None, Some(position)) => {
+                    let value = Text::literal(value);
+                    if active {
+                        style::slider(batch, atlas, control, &value, position, (lit, live));
+                    } else {
+                        batch.text_styled(atlas, &value, start, ty, soft, true);
+                    }
+                }
+                (None, None) => {
+                    let value = Text::literal(value);
+                    style::cycler(
+                        batch,
+                        atlas,
+                        [start, y + 3.0, vw + 18.0, 14.0],
+                        &value,
+                        (lit, live),
+                    );
+                }
+            }
+            // The name, cut short before the control where a translation runs long.
+            let shown = Text::literal(style::fit(atlas, &name, start - 6.0 - left));
+            batch.text_styled(atlas, &shown, left, ty, color, true);
+        }
+        if focused {
+            style::ring(
+                batch,
+                atlas,
+                [rect[0] + 1.0, y, rect[2] - 2.0, style::ROW],
+                style::WHITE,
+            );
+        }
+    }
+    /// Vanilla's scroller, inside the panel's right edge, sized as `ui::Scroll` drags it.
+    fn draw_scroller(&self, batch: &mut HudBatch, atlas: &HudAtlas, cols: &Columns, content: f32) {
+        if !cols.scrolls() {
+            return;
+        }
+        let Some((y, bar)) =
+            ui::scrollbar_thumb(cols.top, cols.bottom, content, self.scroll.amount)
+        else {
+            return;
+        };
+        let x = cols.bar_x();
+        let track = [x, cols.top, style::SCROLLER_W, cols.bottom - cols.top];
+        style::scroller(batch, atlas, track, [x, y, style::SCROLLER_W, bar]);
+    }
+    /// The strip under the plate: the hovered or focused setting's name and
+    /// cost, then what it does (or why it can't be used now); with none, what
+    /// the open page holds.
+    fn draw_dock(
+        &self,
+        batch: &mut HudBatch,
+        atlas: &HudAtlas,
+        s: &Settings,
+        cols: &Columns,
+        setting: Option<Setting>,
+        current: Option<Page>,
+    ) {
+        let [x, y, w, _] = cols.dock;
+        style::panel(batch, atlas, cols.dock);
+        let left = x + 12.0;
+        let (text, color) = match setting {
+            Some(setting) => {
+                let (name, _) = parts(setting.item, s, false);
+                let cost = lang::get(setting.cost.label());
+                let line = style::fit(atlas, &format!("{name} · {cost}"), w - 32.0);
+                let line = Text::literal(line).with_color(setting.cost.rgb());
+                let square = [left, y + 10.0, 4.0, 4.0];
+                style::fill(batch, atlas, square, style::cost_color(setting.cost));
+                batch.text_styled(atlas, &line, left + 8.0, y + 8.0, style::WHITE, true);
+                match setting.item.blocked(s) {
+                    Some(why) => (lang::get(why), style::MUTED),
+                    None => (
+                        lang::get(description(setting.item, s, setting.text)),
+                        style::GREY,
+                    ),
+                }
+            }
+            None => {
+                let Some(page) = current else { return };
+                let name = Text::literal(lang::get(page.name()));
+                batch.text_styled(atlas, &name, left, y + 8.0, style::WHITE, true);
+                (lang::get(page.about()), style::GREY)
+            }
+        };
+        let lines = atlas.font.split(&Text::literal(text), w - 24.0);
+        for (i, line) in lines.iter().take(2).enumerate() {
+            batch.text_styled(atlas, line, left, y + 20.0 + i as f32 * 10.0, color, true);
+        }
+    }
+
+    /// A press (or a drag with `drag`) at `(x, y)`.
+    #[allow(clippy::too_many_arguments)]
+    pub fn click(
+        &mut self,
+        s: &mut Settings,
+        (x, y): (f32, f32),
+        (w, h): (f32, f32),
+        framebuffer: [i32; 2],
+        drag: bool,
+        right: bool,
+    ) -> Vec<Action> {
+        self.keep(s);
+        let (cols, lines, content) = self.layout(s, w, h);
+        let at = |[rx, ry, rw, rh]: [f32; 4]| ui::hovered((x, y), rx, ry, rw, rh);
+        if drag {
+            // AbstractScrollArea.mouseDragged: the held scrollbar follows the pointer.
+            if self.scroll.held() && !cols.scrolls() {
+                self.scroll.release();
+            }
+            if self.scroll.held() {
+                self.picked = None;
+                self.scroll.drag(y, cols.top, cols.bottom, content);
+                return Vec::new();
+            }
+            if let Some(item) = self.dragging {
+                item.set_slider(s, cols.slider_at(x));
+                self.changed = true;
+                return vec![Action::SliderDrag];
+            }
+            return Vec::new();
+        }
+        if right {
+            return Vec::new();
+        }
+        if cols.scrolls()
+            && self
+                .scroll
+                .press((x, y), cols.bar_x(), cols.top, cols.bottom, content)
+        {
+            return Vec::new();
+        }
+        if at(cols.search()) {
+            if !self.search.value.is_empty() && at(cols.clear()) {
+                self.search.set_value("");
+                self.searched();
+                return vec![Action::ButtonClick];
+            }
+            self.focus = Some(Target::Search);
+            self.search.reset_blink();
+            self.search.move_cursor_to_end(false);
+            return Vec::new();
+        }
+        if self.focus == Some(Target::Search) {
+            self.focus = None;
+        }
+        if at(cols.button(0)) {
+            self.focus = Some(Target::Done);
+            return vec![Action::ButtonClick, Action::Done];
+        }
+        if self.changed && at(cols.button(1)) {
+            // Undo goes away with the change it undid.
+            self.focus = None;
+            self.undo(s);
+            return vec![Action::ButtonClick, Action::Changed];
+        }
+        for (i, page) in Page::ALL.into_iter().enumerate() {
+            if at(cols.page(i)) && self.has(page, &lines) {
+                self.focus = Some(Target::Page(page));
+                self.pick(page, &lines, &cols, content);
+                return vec![Action::ButtonClick];
+            }
+        }
+        if y < cols.top || y >= cols.bottom {
+            return Vec::new();
+        }
+        let Some(item) = lines.iter().find_map(|line| {
+            let ry = self.row_y(&cols, line);
+            let setting = line.setting?;
+            at([cols.list_x, ry, cols.list_w, style::ROW]).then_some(setting.item)
+        }) else {
+            return Vec::new();
+        };
+        // A disabled control does nothing: no sound, no preset change.
+        if item.blocked(s).is_some() {
+            return Vec::new();
+        }
+        self.focus = Some(Target::Item(item));
+        let actions = self.activate(s, item, false, framebuffer, Some((x, &cols)));
+        self.mark(&actions);
+        actions
+    }
+    /// Press `item`: `at` is where on its row and its slider's track (`None`
+    /// from the keyboard).
+    fn activate(
+        &mut self,
+        s: &mut Settings,
+        item: Item,
+        back: bool,
+        framebuffer: [i32; 2],
+        at: Option<(f32, &Columns)>,
+    ) -> Vec<Action> {
+        match item {
+            Item::Horizon(H::HdrCalibrate) if setup(s) == Setup::Changed => {
+                s.horizon.hdr_peak = 0;
+                s.horizon.hdr_paper_white = 0;
+                vec![Action::ButtonClick, Action::Changed]
+            }
+            Item::Horizon(H::HdrCalibrate) => vec![Action::ButtonClick, Action::Calibrate],
+            Item::Horizon(H::HdrKey) => {
+                vec![
+                    Action::ButtonClick,
+                    Action::BindKey(crate::graphics::HDR_KEY),
+                ]
+            }
+            _ if item.slider(s).is_some() => {
+                self.can_change_value = true;
+                // A press on the track sets the value there; on the name, only focuses.
+                match at {
+                    Some((x, cols)) if x >= cols.track().0 => {
+                        self.dragging = Some(item);
+                        item.set_slider(s, cols.slider_at(x));
+                        vec![Action::SliderDrag]
+                    }
+                    _ => Vec::new(),
+                }
+            }
+            _ => {
+                self.can_change_value = false;
+                item.cycle(s, back, framebuffer);
+                vec![Action::ButtonClick, Action::Changed]
+            }
+        }
+    }
+    /// Lets go of a slider (true: it plays its click) or the scrollbar.
+    pub fn release(&mut self) -> bool {
+        self.scroll.release();
+        self.dragging.take().is_some()
+    }
+    /// The mouse wheel at the cursor. It scrolls the list, except that a hovered value
+    /// stepped by `<` `>` takes the step (`CycleButton.mouseScrolled`: up goes back)
+    /// while the "Scroll wheel changes settings" extra is on. A slider, a tick box and a
+    /// focused row don't take it, wherever the focus came from: the keyboard and a
+    /// controller step them with Left and Right.
+    pub fn wheel(
+        &mut self,
+        s: &mut Settings,
+        (w, h): (f32, f32),
+        (x, y): (f32, f32),
+        framebuffer: [i32; 2],
+        amount: f32,
+    ) -> Vec<Action> {
+        if amount != 0.0 && s.extras.wheel_cycles_settings {
+            let (cols, lines, _) = self.layout(s, w, h);
+            let hovered = (y >= cols.top && y < cols.bottom)
+                .then(|| {
+                    lines.iter().find_map(|line| {
+                        let setting = line.setting?;
+                        let ry = self.row_y(&cols, line);
+                        ui::hovered((x, y), cols.list_x, ry, cols.list_w, style::ROW)
+                            .then_some(setting.item)
+                    })
+                })
+                .flatten();
+            if let Some(item) = hovered
+                && item.steps(s)
+                && item.blocked(s).is_none()
+            {
+                item.cycle(s, amount > 0.0, framebuffer);
+                self.changed = true;
+                return vec![Action::ButtonClick, Action::Changed];
+            }
+        }
+        self.scroll(s, (w, h), amount);
+        Vec::new()
+    }
+    /// The mouse wheel scrolls the list.
+    pub fn scroll(&mut self, s: &Settings, (w, h): (f32, f32), amount: f32) {
+        let (cols, _, content) = self.layout(s, w, h);
+        self.picked = None;
+        self.scroll
+            .wheel(amount, 18.0, cols.top, cols.bottom, content);
+    }
+    /// What Tab steps through, in order, with where each is on screen. The
+    /// arrows (`near`) only reach the rows in view and the one next past either
+    /// edge, which scrolls in: a row farther out sits under the tabs or the
+    /// buttons and would take the step from them.
+    fn focusables(
+        &self,
+        s: &Settings,
+        cols: &Columns,
+        lines: &[Line],
+        near: bool,
+    ) -> Vec<(Target, [f32; 4])> {
+        let mut out = vec![(Target::Search, cols.search())];
+        for (i, page) in Page::ALL.into_iter().enumerate() {
+            if self.has(page, lines) {
+                out.push((Target::Page(page), cols.page(i)));
+            }
+        }
+        // Every setting row, and whether it can take the focus.
+        let rows: Vec<(Item, f32, bool)> = lines
+            .iter()
+            .filter_map(|line| {
+                let setting = line.setting?;
+                let live = setting.item.blocked(s).is_none();
+                Some((setting.item, self.row_y(cols, line), live))
+            })
+            .collect();
+        // For the arrows, the rows in view and the next live one past either
+        // edge, over any greyed ones (HDR's page on a display without HDR).
+        let in_view = |y: f32| y + style::ROW > cols.top && y < cols.bottom;
+        let reach = match rows.iter().position(|r| in_view(r.1)) {
+            Some(first) if near => {
+                let last = rows.iter().rposition(|r| in_view(r.1)).unwrap_or(first);
+                let lo = rows[..first].iter().rposition(|r| r.2).unwrap_or(first);
+                let hi = rows[last + 1..]
+                    .iter()
+                    .position(|r| r.2)
+                    .map_or(last, |i| last + 1 + i);
+                lo..hi + 1
+            }
+            None if near => 0..0,
+            _ => 0..rows.len(),
+        };
+        for &(item, y, live) in &rows[reach] {
+            if !live {
+                continue;
+            }
+            out.push((
+                Target::Item(item),
+                [cols.list_x, y, cols.list_w, style::ROW],
+            ));
+        }
+        if self.changed {
+            out.push((Target::Undo, cols.button(1)));
+        }
+        out.push((Target::Done, cols.button(0)));
+        out
+    }
+    /// Focus `target`, scrolling its row into the list's view.
+    fn focus_on(
+        &mut self,
+        s: &Settings,
+        target: Target,
+        rect: [f32; 4],
+        cols: &Columns,
+        content: f32,
+    ) {
+        self.focus = Some(target);
+        self.can_change_value = matches!(target, Target::Item(i) if i.slider(s).is_some());
+        if let Target::Item(_) = target {
+            let [_, y, _, h] = rect;
+            if y < cols.top {
+                self.scroll.amount -= cols.top - y;
+            } else if y + h > cols.bottom {
+                self.scroll.amount += y + h - cols.bottom;
+            }
+            self.picked = None;
+            self.scroll.clamp(cols.top, cols.bottom, content);
+        }
+    }
+
+    /// Keys: typing in the search field, Tab and the arrows between controls,
+    /// Left and Right on a slider, Enter or Space to press. False: the screen
+    /// handles it (Escape closes it, as `Screen.keyPressed` does first).
+    #[allow(clippy::too_many_arguments)]
+    pub fn key_modifiers(
+        &mut self,
+        s: &mut Settings,
+        key: winit::keyboard::KeyCode,
+        text: Option<&str>,
+        shift: bool,
+        (w, h): (f32, f32),
+        framebuffer: [i32; 2],
+    ) -> (Vec<Action>, bool) {
+        use winit::keyboard::KeyCode as K;
+        self.keep(s);
+        if key == K::Escape {
+            self.can_change_value = false;
+            return (Vec::new(), false);
+        }
+        if self.focus == Some(Target::Search)
+            && !matches!(key, K::Tab | K::ArrowDown | K::Enter | K::NumpadEnter)
+        {
+            let before = self.search.value.clone();
+            if !self.search.key(key, false, shift)
+                && let Some(t) = text
+            {
+                let typed: String = t.chars().filter(|c| !c.is_control()).collect();
+                self.type_text(&typed);
+            }
+            if self.search.value != before {
+                self.searched();
+            }
+            return (Vec::new(), true);
+        }
+        let (cols, lines, content) = self.layout(s, w, h);
+        let near = key != K::Tab;
+        let focusables = self.focusables(s, &cols, &lines, near);
+        let current = self
+            .focus
+            .and_then(|f| focusables.iter().position(|&(t, _)| t == f));
+        if key == K::Tab {
+            let n = focusables.len();
+            let next = match (current, shift) {
+                (Some(i), false) => (i + 1) % n,
+                (Some(i), true) => (i + n - 1) % n,
+                (None, false) => 0,
+                (None, true) => n - 1,
+            };
+            let (target, rect) = focusables[next];
+            self.focus_on(s, target, rect, &cols, content);
+            return (Vec::new(), true);
+        }
+        if matches!(key, K::ArrowLeft | K::ArrowRight)
+            && self.can_change_value
+            && let Some(Target::Item(item)) = self.focus
+            && item.slider(s).is_some()
+        {
+            item.step_slider(s, key == K::ArrowRight, cols.track().1 + 8.0);
+            self.changed = true;
+            return (vec![Action::SliderDrag], true);
+        }
+        if matches!(
+            key,
+            K::ArrowUp | K::ArrowDown | K::ArrowLeft | K::ArrowRight
+        ) {
+            use crate::gamepad::Button as B;
+            let dir = match key {
+                K::ArrowUp => B::DPadUp,
+                K::ArrowDown => B::DPadDown,
+                K::ArrowLeft => B::DPadLeft,
+                _ => B::DPadRight,
+            };
+            let next = match current {
+                Some(i) => {
+                    let rects: Vec<[f32; 4]> = focusables.iter().map(|f| f.1).collect();
+                    crate::gamepad::focus_step_rect(focusables[i].1, dir, &rects)
+                }
+                // Nothing focused in view: going down, the first setting from the
+                // view's top on (the next past its bottom where greyed rows fill it);
+                // going up, the last one down to its bottom.
+                None => {
+                    let mut rows = focusables
+                        .iter()
+                        .enumerate()
+                        .filter(|(_, (t, _))| matches!(t, Target::Item(_)));
+                    let pick = if key == K::ArrowUp {
+                        rows.rfind(|(_, (_, [_, y, ..]))| *y + style::ROW <= cols.bottom)
+                    } else {
+                        rows.find(|(_, (_, [_, y, ..]))| *y >= cols.top)
+                    };
+                    pick.map(|(i, _)| i)
+                }
+            };
+            let Some(next) = next else {
+                return (Vec::new(), false);
+            };
+            let (target, rect) = focusables[next];
+            self.focus_on(s, target, rect, &cols, content);
+            self.can_change_value = false;
+            return (Vec::new(), true);
+        }
+        if matches!(key, K::Space | K::Enter | K::NumpadEnter)
+            && let Some(target) = self.focus
+        {
+            let actions = match target {
+                Target::Search => Vec::new(),
+                Target::Page(page) => {
+                    self.pick(page, &lines, &cols, content);
+                    vec![Action::ButtonClick]
+                }
+                // A row greyed out while focused does nothing, as a click on it doesn't.
+                Target::Item(item) if item.blocked(s).is_some() => Vec::new(),
+                Target::Item(item) if item.slider(s).is_some() => {
+                    self.can_change_value = !self.can_change_value;
+                    Vec::new()
+                }
+                Target::Item(item) => self.activate(s, item, shift, framebuffer, None),
+                Target::Undo => {
+                    self.undo(s);
+                    // Undo goes away with the change it undid.
+                    self.focus = Some(Target::Done);
+                    return (vec![Action::ButtonClick, Action::Changed], true);
+                }
+                Target::Done => vec![Action::ButtonClick, Action::Done],
+            };
+            self.mark(&actions);
+            return (actions, true);
+        }
+        (Vec::new(), false)
+    }
+    /// Whether the search field takes the keys.
+    pub fn typing(&self) -> bool {
+        self.focus == Some(Target::Search)
+    }
+    /// Text typed into the search field (the keyboard, a controller's on-screen keyboard).
+    pub fn type_text(&mut self, text: &str) {
+        if !text.is_empty() {
+            self.search.insert_text(text);
+            self.searched();
+        }
+    }
+    /// Ctrl+A/C/V/X in the search field.
+    pub fn shortcut(
+        &mut self,
+        shortcut: crate::clipboard::EditShortcut,
+        clipboard: &mut dyn crate::clipboard::Clipboard,
+    ) -> bool {
+        if !self.typing() {
+            return false;
+        }
+        let before = self.search.value.clone();
+        self.search.shortcut(shortcut, clipboard);
+        if self.search.value != before {
+            self.searched();
+        }
+        // Whatever it did: the key is the field's, not something to type.
+        true
+    }
+    /// The search changed: the list starts over at its top.
+    fn searched(&mut self) {
+        self.scroll.amount = 0.0;
+        self.picked = None;
+=======
+
+    pub fn draw(
+        &mut self,
+        s: &Settings,
+        batch: &mut HudBatch,
+        atlas: &HudAtlas,
+        cursor: (f32, f32),
+        in_world: bool,
+    ) {
+        self.keep(s);
+        let (w, h) = (batch.width, batch.height);
+        let (cols, lines, content) = self.layout(s, w, h);
+        ui::menu_background(batch, atlas, 0.0, 0.0, w, h, in_world);
+        style::fill(batch, atlas, [0.0, 0.0, w, h], style::VEIL);
+        let current = self.current(&lines);
+        self.draw_side(batch, atlas, &cols, &lines, current, cursor);
+        self.draw_search(batch, atlas, &cols, cursor);
+
+        // The plate, with the open page's name (or the search's) over its list.
+        let [px, py, pw, _] = cols.plate;
+        style::panel(batch, atlas, cols.plate);
+        let query = self.search.value.trim();
+        let heading = if query.is_empty() {
+            lang::get(current.unwrap_or(self.page).name())
+        } else {
+            lang::get("Results for \"%s\"").replace("%s", query)
+        };
+        let heading = Text::literal(style::fit(atlas, &heading, pw - 24.0));
+        batch.text_styled(atlas, &heading, px + 12.0, py + 10.0, style::WHITE, true);
+        style::fill(
+            batch,
+            atlas,
+            [px + 8.0, py + 24.0, pw - 16.0, 1.0],
+            style::HEAD_RULE,
+        );
+
+        // The list, clipped to its view: each group's panel, then its rows on it.
+        let over_list = cursor.1 >= cols.top && cursor.1 < cols.bottom;
+        let start = batch.vertices.len();
+        let mark = crate::widgets::targets_mark();
+        let mut described = None;
+        let shows = |y: f32, h: f32| y + h > cols.top && y < cols.bottom;
+        for line in &lines {
+            let y = self.row_y(&cols, line);
+            if let Some((_, panel)) = line.group
+                && shows(y + style::GROUP_ROW, panel)
+            {
+                let rect = [cols.list_x, y + style::GROUP_ROW, cols.list_w, panel];
+                style::group(batch, atlas, rect);
+            }
+        }
+        // A group's first row, which has no rule over it.
+        let mut first = false;
+        for line in &lines {
+            let y = self.row_y(&cols, line);
+            let after_name = std::mem::replace(&mut first, line.group.is_some());
+            if !shows(y, line.h()) {
+                continue;
+            }
+            let Some(setting) = line.setting else {
+                let (name, color, dy) = match line.group {
+                    Some((name, _)) => (name, style::MUTED, 3.0),
+                    None => (line.page.name(), style::ACCENT, 4.0),
+                };
+                let name = Text::literal(lang::get(name));
+                batch.text_styled(atlas, &name, cols.list_x + 2.0, y + dy, color, true);
+                continue;
+            };
+            let item = setting.item;
+            if !after_name {
+                let rule = [cols.list_x + 8.0, y, cols.list_w - 16.0, 1.0];
+                style::fill(batch, atlas, rule, style::ROW_RULE);
+            }
+            let rect = [cols.list_x, y, cols.list_w, style::ROW];
+            let hover = over_list && ui::hovered(cursor, rect[0], rect[1], rect[2], rect[3]);
+            let focused = self.focus == Some(Target::Item(item));
+            // The pointer's row wins over the keyboard's.
+            if hover || self.dragging == Some(item) || (focused && described.is_none()) {
+                described = Some(setting);
+            }
+            self.draw_row(batch, atlas, s, &cols, item, y, hover, focused);
+        }
+        if lines.is_empty() {
+            let none = Text::literal(lang::get("No settings match."));
+            batch.text_styled(
+                atlas,
+                &none,
+                cols.list_x + 2.0,
+                cols.top + 4.0,
+                style::MUTED,
+                true,
+            );
+        }
+        batch.clip_since(
+            start,
+            cols.list_x,
+            cols.top,
+            cols.list_x + cols.list_w,
+            cols.bottom,
+        );
+        crate::widgets::clip_targets(mark, cols.top, cols.bottom);
+        self.draw_scroller(batch, atlas, &cols, content);
+        self.draw_dock(batch, atlas, s, &cols, described, current);
+
+        let hovered = |[x, y, w, h]: [f32; 4]| ui::hovered(cursor, x, y, w, h);
+        let mut foot = vec![(cols.button(0), "Done", Target::Done)];
+        // Undo only once there is something to undo.
+        if self.changed {
+            foot.push((cols.button(1), "Undo", Target::Undo));
+        }
+        for (rect, label, target) in foot {
+            let label = Text::literal(lang::get(label));
+            let focused = self.focus == Some(target);
+            let hover = hovered(rect) || focused;
+            crate::widgets::record(&label.plain(), rect, true);
+            crate::widgets::narratable(|| {
+                crate::widgets::Narratable::button(label.plain(), rect, true)
+                    .hovered(hovered(rect))
+                    .focused(focused)
+            });
+            crate::widgets::widget_cursor(hovered(rect), true);
+            crate::widgets::target(rect);
+            let primary = target == Target::Done;
+            style::button(batch, atlas, rect, &label, (hover, true, primary));
+        }
+    }
+    /// The mark over the search field, and the page list: the open page on a
+    /// plate with the accent's bar beside it, the others bare text.
+    fn draw_side(
+        &self,
+        batch: &mut HudBatch,
+        atlas: &HudAtlas,
+        cols: &Columns,
+        lines: &[Line],
+        current: Option<Page>,
+        cursor: (f32, f32),
+    ) {
+        let (x, y) = (cols.side_x, cols.side_y);
+        style::fill(batch, atlas, [x, y + 2.0, 6.0, 6.0], style::ACCENT);
+        let horizon = Text::literal("Horizon");
+        batch.text_styled(atlas, &horizon, x + 10.0, y, style::WHITE, true);
+        let title = Text::literal(lang::get("Graphics"));
+        batch.text_styled(atlas, &title, x, y + 10.0, style::MUTED, true);
+        for (i, page) in Page::ALL.into_iter().enumerate() {
+            let rect = cols.page(i);
+            let [px, py, pw, ph] = rect;
+            let has = self.has(page, lines);
+            let open = current == Some(page);
+            let name = Text::literal(lang::get(page.name()));
+            crate::widgets::record(&name.plain(), rect, has);
+            let hover = has && ui::hovered(cursor, px, py, pw, ph);
+            let focused = self.focus == Some(Target::Page(page));
+            crate::widgets::narratable(|| {
+                crate::widgets::Narratable::button(name.plain(), rect, has)
+                    .hovered(hover)
+                    .focused(focused)
+            });
+            crate::widgets::widget_cursor(hover, has);
+            if has {
+                crate::widgets::target_as(rect, crate::widgets::Kind::Tab(open));
+            }
+            if open {
+                style::fill(batch, atlas, rect, style::OPEN);
+                style::fill(batch, atlas, [px, py, 2.0, ph], style::ACCENT);
+            }
+            let color = match (open || hover, has) {
+                (true, _) => style::WHITE,
+                (false, true) => style::SOFT,
+                (false, false) => style::MUTED,
+            };
+            let ty = py + ((ph - 8.0) / 2.0).floor();
+            let name = Text::literal(style::fit(atlas, &name.plain(), pw - 12.0));
+            batch.text_styled(atlas, &name, px + 8.0, ty, color, true);
+            if focused {
+                style::ring(batch, atlas, rect, style::WHITE);
+            }
+        }
+    }
+    fn draw_search(
+        &mut self,
+        batch: &mut HudBatch,
+        atlas: &HudAtlas,
+        cols: &Columns,
+        cursor: (f32, f32),
+    ) {
+        let rect = cols.search();
+        style::well(batch, atlas, rect);
+        let focused = self.focus == Some(Target::Search);
+        self.search.focused = focused;
+        let [x, y, w, h] = rect;
+        let clear = cols.clear();
+        (self.search.x, self.search.y) = (x + 5.0, y + ((h - 8.0) / 2.0).floor());
+        self.search.width = clear[0] - self.search.x;
+        self.search.text_color = style::WHITE;
+        self.search.draw(batch, atlas, None);
+        if self.search.value.is_empty() && !focused {
+            let hint = Text::literal(self.search.message.clone());
+            batch.text_styled(atlas, &hint, x + 5.0, self.search.y, style::MUTED, true);
+        }
+        if !self.search.value.is_empty() {
+            let hover = ui::hovered(cursor, clear[0], clear[1], clear[2], clear[3]);
+            crate::widgets::widget_cursor(hover, true);
+            let color = if hover { style::WHITE } else { style::MUTED };
+            let cy = y + ((h - 8.0) / 2.0).floor();
+            ui::centered_text(
+                batch,
+                atlas,
+                &Text::literal("×"),
+                clear[0],
+                cy,
+                clear[2],
+                color,
+            );
+        }
+        if focused {
+            style::ring(batch, atlas, [x, y, w, h], style::WHITE);
+        }
+    }
+    #[allow(clippy::too_many_arguments)]
+    fn draw_row(
+        &self,
+        batch: &mut HudBatch,
+        atlas: &HudAtlas,
+        s: &Settings,
+        cols: &Columns,
+        item: Item,
+        y: f32,
+        hover: bool,
+        focused: bool,
+    ) {
+        let rect = [cols.list_x, y, cols.list_w, style::ROW];
+        let live = item.blocked(s).is_none();
+        let label = item.label(s).plain();
+        let (name, value) = parts(item, s, self.binding.is_some());
+        let (tx, tw) = cols.track();
+        let right = tx + tw;
+        let control = [
+            tx,
+            y + (style::ROW - style::CONTROL_H) / 2.0,
+            tw,
+            style::CONTROL_H,
+        ];
+        let active = live && (hover || focused || self.dragging == Some(item));
+        if active {
+            let lit = [rect[0] + 2.0, y + 1.0, rect[2] - 4.0, style::ROW - 2.0];
+            style::fill(batch, atlas, lit, style::HOVER);
+        }
+        crate::widgets::widget_cursor(hover, live);
+        let slider = item.slider(s);
+        let switch = item.switch(s);
+        // The control socket's widget tree, the narrator and a controller's focus.
+        let kind = match slider {
+            Some(value) => crate::widgets::Kind::Slider {
+                value,
+                track: [tx + 5.0, tw - 10.0],
+            },
+            None => crate::widgets::Kind::Button,
+        };
+        crate::widgets::record_as(&label, rect, live, kind);
+        crate::widgets::narratable(|| {
+            match (switch, slider) {
+                (Some(on), _) => crate::widgets::Narratable::checkbox(name.clone(), on, rect, live),
+                (_, Some(_)) => crate::widgets::Narratable::slider(label.clone(), rect, live),
+                _ => crate::widgets::Narratable::button(label.clone(), rect, live),
+            }
+            .hovered(hover)
+            .focused(focused)
+        });
+        if live {
+            crate::widgets::target_as(rect, kind);
+        }
+        let color = if live { style::WHITE } else { style::MUTED };
+        let soft = if live { style::SOFT } else { style::MUTED };
+        let ty = y + ((style::ROW - 8.0) / 2.0).floor();
+        let lit = live && (hover || self.dragging == Some(item));
+        let left = rect[0] + style::INSET;
+        // An action (Calibrate...) is a button across the row, as vanilla's lists have them.
+        if switch.is_none() && slider.is_none() && value.is_none() {
+            let wide = [left, control[1], right - left, style::CONTROL_H];
+            style::button(batch, atlas, wide, &Text::literal(name), (lit, live, false));
+        } else {
+            let value = value.unwrap_or_default();
+            let vw = atlas.font.width(&value);
+            // Where the control starts, and the value's text for a slider at rest.
+            let start = match (switch, slider) {
+                (Some(_), _) => right - style::CONTROL_H,
+                (None, Some(_)) if active => tx,
+                (None, Some(_)) => right - vw,
+                (None, None) => right - vw - 18.0,
+            };
+            match (switch, slider) {
+                (Some(on), _) => style::checkbox(batch, atlas, right, y, on, live),
+                // A slider shows its track, the value on it, while it is pointed at, focused or held.
+                (None, Some(position)) => {
+                    let value = Text::literal(value);
+                    if active {
+                        style::slider(batch, atlas, control, &value, position, (lit, live));
+                    } else {
+                        batch.text_styled(atlas, &value, start, ty, soft, true);
+                    }
+                }
+                (None, None) => {
+                    let value = Text::literal(value);
+                    style::cycler(
+                        batch,
+                        atlas,
+                        [start, y + 3.0, vw + 18.0, 14.0],
+                        &value,
+                        (lit, live),
+                    );
+                }
+            }
+            // The name, cut short before the control where a translation runs long.
+            let shown = Text::literal(style::fit(atlas, &name, start - 6.0 - left));
+            batch.text_styled(atlas, &shown, left, ty, color, true);
+        }
+        if focused {
+            style::ring(
+                batch,
+                atlas,
+                [rect[0] + 1.0, y, rect[2] - 2.0, style::ROW],
+                style::WHITE,
+            );
+        }
+    }
+    /// Vanilla's scroller, inside the panel's right edge, sized as `ui::Scroll` drags it.
+    fn draw_scroller(&self, batch: &mut HudBatch, atlas: &HudAtlas, cols: &Columns, content: f32) {
+        if !cols.scrolls() {
+            return;
+        }
+        let Some((y, bar)) =
+            ui::scrollbar_thumb(cols.top, cols.bottom, content, self.scroll.amount)
+        else {
+            return;
+        };
+        let x = cols.bar_x();
+        let track = [x, cols.top, style::SCROLLER_W, cols.bottom - cols.top];
+        style::scroller(batch, atlas, track, [x, y, style::SCROLLER_W, bar]);
+    }
+    /// The strip under the plate: the hovered or focused setting's name and
+    /// cost, then what it does (or why it can't be used now); with none, what
+    /// the open page holds.
+    fn draw_dock(
+        &self,
+        batch: &mut HudBatch,
+        atlas: &HudAtlas,
+        s: &Settings,
+        cols: &Columns,
+        setting: Option<Setting>,
+        current: Option<Page>,
+    ) {
+        let [x, y, w, _] = cols.dock;
+        style::panel(batch, atlas, cols.dock);
+        let left = x + 12.0;
+        let (text, color) = match setting {
+            Some(setting) => {
+                let (name, _) = parts(setting.item, s, false);
+                let cost = lang::get(setting.cost.label());
+                let line = style::fit(atlas, &format!("{name} · {cost}"), w - 32.0);
+                let line = Text::literal(line).with_color(setting.cost.rgb());
+                let square = [left, y + 10.0, 4.0, 4.0];
+                style::fill(batch, atlas, square, style::cost_color(setting.cost));
+                batch.text_styled(atlas, &line, left + 8.0, y + 8.0, style::WHITE, true);
+                match setting.item.blocked(s) {
+                    Some(why) => (lang::get(why), style::MUTED),
+                    None => (
+                        lang::get(description(setting.item, s, setting.text)),
+                        style::GREY,
+                    ),
+                }
+            }
+            None => {
+                let Some(page) = current else { return };
+                let name = Text::literal(lang::get(page.name()));
+                batch.text_styled(atlas, &name, left, y + 8.0, style::WHITE, true);
+                (lang::get(page.about()), style::GREY)
+            }
+        };
+        let lines = atlas.font.split(&Text::literal(text), w - 24.0);
+        for (i, line) in lines.iter().take(2).enumerate() {
+            batch.text_styled(atlas, line, left, y + 20.0 + i as f32 * 10.0, color, true);
+        }
+    }
+
+    /// A press (or a drag with `drag`) at `(x, y)`.
+    #[allow(clippy::too_many_arguments)]
+    pub fn click(
+        &mut self,
+        s: &mut Settings,
+        (x, y): (f32, f32),
+        (w, h): (f32, f32),
+        framebuffer: [i32; 2],
+        drag: bool,
+        right: bool,
+    ) -> Vec<Action> {
+        self.keep(s);
+        let (cols, lines, content) = self.layout(s, w, h);
+        let at = |[rx, ry, rw, rh]: [f32; 4]| ui::hovered((x, y), rx, ry, rw, rh);
+        if drag {
+            // AbstractScrollArea.mouseDragged: the held scrollbar follows the pointer.
+            if self.scroll.held() && !cols.scrolls() {
+                self.scroll.release();
+            }
+            if self.scroll.held() {
+                self.picked = None;
+                self.scroll.drag(y, cols.top, cols.bottom, content);
+                return Vec::new();
+            }
+            if let Some(item) = self.dragging {
+                item.set_slider(s, cols.slider_at(x));
+                self.changed = true;
+                return vec![Action::SliderDrag];
+            }
+            return Vec::new();
+        }
+        if right {
+            return Vec::new();
+        }
+        if cols.scrolls()
+            && self
+                .scroll
+                .press((x, y), cols.bar_x(), cols.top, cols.bottom, content)
+        {
+            return Vec::new();
+        }
+        if at(cols.search()) {
+            if !self.search.value.is_empty() && at(cols.clear()) {
+                self.search.set_value("");
+                self.searched();
+                return vec![Action::ButtonClick];
+            }
+            self.focus = Some(Target::Search);
+            self.search.reset_blink();
+            self.search.move_cursor_to_end(false);
+            return Vec::new();
+        }
+        if self.focus == Some(Target::Search) {
+            self.focus = None;
+        }
+        if at(cols.button(0)) {
+            self.focus = Some(Target::Done);
+            return vec![Action::ButtonClick, Action::Done];
+        }
+        if self.changed && at(cols.button(1)) {
+            // Undo goes away with the change it undid.
+            self.focus = None;
+            self.undo(s);
+            return vec![Action::ButtonClick, Action::Changed];
+        }
+        for (i, page) in Page::ALL.into_iter().enumerate() {
+            if at(cols.page(i)) && self.has(page, &lines) {
+                self.focus = Some(Target::Page(page));
+                self.pick(page, &lines, &cols, content);
+                return vec![Action::ButtonClick];
+            }
+        }
+        if y < cols.top || y >= cols.bottom {
+            return Vec::new();
+        }
+        let Some(item) = lines.iter().find_map(|line| {
+            let ry = self.row_y(&cols, line);
+            let setting = line.setting?;
+            at([cols.list_x, ry, cols.list_w, style::ROW]).then_some(setting.item)
+        }) else {
+            return Vec::new();
+        };
+        // A disabled control does nothing: no sound, no preset change.
+        if item.blocked(s).is_some() {
+            return Vec::new();
+        }
+        self.focus = Some(Target::Item(item));
+        let actions = self.activate(s, item, false, framebuffer, Some((x, &cols)));
+        self.mark(&actions);
+        actions
+    }
+    /// Press `item`: `at` is where on its row and its slider's track (`None`
+    /// from the keyboard).
+    fn activate(
+        &mut self,
+        s: &mut Settings,
+        item: Item,
+        back: bool,
+        framebuffer: [i32; 2],
+        at: Option<(f32, &Columns)>,
+    ) -> Vec<Action> {
+        match item {
+            Item::Horizon(H::HdrCalibrate) if setup(s) == Setup::Changed => {
+                s.horizon.hdr_peak = 0;
+                s.horizon.hdr_paper_white = 0;
+                vec![Action::ButtonClick, Action::Changed]
+            }
+            Item::Horizon(H::HdrCalibrate) => vec![Action::ButtonClick, Action::Calibrate],
+            Item::Horizon(H::HdrKey) => {
+                vec![
+                    Action::ButtonClick,
+                    Action::BindKey(crate::graphics::HDR_KEY),
+                ]
+            }
+            _ if item.slider(s).is_some() => {
+                self.can_change_value = true;
+                // A press on the track sets the value there; on the name, only focuses.
+                match at {
+                    Some((x, cols)) if x >= cols.track().0 => {
+                        self.dragging = Some(item);
+                        item.set_slider(s, cols.slider_at(x));
+                        vec![Action::SliderDrag]
+                    }
+                    _ => Vec::new(),
+                }
+            }
+            _ => {
+                self.can_change_value = false;
+                item.cycle(s, back, framebuffer);
+                vec![Action::ButtonClick, Action::Changed]
+            }
+        }
+    }
+    /// Lets go of a slider (true: it plays its click) or the scrollbar.
+    pub fn release(&mut self) -> bool {
+        self.scroll.release();
+        self.dragging.take().is_some()
+    }
+    /// The mouse wheel at the cursor. It scrolls the list, except that a hovered value
+    /// stepped by `<` `>` takes the step (`CycleButton.mouseScrolled`: up goes back)
+    /// while the "Scroll wheel changes settings" extra is on. A slider, a tick box and a
+    /// focused row don't take it, wherever the focus came from: the keyboard and a
+    /// controller step them with Left and Right.
+    pub fn wheel(
+        &mut self,
+        s: &mut Settings,
+        (w, h): (f32, f32),
+        (x, y): (f32, f32),
+        framebuffer: [i32; 2],
+        amount: f32,
+    ) -> Vec<Action> {
+        if amount != 0.0 && s.extras.wheel_cycles_settings {
+            let (cols, lines, _) = self.layout(s, w, h);
+            let hovered = (y >= cols.top && y < cols.bottom)
+                .then(|| {
+                    lines.iter().find_map(|line| {
+                        let setting = line.setting?;
+                        let ry = self.row_y(&cols, line);
+                        ui::hovered((x, y), cols.list_x, ry, cols.list_w, style::ROW)
+                            .then_some(setting.item)
+                    })
+                })
+                .flatten();
+            if let Some(item) = hovered
+                && item.steps(s)
+                && item.blocked(s).is_none()
+            {
+                item.cycle(s, amount > 0.0, framebuffer);
+                self.changed = true;
+                return vec![Action::ButtonClick, Action::Changed];
+            }
+        }
+        self.scroll(s, (w, h), amount);
+        Vec::new()
+    }
+    /// The mouse wheel scrolls the list.
+    pub fn scroll(&mut self, s: &Settings, (w, h): (f32, f32), amount: f32) {
+        let (cols, _, content) = self.layout(s, w, h);
+        self.picked = None;
+        self.scroll
+            .wheel(amount, 18.0, cols.top, cols.bottom, content);
+    }
+    /// Whether `(x, y)` is on a row of the list that a press changes at once (a value stepped by
+    /// `<` `>`, a tick box, a button): a finger moving from there scrolls instead. A slider's row
+    /// is not, as a sideways drag moves it.
+    pub fn row_button_at(&mut self, s: &Settings, (w, h): (f32, f32), (x, y): (f32, f32)) -> bool {
+        let (cols, lines, _) = self.layout(s, w, h);
+        if y < cols.top || y >= cols.bottom {
+            return false;
+        }
+        lines.iter().any(|line| {
+            line.setting.is_some_and(|setting| {
+                setting.item.slider(s).is_none()
+                    && ui::hovered(
+                        (x, y),
+                        cols.list_x,
+                        self.row_y(&cols, line),
+                        cols.list_w,
+                        style::ROW,
+                    )
+            })
+        })
+    }
+    /// What Tab steps through, in order, with where each is on screen. The
+    /// arrows (`near`) only reach the rows in view and the one next past either
+    /// edge, which scrolls in: a row farther out sits under the tabs or the
+    /// buttons and would take the step from them.
+    fn focusables(
+        &self,
+        s: &Settings,
+        cols: &Columns,
+        lines: &[Line],
+        near: bool,
+    ) -> Vec<(Target, [f32; 4])> {
+        let mut out = vec![(Target::Search, cols.search())];
+        for (i, page) in Page::ALL.into_iter().enumerate() {
+            if self.has(page, lines) {
+                out.push((Target::Page(page), cols.page(i)));
+            }
+        }
+        // Every setting row, and whether it can take the focus.
+        let rows: Vec<(Item, f32, bool)> = lines
+            .iter()
+            .filter_map(|line| {
+                let setting = line.setting?;
+                let live = setting.item.blocked(s).is_none();
+                Some((setting.item, self.row_y(cols, line), live))
+            })
+            .collect();
+        // For the arrows, the rows in view and the next live one past either
+        // edge, over any greyed ones (HDR's page on a display without HDR).
+        let in_view = |y: f32| y + style::ROW > cols.top && y < cols.bottom;
+        let reach = match rows.iter().position(|r| in_view(r.1)) {
+            Some(first) if near => {
+                let last = rows.iter().rposition(|r| in_view(r.1)).unwrap_or(first);
+                let lo = rows[..first].iter().rposition(|r| r.2).unwrap_or(first);
+                let hi = rows[last + 1..]
+                    .iter()
+                    .position(|r| r.2)
+                    .map_or(last, |i| last + 1 + i);
+                lo..hi + 1
+            }
+            None if near => 0..0,
+            _ => 0..rows.len(),
+        };
+        for &(item, y, live) in &rows[reach] {
+            if !live {
+                continue;
+            }
+            out.push((
+                Target::Item(item),
+                [cols.list_x, y, cols.list_w, style::ROW],
+            ));
+        }
+        if self.changed {
+            out.push((Target::Undo, cols.button(1)));
+        }
+        out.push((Target::Done, cols.button(0)));
+        out
+    }
+    /// Focus `target`, scrolling its row into the list's view.
+    fn focus_on(
+        &mut self,
+        s: &Settings,
+        target: Target,
+        rect: [f32; 4],
+        cols: &Columns,
+        content: f32,
+    ) {
+        self.focus = Some(target);
+        self.can_change_value = matches!(target, Target::Item(i) if i.slider(s).is_some());
+        if let Target::Item(_) = target {
+            let [_, y, _, h] = rect;
+            if y < cols.top {
+                self.scroll.amount -= cols.top - y;
+            } else if y + h > cols.bottom {
+                self.scroll.amount += y + h - cols.bottom;
+            }
+            self.picked = None;
+            self.scroll.clamp(cols.top, cols.bottom, content);
+        }
+    }
+
+    /// Keys: typing in the search field, Tab and the arrows between controls,
+    /// Left and Right on a slider, Enter or Space to press. False: the screen
+    /// handles it (Escape closes it, as `Screen.keyPressed` does first).
+    #[allow(clippy::too_many_arguments)]
+    pub fn key_modifiers(
+        &mut self,
+        s: &mut Settings,
+        key: winit::keyboard::KeyCode,
+        text: Option<&str>,
+        shift: bool,
+        (w, h): (f32, f32),
+        framebuffer: [i32; 2],
+    ) -> (Vec<Action>, bool) {
+        use winit::keyboard::KeyCode as K;
+        self.keep(s);
+        if key == K::Escape {
+            self.can_change_value = false;
+            return (Vec::new(), false);
+        }
+        if self.focus == Some(Target::Search)
+            && !matches!(key, K::Tab | K::ArrowDown | K::Enter | K::NumpadEnter)
+        {
+            let before = self.search.value.clone();
+            if !self.search.key(key, false, shift)
+                && let Some(t) = text
+            {
+                let typed: String = t.chars().filter(|c| !c.is_control()).collect();
+                self.type_text(&typed);
+            }
+            if self.search.value != before {
+                self.searched();
+            }
+            return (Vec::new(), true);
+        }
+        let (cols, lines, content) = self.layout(s, w, h);
+        let near = key != K::Tab;
+        let focusables = self.focusables(s, &cols, &lines, near);
+        let current = self
+            .focus
+            .and_then(|f| focusables.iter().position(|&(t, _)| t == f));
+        if key == K::Tab {
+            let n = focusables.len();
+            let next = match (current, shift) {
+                (Some(i), false) => (i + 1) % n,
+                (Some(i), true) => (i + n - 1) % n,
+                (None, false) => 0,
+                (None, true) => n - 1,
+            };
+            let (target, rect) = focusables[next];
+            self.focus_on(s, target, rect, &cols, content);
+            return (Vec::new(), true);
+        }
+        if matches!(key, K::ArrowLeft | K::ArrowRight)
+            && self.can_change_value
+            && let Some(Target::Item(item)) = self.focus
+            && item.slider(s).is_some()
+        {
+            item.step_slider(s, key == K::ArrowRight, cols.track().1 + 8.0);
+            self.changed = true;
+            return (vec![Action::SliderDrag], true);
+        }
+        if matches!(
+            key,
+            K::ArrowUp | K::ArrowDown | K::ArrowLeft | K::ArrowRight
+        ) {
+            use crate::gamepad::Button as B;
+            let dir = match key {
+                K::ArrowUp => B::DPadUp,
+                K::ArrowDown => B::DPadDown,
+                K::ArrowLeft => B::DPadLeft,
+                _ => B::DPadRight,
+            };
+            let next = match current {
+                Some(i) => {
+                    let rects: Vec<[f32; 4]> = focusables.iter().map(|f| f.1).collect();
+                    crate::gamepad::focus_step_rect(focusables[i].1, dir, &rects)
+                }
+                // Nothing focused in view: going down, the first setting from the
+                // view's top on (the next past its bottom where greyed rows fill it);
+                // going up, the last one down to its bottom.
+                None => {
+                    let mut rows = focusables
+                        .iter()
+                        .enumerate()
+                        .filter(|(_, (t, _))| matches!(t, Target::Item(_)));
+                    let pick = if key == K::ArrowUp {
+                        rows.rfind(|(_, (_, [_, y, ..]))| *y + style::ROW <= cols.bottom)
+                    } else {
+                        rows.find(|(_, (_, [_, y, ..]))| *y >= cols.top)
+                    };
+                    pick.map(|(i, _)| i)
+                }
+            };
+            let Some(next) = next else {
+                return (Vec::new(), false);
+            };
+            let (target, rect) = focusables[next];
+            self.focus_on(s, target, rect, &cols, content);
+            self.can_change_value = false;
+            return (Vec::new(), true);
+        }
+        if matches!(key, K::Space | K::Enter | K::NumpadEnter)
+            && let Some(target) = self.focus
+        {
+            let actions = match target {
+                Target::Search => Vec::new(),
+                Target::Page(page) => {
+                    self.pick(page, &lines, &cols, content);
+                    vec![Action::ButtonClick]
+                }
+                // A row greyed out while focused does nothing, as a click on it doesn't.
+                Target::Item(item) if item.blocked(s).is_some() => Vec::new(),
+                Target::Item(item) if item.slider(s).is_some() => {
+                    self.can_change_value = !self.can_change_value;
+                    Vec::new()
+                }
+                Target::Item(item) => self.activate(s, item, shift, framebuffer, None),
+                Target::Undo => {
+                    self.undo(s);
+                    // Undo goes away with the change it undid.
+                    self.focus = Some(Target::Done);
+                    return (vec![Action::ButtonClick, Action::Changed], true);
+                }
+                Target::Done => vec![Action::ButtonClick, Action::Done],
+            };
+            self.mark(&actions);
+            return (actions, true);
+        }
+        (Vec::new(), false)
+    }
+    /// Whether the search field takes the keys.
+    pub fn typing(&self) -> bool {
+        self.focus == Some(Target::Search)
+    }
+    /// Text typed into the search field (the keyboard, a controller's on-screen keyboard).
+    pub fn type_text(&mut self, text: &str) {
+        if !text.is_empty() {
+            self.search.insert_text(text);
+            self.searched();
+        }
+    }
+    /// Ctrl+A/C/V/X in the search field.
+    pub fn shortcut(
+        &mut self,
+        shortcut: crate::clipboard::EditShortcut,
+        clipboard: &mut dyn crate::clipboard::Clipboard,
+    ) -> bool {
+        if !self.typing() {
+            return false;
+        }
+        let before = self.search.value.clone();
+        self.search.shortcut(shortcut, clipboard);
+        if self.search.value != before {
+            self.searched();
+        }
+        // Whatever it did: the key is the field's, not something to type.
+        true
+    }
+    /// The search changed: the list starts over at its top.
+    fn searched(&mut self) {
+        self.scroll.amount = 0.0;
+        self.picked = None;
+>>>>>>> starling-client/starling
     }
 }
 
@@ -1696,6 +3337,7 @@ mod tests {
         assert!(y >= 0.0 && x + w <= size.0);
         // Undo, over Done, stays clear of the page list.
         assert!(cols.button(1)[1] >= y + h);
+<<<<<<< HEAD
         ui.click(
             &mut s,
             (x + w / 2.0, y + h / 2.0),
@@ -1705,6 +3347,49 @@ mod tests {
             false,
         );
         assert_eq!(ui.current_page(&s, size), Some(Page::Hdr));
+||||||| 121742ad89
+        ui.click(&mut s, (x + w / 2.0, y + h / 2.0), size, FB, false, false);
+        let (_, lines, _) = ui.layout(&s, size.0, size.1);
+        assert_eq!(ui.current(&lines), Some(Page::Hdr));
+    }
+
+    #[test]
+    fn growing_the_window_keeps_the_scroll_within_the_list() {
+        let s = Settings::default();
+        let mut ui = GraphicsUi::default();
+        ui.scroll(&s, SIZE, -1000.0);
+        assert!(ui.scroll.amount > 0.0);
+        let (cols, lines, _) = ui.layout(&s, 640.0, 4000.0);
+        assert_eq!(ui.scroll.amount, 0.0);
+        assert_eq!(ui.row_y(&cols, &lines[0]), cols.top);
+=======
+        ui.click(&mut s, (x + w / 2.0, y + h / 2.0), size, FB, false, false);
+        let (_, lines, _) = ui.layout(&s, size.0, size.1);
+        assert_eq!(ui.current(&lines), Some(Page::Hdr));
+    }
+
+    #[test]
+    fn a_finger_scrolls_from_a_stepped_row_and_drags_a_slider() {
+        let s = Settings::default();
+        let mut ui = GraphicsUi::default();
+        let [x, y, w, h] = row(&mut ui, &s, Item::Vanilla(Opt::Clouds));
+        assert!(ui.row_button_at(&s, SIZE, (x + w - 10.0, y + h / 2.0)));
+        let [x, y, w, h] = row(&mut ui, &s, Item::Horizon(H::ChunkUpdates));
+        assert!(!ui.row_button_at(&s, SIZE, (x + w - 10.0, y + h / 2.0)));
+        // Off the list: nothing to scroll past.
+        assert!(!ui.row_button_at(&s, SIZE, (1.0, 1.0)));
+    }
+
+    #[test]
+    fn growing_the_window_keeps_the_scroll_within_the_list() {
+        let s = Settings::default();
+        let mut ui = GraphicsUi::default();
+        ui.scroll(&s, SIZE, -1000.0);
+        assert!(ui.scroll.amount > 0.0);
+        let (cols, lines, _) = ui.layout(&s, 640.0, 4000.0);
+        assert_eq!(ui.scroll.amount, 0.0);
+        assert_eq!(ui.row_y(&cols, &lines[0]), cols.top);
+>>>>>>> starling-client/starling
     }
 
     #[test]

@@ -3,12 +3,16 @@
 //! (suggestions, autocorrect, swipe, its clipboard) instead of sending NativeActivity's key events.
 //! Each edit comes back whole (text and selection) and is set on the field; the field's own changes
 //! (Tab, the history, a line sent, a hardware keyboard) go back to the editor. The fields it cannot
-//! read (a mod's, the recipe book's and the options' searches) keep NativeActivity's keyboard.
+//! read (a mod's) keep NativeActivity's keyboard.
 // The editor exists on Android only; the rest is the game's side of it.
 #![cfg_attr(not(target_os = "android"), allow(dead_code))]
 
 use super::super::{Game, books::BookScreen};
-use horizon_client::{clipboard::FieldId, containers::BlockEntity};
+use horizon_client::{
+    clipboard::{FieldId, filter_text},
+    containers::BlockEntity,
+    ui::EditBox,
+};
 use winit::keyboard::KeyCode;
 
 /// The editor's flags (TextMirror.java): autocorrect and suggestions (messages, books, signs),
@@ -16,13 +20,14 @@ use winit::keyboard::KeyCode;
 /// from 8 (EditorInfo.IME_ACTION_*).
 const SUGGEST: i32 = 1;
 const MULTILINE: i32 = 2;
+const PASSWORD: i32 = 4;
 const SEARCH: i32 = 3 << 8;
 const SEND: i32 = 4 << 8;
 const NEXT: i32 = 5 << 8;
 const DONE: i32 = 6 << 8;
 
 /// The field shown now, as the editor mirrors it.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub(super) struct Field {
     /// Which field: another one starts afresh in the editor.
     id: FieldId,
@@ -33,6 +38,24 @@ pub(super) struct Field {
     /// The most characters it takes, 0 where only its width limits it.
     max: usize,
     flags: i32,
+}
+impl std::fmt::Debug for Field {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Field")
+            .field("id", &self.id)
+            .field(
+                "text",
+                &if self.flags & PASSWORD != 0 {
+                    "<hidden>"
+                } else {
+                    &self.text
+                },
+            )
+            .field("selection", &self.selection)
+            .field("max", &self.max)
+            .field("flags", &self.flags)
+            .finish()
+    }
 }
 
 /// What the editor is told this frame.
@@ -95,6 +118,21 @@ impl Mirror {
         Some(push)
     }
 
+    /// An explicit field tap must reopen even a floating keyboard, whose height stays zero.
+    fn sync_requested(&mut self, field: Option<Field>, requested: bool) -> Option<Push> {
+        match self.sync(field) {
+            Some(Push::Update(f, cursor, anchor, generation)) if requested => {
+                Some(Push::Show(f, cursor, anchor, generation))
+            }
+            None if requested => {
+                let f = self.shown.clone()?;
+                let (_, cursor, anchor) = held(&f, Some(&f));
+                Some(Push::Show(f, cursor, anchor, self.generation))
+            }
+            push => push,
+        }
+    }
+
     /// An edit the editor made on the update `generation` saw: whether it is for `field`, the
     /// field shown now (older ones were for the one before).
     fn takes(&self, generation: i32, field: Option<FieldId>) -> bool {
@@ -131,6 +169,22 @@ fn held(field: &Field, shown: Option<&Field>) -> (Option<(usize, usize)>, i32, i
     }
 }
 
+/// The editor's text and selection on a box that keeps its own cursor, through the box's filter
+/// and limit (`EditBox.insertText`): a position after a character it drops moves back with it.
+fn edit_box_set(edit: &mut EditBox, text: &str, cursor: usize, anchor: usize) {
+    let multiline = edit.multiline;
+    let kept = |pos: usize| {
+        let before: String = text.chars().take(pos).collect();
+        filter_text(&before, multiline).chars().count()
+    };
+    let value = filter_text(text, multiline);
+    if value != edit.value {
+        edit.set_value(&value);
+    }
+    edit.set_cursor(kept(anchor), false);
+    edit.set_cursor(kept(cursor), true);
+}
+
 /// Android's KEYCODE_* the editor passes on (TextMirror.key), as winit's.
 fn android_key(code: i32) -> Option<KeyCode> {
     Some(match code {
@@ -145,7 +199,48 @@ fn android_key(code: i32) -> Option<KeyCode> {
     })
 }
 
+/// A box that keeps its own cursor, as the editor mirrors it.
+fn edit_box_field(id: FieldId, edit: &EditBox, flags: i32) -> Field {
+    Field {
+        id,
+        text: edit.value.clone(),
+        selection: Some((edit.cursor, edit.highlight)),
+        max: edit.max_length,
+        flags,
+    }
+}
+
+/// `edit_box_set` on a box of digits (World Options' LAN port, as `world_options_text` types
+/// in it): the rest is dropped, and a position after it moves back with it.
+fn digits_set(edit: &mut EditBox, text: &str, cursor: usize, anchor: usize) {
+    let kept = |pos: usize| text.chars().take(pos).filter(char::is_ascii_digit).count();
+    let value: String = text.chars().filter(char::is_ascii_digit).collect();
+    if value != edit.value {
+        edit.set_value(&value);
+    }
+    edit.set_cursor(kept(anchor), false);
+    edit.set_cursor(kept(cursor), true);
+}
+
 impl Game<'_> {
+    /// The game rules' screen whose box takes the keys: World Options' or Create New World's.
+    fn typing_rules(&mut self) -> Option<&mut horizon_client::game_rules_screen::RulesScreen> {
+        let rules = match self.text_context()? {
+            "world" => self.world_rules()?,
+            "title" => self.title.as_mut()?.creation_rules()?,
+            _ => return None,
+        };
+        rules.typing().then_some(rules)
+    }
+
+    /// The game rules' box that takes the keys, as the editor mirrors it: the search finds rules,
+    /// a number box holds one's value (EditGameRulesScreen); another box starts afresh.
+    fn rules_mirror(&mut self) -> Option<Field> {
+        let (index, edit) = self.typing_rules()?.typed_box()?;
+        let flags = if index == 0 { SEARCH } else { DONE };
+        Some(edit_box_field(("rules", index), edit, flags))
+    }
+
     /// The text field shown now as the editor mirrors it; None where there is none, or one the
     /// editor cannot read.
     pub(super) fn mirror_field(&mut self) -> Option<Field> {
@@ -213,17 +308,60 @@ impl Game<'_> {
             }
             // AnvilScreen's name box holds 50.
             "anvil" => field(("anvil", 0), &self.station.as_ref()?.name, None, 50, DONE),
+            // A tap on the box puts its cursor under the finger: the editor holds it too.
             "creative" => field(
                 ("creative", 0),
                 &self.creative_screen.search.value,
-                None,
+                Some((
+                    self.creative_screen.search.cursor,
+                    self.creative_screen.search.highlight,
+                )),
                 super::super::clipboard::CREATIVE_SEARCH_CHARS,
                 SEARCH,
             ),
+            // RecipeBookComponent's search box.
+            "recipe" => edit_box_field(("recipe", 0), self.recipe_search_box()?, SEARCH),
+            // The options' searches (languages, settings, packs), Skin Customization's name and
+            // a custom button's text.
+            "options" => {
+                let typed = self.ui.options.focused_text()?;
+                let flags = if typed.search { SEARCH } else { DONE };
+                let id = ("options", typed.index);
+                field(id, &typed.value, Some(typed.selection), typed.max, flags)
+            }
+            // World Options' game rules (their search and number boxes), else its LAN port.
+            "world" => {
+                if let Some(rules) = self.rules_mirror() {
+                    return Some(rules);
+                }
+                edit_box_field(("port", 0), self.world_options_port()?, DONE)
+            }
+            #[cfg(target_os = "android")]
+            "catalog" => field(("catalog", 0), self.catalog_query(), None, 0, SEARCH),
             "title" => {
+                // Create New World's game rules, which `focused_field` leaves out.
+                if let Some(rules) = self.rules_mirror() {
+                    return Some(rules);
+                }
+                let password = self.title.as_ref()?.password_focused();
+                let selection = self.title.as_mut()?.account_field_selection();
                 let (id, value, max) = self.title.as_mut()?.focused_field()?;
                 let value = value.clone();
-                field(id, &value, None, max, DONE)
+                field(
+                    id,
+                    &value,
+                    selection,
+                    max,
+                    DONE | if password { PASSWORD } else { 0 },
+                )
+            }
+            // A server dialog's text input; another one of its inputs starts afresh. Enter breaks
+            // a line in a multiline box and does nothing in a one-line box (DialogScreen).
+            "dialog" => {
+                let input = self.dialog_input()?;
+                let flags = if input.multiline { MULTILINE } else { DONE };
+                let id = ("dialog", input.index);
+                field(id, &input.value, input.selection, input.max, flags)
             }
             _ => return None,
         })
@@ -236,12 +374,49 @@ impl Game<'_> {
             return;
         };
         match field.id.0 {
+            id if id.starts_with("account-") => {
+                if let Some(title) = self.title.as_mut() {
+                    title.set_account_field(text, cursor, anchor);
+                }
+            }
+            "creative" => {
+                let search = &mut self.creative_screen.search;
+                let before = search.value.clone();
+                edit_box_set(search, text, cursor, anchor);
+                if search.value != before {
+                    self.creative_screen.scroll = 0.0;
+                }
+            }
+            "recipe" => {
+                if let Some(search) = self.recipe_search_box() {
+                    edit_box_set(search, text, cursor, anchor);
+                }
+            }
+            "options" => self
+                .ui
+                .options
+                .set_focused_text(&self.gui.atlas, text, cursor, anchor),
+            // Through the box's responder: the search filters the rules, a number sets its rule.
+            "rules" => {
+                if let Some(rules) = self.typing_rules() {
+                    rules.edit(|b| edit_box_set(b, text, cursor, anchor));
+                }
+            }
+            "port" => {
+                if let Some(port) = self.world_options_port() {
+                    digits_set(port, text, cursor, anchor);
+                }
+            }
             "chat" => self.chat_set_text(text, cursor, anchor),
             "command" => self.command_block_set_text(text, cursor, anchor),
+            "dialog" => match self.dialog_input_box() {
+                Some(edit) => edit_box_set(edit, text, cursor, anchor),
+                None => self.dialog_multiline_set(text),
+            },
             _ => {
                 // A field that types at its end: back to where the two texts part, then the
-                // rest typed.
-                if field.id.0 == "title"
+                // rest typed. The title's fields are named for their screens ("world.name").
+                if self.text_context() == Some("title")
                     && let Some(t) = self.title.as_mut()
                     && t.has_caret_field()
                 {
@@ -283,6 +458,8 @@ impl Game<'_> {
             Some("anvil") => self.station_text(Some(text), false),
             Some("creative") => self.creative_search_edit(Some(text)),
             Some("title") => self.title_edit(Some(text), false),
+            #[cfg(target_os = "android")]
+            Some("catalog") => self.catalog_type(text),
             _ => {}
         }
     }
@@ -300,6 +477,25 @@ impl Game<'_> {
             },
             Some("anvil") if key == KeyCode::Backspace => self.station_text(None, true),
             Some("creative") if key == KeyCode::Backspace => self.creative_search_backspace(false),
+            Some("recipe") if key == KeyCode::Backspace => self.recipe_text(None, true),
+            Some("world") if key == KeyCode::Backspace => self.world_options_text(None),
+            // As the options take them from a keyboard: Enter keeps Skin Customization's name or
+            // leaves a custom button's box, Tab moves the focus on.
+            Some("options") => {
+                let keyed = matches!(
+                    key,
+                    KeyCode::Enter | KeyCode::NumpadEnter | KeyCode::Tab | KeyCode::Backspace
+                );
+                if keyed {
+                    let _ = self.options_key(key, None);
+                }
+            }
+            #[cfg(target_os = "android")]
+            Some("catalog") => match key {
+                KeyCode::Enter | KeyCode::NumpadEnter => self.catalog_submit(),
+                KeyCode::Backspace => self.catalog_backspace(),
+                _ => {}
+            },
             Some("title") => match key {
                 KeyCode::Enter | KeyCode::NumpadEnter => {
                     if let Some(t) = self.title.as_mut() {
@@ -314,6 +510,19 @@ impl Game<'_> {
                 }
                 _ => {}
             },
+            // As the dialog takes them from a keyboard: Tab goes to the next text input. Backspace
+            // comes with nothing before the editor's cursor, where a one-line box's cursor is too;
+            // a multiline box's is at its end, which it would cut.
+            Some("dialog") => {
+                let keyed = match key {
+                    KeyCode::Enter | KeyCode::NumpadEnter | KeyCode::Tab => true,
+                    KeyCode::Backspace => self.dialog_input_box().is_some(),
+                    _ => false,
+                };
+                if keyed {
+                    let _ = self.dialog_key(key, None, None);
+                }
+            }
             _ => {}
         }
     }
@@ -342,7 +551,7 @@ impl Game<'_> {
     /// decided: what the editor did applied in order, then the editor shown, told the field's
     /// own changes or put away; or NativeActivity's keyboard for a field it cannot read.
     #[cfg(target_os = "android")]
-    pub(super) fn android_keyboard(&mut self, keyboard: bool) {
+    pub(in crate::game) fn android_keyboard(&mut self, keyboard: bool) {
         for event in crate::android::take_mirror_events() {
             match event {
                 crate::android::MirrorEvent::Edit {
@@ -353,6 +562,10 @@ impl Game<'_> {
                 } => self.mirror_edit(&text, cursor, anchor, generation),
                 _ if self.touch.mirror.shown.is_none() => {}
                 crate::android::MirrorEvent::Action => self.mirror_action(),
+                // Back closes the keyboard, not the page under the catalog.
+                crate::android::MirrorEvent::Key(111) if self.catalog_typing() => {
+                    self.touch.wanted = false;
+                }
                 crate::android::MirrorEvent::Key(111) => {
                     let _ = self.touch_key_tap(KeyCode::Escape);
                 }
@@ -366,7 +579,11 @@ impl Game<'_> {
         let field = if keyboard { self.mirror_field() } else { None };
         // A field the editor cannot read (not one that just went, with the line sent).
         let unread = keyboard && field.is_none() && self.text_context().is_some();
-        let push = self.touch.mirror.sync(field);
+        let requested = std::mem::take(&mut self.touch.keyboard_request);
+        let push = self
+            .touch
+            .mirror
+            .sync_requested(field, requested && keyboard);
         match &push {
             Some(Push::Show(f, cursor, anchor, generation))
             | Some(Push::Update(f, cursor, anchor, generation)) => {
@@ -388,7 +605,7 @@ impl Game<'_> {
         // NativeActivity's keyboard for the rest; not in the frame the editor goes away, whose
         // hiding (on the UI thread) would come after.
         let native = unread && push != Some(Push::Hide);
-        if native != self.touch.mirror.native
+        if (native != self.touch.mirror.native || native && requested)
             && let Some(window) = &self.window
         {
             window.set_ime_allowed(native);
@@ -413,6 +630,25 @@ mod tests {
             max: 0,
             flags: SUGGEST,
         }
+    }
+
+    #[test]
+    fn tapping_an_unchanged_field_reopens_the_keyboard_without_losing_edits() {
+        let mut m = Mirror::default();
+        let f = field(0, "ab", Some((1, 1)));
+        assert!(matches!(m.sync(Some(f.clone())), Some(Push::Show(..))));
+        assert_eq!(m.sync_requested(Some(f.clone()), false), None);
+        assert_eq!(
+            m.sync_requested(Some(f), true),
+            Some(Push::Show(field(0, "ab", Some((1, 1))), 1, 1, 1))
+        );
+        assert!(m.takes(1, Some(("test", 0))));
+        assert_eq!(
+            m.sync_requested(Some(field(1, "second", Some((3, 3)))), true),
+            Some(Push::Show(field(1, "second", Some((3, 3))), 3, 3, 2)),
+        );
+        assert_eq!(m.sync_requested(None, true), Some(Push::Hide));
+        assert_eq!(m.sync_requested(None, true), None);
     }
 
     #[test]
@@ -498,9 +734,64 @@ mod tests {
     }
 
     #[test]
+    fn an_edit_on_a_box_with_a_cursor_keeps_its_filter_and_limit() {
+        // A server dialog's one-line text input, 5 characters at most.
+        let mut edit = EditBox::new(0.0, 0.0, 200.0, 20.0);
+        edit.max_length = 5;
+        // A line break pasted in the editor is dropped; the cursor after it moves back with it.
+        edit_box_set(&mut edit, "ab\ncd", 5, 1);
+        assert_eq!(edit.value, "abcd");
+        assert_eq!((edit.cursor, edit.highlight), (4, 1));
+        // The selection alone moves.
+        edit_box_set(&mut edit, "abcd", 0, 2);
+        assert_eq!(edit.value, "abcd");
+        assert_eq!((edit.cursor, edit.highlight), (0, 2));
+        // Past the box's limit the text is cut, and the cursor with it.
+        edit_box_set(&mut edit, "abcdefg", 7, 7);
+        assert_eq!(edit.value, "abcde");
+        assert_eq!((edit.cursor, edit.highlight), (5, 5));
+    }
+
+    #[test]
     fn android_keys_the_editor_passes_on() {
         assert_eq!(android_key(67), Some(KeyCode::Backspace));
         assert_eq!(android_key(19), Some(KeyCode::ArrowUp));
         assert_eq!(android_key(29), None);
+    }
+
+    #[test]
+    fn the_lan_ports_box_takes_digits_only() {
+        // World Options' port box, 5 characters at most.
+        let mut port = EditBox::new(0.0, 0.0, 150.0, 20.0);
+        port.max_length = 5;
+        // A letter typed in the editor is dropped; the cursor after it moves back with it.
+        digits_set(&mut port, "25a565", 4, 4);
+        assert_eq!(port.value, "25565");
+        assert_eq!((port.cursor, port.highlight), (3, 3));
+        // Past the box's limit the digits are cut, and the cursor with them.
+        digits_set(&mut port, "2556512", 7, 0);
+        assert_eq!(port.value, "25565");
+        assert_eq!((port.cursor, port.highlight), (5, 0));
+    }
+}
+
+#[cfg(test)]
+mod password_tests {
+    use super::*;
+    #[test]
+    fn password_updates_keep_selection_but_redact_debug_output() {
+        let mut mirror = Mirror::default();
+        let field = Field {
+            id: ("account-password", 0),
+            text: "Secret§123".into(),
+            selection: Some((9, 9)),
+            max: 256,
+            flags: DONE | PASSWORD,
+        };
+        let first = mirror.sync(Some(field.clone())).unwrap();
+        assert!(!format!("{first:?}").contains("Secret"));
+        assert!(mirror.sync(Some(field)).is_none());
+        mirror.edited(1, "Secret§12!3", 9, 9);
+        assert!(!format!("{:?}", mirror.shown).contains("Secret"));
     }
 }

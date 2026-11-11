@@ -281,6 +281,7 @@ impl Game<'_> {
     /// A menu, a screen, the title, a sign or a book is open: the pad drives
     /// it instead of the player.
     pub(super) fn pad_in_menu(&self) -> bool {
+<<<<<<< HEAD
         self.key_focus_screen() || self.prompt_open()
     }
 
@@ -291,6 +292,14 @@ impl Game<'_> {
             || self.screen != Screen::Playing
             || self.sign_edit.is_some()
             || self.book.is_some()
+||||||| 121742ad89
+        self.title.is_some()
+            || self.screen != Screen::Playing
+            || self.sign_edit.is_some()
+            || self.book.is_some()
+=======
+        self.title.is_some() || self.screen != Screen::Playing || self.screen_over_playing()
+>>>>>>> starling-client/starling
     }
 
     /// Which prompt is up: another one starts the controller's focus again.
@@ -619,7 +628,7 @@ impl Game<'_> {
     /// A click (press and release) at a point, the pointer staying there.
     /// A pointer event of the pad's or the keyboard's, as the window would
     /// send it (marked, so it isn't taken for the real mouse).
-    fn pad_synthetic_event(
+    pub(in crate::game) fn pad_synthetic_event(
         &mut self,
         event_loop: &dyn EventLoopCtl,
         id: WindowId,
@@ -2410,7 +2419,7 @@ impl Game<'_> {
 
     /// What a key of the on-screen keyboard does: the same as a typed key in
     /// the field that has focus.
-    fn pad_osk_output(&mut self, out: osk::Output) {
+    pub(in crate::game) fn pad_osk_output(&mut self, out: osk::Output) {
         use osk::Output;
         let (key, text) = match &out {
             Output::Text(t) => (None, Some(t.as_str())),

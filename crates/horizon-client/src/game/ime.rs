@@ -25,7 +25,7 @@ impl Game<'_> {
         if self.sign_edit.is_some() || matches!(self.book, Some(BookScreen::Edit { .. })) {
             return true;
         }
-        match self.screen {
+        let focused = match self.screen {
             Screen::Chat | Screen::CommandBlock | Screen::Social => true,
             Screen::DebugOptions => self
                 .debug_options
@@ -41,7 +41,8 @@ impl Game<'_> {
                 self.mod_browser_typing() || self.recipe_search_focused() || self.station_typing()
             }
             _ => false,
-        }
+        };
+        focused || cfg!(target_os = "android") && self.widget_text_focused()
     }
 
     /// Allow the input method only while a text box has focus.
@@ -80,6 +81,7 @@ impl Game<'_> {
     /// input method's candidate window to the caret
     /// (`TextInputManager.setTextInputArea`, in window pixels).
     pub(super) fn flush_ime(&mut self, hud: &mut HudBatch) {
+        self.touch_text_field(preedit::take_focused_field());
         preedit::draw_overlay(hud, &self.gui.atlas);
         let Some([x0, y0, x1, y1]) = preedit::take_text_input_area() else {
             return;

@@ -22,17 +22,30 @@ pub(super) const CONTROL_HELP: &[&str] = &[
     "graphics-set KEY VALUE         set a Horizon graphics setting (resolutionScale 25..200, presentMode, workers...), apply and save it",
 ];
 
+/// The catalog's shelf for a page's Catalog button.
+#[cfg(target_os = "android")]
+fn catalog_shelf(shelf: horizon_client::options_ui::CatalogShelf) -> starling_catalog::Shelf {
+    use horizon_client::options_ui::CatalogShelf;
+    match shelf {
+        CatalogShelf::Mods => starling_catalog::Shelf::Mods,
+        CatalogShelf::ResourcePacks => starling_catalog::Shelf::ResourcePacks,
+        CatalogShelf::ShaderPacks => starling_catalog::Shelf::ShaderPacks,
+    }
+}
+
 impl Game<'_> {
-    /// One of the game's folders (packs, shader packs, mods) in the file manager. On a phone that
-    /// keeps the game in the app's private files, which no file manager opens, the offer of the
-    /// Starling folder instead.
+    /// One of the game's folders (packs, shader packs, mods) in the file manager. On a phone the
+    /// Files app shows it through Starling's own provider, wherever the game keeps it. A folder it
+    /// can't show from the app's private files gets the offer of the Starling folder instead.
     fn open_game_folder(&mut self, dir: &std::path::Path) {
         let _ = std::fs::create_dir_all(dir);
         #[cfg(target_os = "android")]
-        if horizon_client::logging::game_home() == horizon_client::logging::private_home() {
+        if horizon_client::platform::open_folder(dir) != Some(true)
+            && horizon_client::logging::game_home() == horizon_client::logging::private_home()
+        {
             self.ask_files_offer();
-            return;
         }
+        #[cfg(not(target_os = "android"))]
         super::packs::open_folder(dir);
     }
 
@@ -185,6 +198,8 @@ impl Game<'_> {
         self.open_options_at(from_title, Page::Main);
     }
     pub(super) fn open_options_at(&mut self, from_title: bool, page: Page) {
+        #[cfg(target_os = "android")]
+        self.mobile_options_open();
         // Gameplay keys must not stay held behind the options screen, where
         // bindings can also change before the physical key is released.
         self.keys.clear();
@@ -196,6 +211,10 @@ impl Game<'_> {
         let ui = &mut self.ui.options;
         // The game puts the skin on (game/own_skin.rs).
         ui.skin_page = true;
+        ui.profile_name = horizon_client::accounts::player_name();
+        ui.profile_key = horizon_client::accounts::player_key();
+        ui.skin_cloud = horizon_client::accounts::skin_cloud();
+        ui.offer_catalog();
         ui.open_at(!from_title && self.title.is_none(), page);
         ui.mods_live = mods_live;
         ui.minecart_improvements = minecart_improvements;
@@ -246,12 +265,24 @@ impl Game<'_> {
     pub(super) fn draw_options(&mut self, batch: &mut HudBatch) {
         self.watch_pack_folder();
         self.poll_diagnostics();
+<<<<<<< HEAD
         let context = self.controller_settings_context();
+||||||| 121742ad89
+=======
+        self.show_skin_cloud();
+>>>>>>> starling-client/starling
         let mut ui = std::mem::take(&mut self.ui.options);
+<<<<<<< HEAD
         if ui.controller_open() {
             ui.controller.context = context;
         }
         ui.draw(&self.settings, batch, &self.gui.atlas, self.cursor);
+||||||| 121742ad89
+        ui.draw(&self.settings, batch, &self.gui.atlas, self.cursor);
+=======
+        let cursor = self.options_pointer(&mut ui);
+        ui.draw(&self.settings, batch, &self.gui.atlas, cursor);
+>>>>>>> starling-client/starling
         self.ui.options = ui;
         self.show_calibration(batch.height);
     }
@@ -379,6 +410,7 @@ impl Game<'_> {
             .options
             .shortcut(&self.gui.atlas, shortcut, &mut self.clipboard)
     }
+<<<<<<< HEAD
     pub(super) fn options_scroll(&mut self, amount: f32) -> Result<()> {
         if self.pad_stick_scroll() {
             let size = self.gui_size();
@@ -387,6 +419,14 @@ impl Game<'_> {
                 .scroll_at(&self.settings, size, self.cursor, amount);
             return Ok(());
         }
+||||||| 121742ad89
+    pub(super) fn options_scroll(&mut self, amount: f32) -> Result<()> {
+=======
+    /// The wheel on the options. A finger's scroll (`finger`) only scrolls: a list moved by a
+    /// finger that landed on a cycle button must not cycle it at each step, as a mouse wheel over it
+    /// does (`CycleButton.mouseScrolled`).
+    pub(super) fn options_scroll(&mut self, amount: f32, finger: bool) -> Result<()> {
+>>>>>>> starling-client/starling
         let framebuffer = self.renderer.as_ref().map_or([1280, 720], |r| {
             [r.config.width as i32, r.config.height as i32]
         });
@@ -398,6 +438,12 @@ impl Game<'_> {
             return self.handle_option_events(events);
         }
         let size = self.gui_size();
+        if finger {
+            self.ui
+                .options
+                .scroll_at(&self.settings, size, self.cursor, amount);
+            return Ok(());
+        }
         let events =
             self.ui
                 .options
@@ -421,6 +467,8 @@ impl Game<'_> {
                 Event::DiagnosticsGpu => self.toggle_diagnostic_gpu(),
                 Event::ButtonClick => self.audio.play_button_click(),
                 Event::Changed => {
+                    #[cfg(target_os = "android")]
+                    self.mobile_options_apply();
                     self.settings.save(&Self::options_path());
                     self.apply_settings();
                     self.switch_mods();
@@ -430,6 +478,8 @@ impl Game<'_> {
                     self.ui.options.agent_status = self.agent_status_lines();
                 }
                 Event::SliderDrag => {
+                    #[cfg(target_os = "android")]
+                    self.mobile_options_apply();
                     self.apply_settings();
                 }
                 // Options.createSoundSliderOptionInstance: the preview plays
@@ -480,6 +530,7 @@ impl Game<'_> {
                 Event::OpenModFolder => {
                     self.open_game_folder(&Self::game_dir().join(horizon_client::mod_list::DIR))
                 }
+<<<<<<< HEAD
                 // Horizon's own Add button: the screen picked a hit, the game
                 // owns the folder it lands in.
                 Event::DownloadPack(i) => {
@@ -490,6 +541,13 @@ impl Game<'_> {
                         browser.download(i, &dir, horizon_core::VANILLA_VERSION);
                     }
                 }
+||||||| 121742ad89
+=======
+                #[cfg(target_os = "android")]
+                Event::OpenCatalog(shelf) => self.open_catalog_on(catalog_shelf(shelf)),
+                #[cfg(not(target_os = "android"))]
+                Event::OpenCatalog(_) => {}
+>>>>>>> starling-client/starling
                 Event::DataPacks(ids) => {
                     let resources = self.vanilla_root();
                     if let Some(title) = &mut self.title {
@@ -527,6 +585,9 @@ impl Game<'_> {
                     self.settings.shader_packs =
                         horizon_client::shader_pack_list::scan(&Self::shader_packs_dir());
                 }
+                Event::ListMods => self.list_copied_native_mods(),
+                Event::ModToggled(i) => self.mod_toggled(i),
+                Event::NativeGame(act) => self.native_game_button(act),
                 // Saved; the next frame's `shader_pack_inputs` loads the pick.
                 Event::ShaderPack => self.settings.save(&Self::options_path()),
                 Event::OpenCustomButtons => self.open_custom_buttons(),
@@ -585,6 +646,8 @@ impl Game<'_> {
                 SkinAction::OpenFolder => self.open_game_folder(&Self::skins_dir()),
                 SkinAction::PickFile => self.pick_skin_file(),
                 SkinAction::ElyBy(on) => self.keep_elyby(on),
+                SkinAction::Upload(choice) => self.upload_own_skin(choice),
+                SkinAction::ElySite => self.open_ely_skins(),
             }
         }
         Ok(())

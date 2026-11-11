@@ -304,6 +304,21 @@ pub fn first_frame_shown() {
     });
 }
 
+/// The dialog that chooses another build server for native mods, with its warning; it writes the
+/// choice itself (StarlingActivity.askBuildServer, game/native_builds.rs reads it).
+pub fn ask_build_server(current: &str) {
+    with_activity(|env, activity| {
+        let current = env.new_string(current)?;
+        env.call_method(
+            activity,
+            "askBuildServer",
+            "(Ljava/lang/String;)V",
+            &[jni::objects::JValue::Object(&current)],
+        )
+        .map(drop)
+    });
+}
+
 /// Put the on-screen keyboard away, however it was shown.
 pub fn hide_keyboard() {
     with_activity(|env, activity| {
@@ -351,7 +366,8 @@ pub fn install_update(name: &str) -> bool {
 }
 
 /// What the player made, moved with the game folder when it goes to shared storage: options.txt
-/// last, so a copy cut short is redone next time.
+/// last, so a copy cut short is redone next time. GameFolder.java shows these of the app's own
+/// files, from the same list (tests/test_android_game_folder.py), and the logs.
 const PLAYER_FILES: &[&str] = &[
     "saves",
     "backups",
@@ -385,7 +401,7 @@ const NO_MEDIA: &[&str] = &[
 
 /// The game folder: shared storage's once allowed (and what the player made in the app's own
 /// files moved there the first time), else the app's own files. Notes for the log, which
-/// starts after.
+/// starts after. GameFolder.choose (Java) makes the same choice for the Files app.
 fn game_folder(private: &Path, notes: &mut Vec<String>) -> PathBuf {
     let Some(shared) = SHARED_FOLDER.get() else {
         return private.to_path_buf();

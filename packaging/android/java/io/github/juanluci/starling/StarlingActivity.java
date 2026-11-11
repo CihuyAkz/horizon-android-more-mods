@@ -10,6 +10,8 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -26,13 +28,23 @@ import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.os.VibratorManager;
 import android.provider.DocumentsContract;
+import android.text.InputType;
+import android.text.SpannableStringBuilder;
+import android.text.Spanned;
+import android.text.style.ForegroundColorSpan;
+import android.text.style.RelativeSizeSpan;
+import android.text.style.StyleSpan;
 import android.view.InputDevice;
 import android.view.View;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
 import android.view.ViewTreeObserver;
+import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.view.WindowManager;
+import android.widget.EditText;
+import android.widget.FrameLayout;
+import android.widget.Toast;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
 import android.system.ErrnoException;
@@ -71,6 +83,8 @@ public class StarlingActivity extends NativeActivity {
 
     /** The build with native mods loaded in place of the APK's library (android_lib.rs). */
     private static final String GAME_LIBRARY = "STARLING_GAME_LIBRARY";
+    /** This install of the APK (NativeMods.stamp), for game/native_builds.rs. */
+    private static final String APK_STAMP = "STARLING_APK";
 
     /**
      * Loads the game library with this class loader, so the native methods resolve: a build with
@@ -79,6 +93,15 @@ public class StarlingActivity extends NativeActivity {
      * build named by GAME_LIBRARY, the very library loaded here.
      */
     private void loadGame() {
+        String stamp = NativeMods.stamp(this);
+        if (stamp != null) {
+            try {
+                // The game writes it beside the builds it downloads, and tells an old build by it.
+                Os.setenv(APK_STAMP, stamp, true);
+            } catch (ErrnoException e) {
+                // The game then marks no build as made for this install: none loads.
+            }
+        }
         File build = NativeMods.chosen(this, versionName());
         if (build != null) {
             try {
@@ -462,6 +485,9 @@ public class StarlingActivity extends NativeActivity {
             public void run() {
                 if (mirror != null) {
                     mirror.hide();
+                    android.view.View game = getWindow().getDecorView();
+                    game.setFocusableInTouchMode(true);
+                    game.requestFocus();
                 }
             }
         });
@@ -539,6 +565,82 @@ public class StarlingActivity extends NativeActivity {
                         NativeMods.declinePermissions(modBuild);
                     }
                 })
+                .show();
+    }
+
+    /**
+     * The player's own build server for native mods (game/native_builds.rs): only ever typed here,
+     * so no link or file can choose it. The game it sends back runs inside this app, so the warning
+     * says that plainly.
+     */
+    public void askBuildServer(final String current) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                showBuildServerDialog(current);
+            }
+        });
+    }
+
+    private void showBuildServerDialog(String current) {
+        final EditText address = new EditText(this);
+        address.setSingleLine(true);
+        address.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
+        address.setHint("https://example.com");
+        address.setText(current);
+        float dp = getResources().getDisplayMetrics().density;
+        // The game's own look, not the system's white box; the keyboard leaves the warning in view.
+        GradientDrawable box = new GradientDrawable();
+        box.setColor(0xFF1E2127);
+        box.setCornerRadius(8 * dp);
+        box.setStroke(Math.round(dp), 0xFF8B7CF6);
+        address.setBackground(box);
+        address.setTextColor(0xFFFFFFFF);
+        address.setHintTextColor(0xFF8A8F98);
+        address.setPadding(Math.round(12 * dp), Math.round(10 * dp), Math.round(12 * dp),
+                Math.round(10 * dp));
+        address.setImeOptions(EditorInfo.IME_FLAG_NO_EXTRACT_UI | EditorInfo.IME_ACTION_DONE);
+        FrameLayout frame = new FrameLayout(this);
+        int side = Math.round(20 * dp);
+        frame.setPadding(side, 0, side, 0);
+        frame.addView(address);
+
+        String warning = "WE TAKE NO RESPONSIBILITY FOR OTHER BUILD SERVERS";
+        SpannableStringBuilder message = new SpannableStringBuilder(warning);
+        message.setSpan(new ForegroundColorSpan(0xFFFF5252), 0, warning.length(),
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        message.setSpan(new RelativeSizeSpan(1.3f), 0, warning.length(),
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        message.setSpan(new StyleSpan(Typeface.BOLD), 0, warning.length(),
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        message.append("\n\nThe game another server sends back runs inside Starling with full "
+                + "access, including your worlds and your signed-in account. Only use a server you "
+                + "run yourself or fully trust. Your native mods are the only files sent to it.");
+
+        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setTitle("Build server")
+                .setMessage(message)
+                .setView(frame)
+                .setPositiveButton("Use this server", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        String typed = address.getText().toString();
+                        if (NativeMods.isBuildServer(typed)) {
+                            NativeMods.chooseBuildServer(StarlingActivity.this, typed);
+                        } else {
+                            Toast.makeText(StarlingActivity.this,
+                                    "That is not an https:// address. Nothing changed.",
+                                    Toast.LENGTH_LONG).show();
+                        }
+                    }
+                })
+                .setNeutralButton("Use Starling's", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        NativeMods.chooseBuildServer(StarlingActivity.this, null);
+                    }
+                })
+                .setNegativeButton("Cancel", null)
                 .show();
     }
 
@@ -654,17 +756,50 @@ public class StarlingActivity extends NativeActivity {
         return true;
     }
 
-    /** The system's file manager on a folder of shared storage; false where none can show it. */
+    /**
+     * The system's file manager on a folder; false where none can show it. A folder of the game's
+     * opens through this app's own provider (GameFolderProvider), which shows it in shared storage
+     * and in the app's own files alike, as Horizon Android did. Another one of shared storage opens
+     * through the storage's provider. When nothing opens, the player is told where to look.
+     */
     public boolean openFolder(String path) {
-        String root = Environment.getExternalStorageDirectory().getPath();
-        if (!path.startsWith(root)) {
-            return false;
+        File target = new File(path);
+        String id = GameFolder.choose(getFilesDir(), sharedFolder(this)).idOf(target);
+        if (id != null
+                && viewFolder(DocumentsContract.buildDocumentUri(getPackageName() + ".documents", id))) {
+            return true;
         }
-        String relative = path.substring(root.length()).replaceFirst("^/+", "");
-        Uri folder = DocumentsContract.buildDocumentUri(
-                "com.android.externalstorage.documents", "primary:" + relative);
-        // Any file manager that takes a folder, else the system's own (Files).
-        String[] packages = {null, "com.google.android.documentsui", "com.android.documentsui"};
+        String root = Environment.getExternalStorageDirectory().getPath();
+        boolean shared = path.startsWith(root + "/");
+        if (shared) {
+            String relative = path.substring(root.length() + 1);
+            Uri folder = DocumentsContract.buildDocumentUri(
+                    "com.android.externalstorage.documents", "primary:" + relative);
+            if (viewFolder(folder)) {
+                return true;
+            }
+        }
+        // A folder the Files app can't show at all (the app's own native mods) is the game's to
+        // explain: it offers the Starling folder.
+        if (id != null || shared) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    Toast.makeText(StarlingActivity.this, R.string.open_folder_failed,
+                            Toast.LENGTH_LONG).show();
+                }
+            });
+        }
+        return false;
+    }
+
+    /**
+     * A folder document in the system's Files app, which shows any provider's, else in any file
+     * manager that takes one. Some phones' own file managers take the intent and show nothing for
+     * another app's documents, so the system's goes first.
+     */
+    private boolean viewFolder(Uri folder) {
+        String[] packages = {"com.google.android.documentsui", "com.android.documentsui", null};
         for (String app : packages) {
             Intent intent = new Intent(Intent.ACTION_VIEW);
             intent.setDataAndType(folder, DocumentsContract.Document.MIME_TYPE_DIR);
@@ -676,7 +811,7 @@ public class StarlingActivity extends NativeActivity {
                 startActivity(intent);
                 return true;
             } catch (ActivityNotFoundException | SecurityException e) {
-                // The next one.
+                android.util.Log.i("starling", "No folder view in " + app + ": " + e);
             }
         }
         return false;

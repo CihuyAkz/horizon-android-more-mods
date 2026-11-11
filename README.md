@@ -18,24 +18,24 @@
 
 # Starling
 
-**Starling is a lightweight port of Minecraft: Java Edition 26.3 to Android.** It is a fork of [Horizon](https://github.com/ludovic111/horizon), the Java game rewritten in Rust: it reads the same worlds, follows the same rules and generates the same terrain as Java Edition, and is checked against it by differential harnesses. You play it on the files from your own copy of Minecraft; it is free, open source and unofficial. And it runs natively, with no Java virtual machine and no OpenGL translation in between, so it starts fast and plays smoothly on a phone.
+**Starling, formerly Horizon Android, is a lightweight port of Minecraft: Java Edition 26.3 to Android.** Co-founded by [JuanLuci](https://github.com/JuanLuci), founder of Starling, and [Vasysik](https://github.com/Vasysik), founder of Horizon Android. It is a fork of [Horizon](https://github.com/ludovic111/horizon), the Java game rewritten in Rust: it reads the same worlds, follows the same rules and generates the same terrain as Java Edition, and is checked against it by differential harnesses. You play it on the files from your own copy of Minecraft; it is free, open source and unofficial. And it runs natively, with no Java virtual machine and no OpenGL translation in between, so it starts fast and plays smoothly on a phone.
 
 > Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft. Starling contains no Minecraft code, assets or data: you need your own legally obtained copy of Minecraft: Java Edition 26.3.
 
 ## Download
 
-**[Starling v0.2.3](https://github.com/JuanLuci/starling/releases/latest)**. Already have Starling? Tap **Update** inside the game. New here? Download `starling-0.2.3-arm64-v8a.apk` from [the releases page](https://github.com/JuanLuci/starling/releases) and open it on the phone (Android asks you to allow installing apps from your browser or file manager).
+**[Starling v0.8.0](https://github.com/JuanLuci/starling/releases/latest)**. Already have Starling? Tap **Update** inside the game. New here? Download `starling-0.8.0-arm64-v8a.apk` from [the releases page](https://github.com/JuanLuci/starling/releases) and open it on the phone (Android asks you to allow installing apps from your browser or file manager).
 
-**You need** a 64-bit phone with Android 8 or newer and Vulkan, and about 2 GB free. Sign in with a Microsoft account that owns Minecraft: Java Edition, or play offline (most servers need the sign-in). No computer: on the first start Starling downloads the game's files from Mojang's servers and prepares them on the phone, once (79 seconds on a POCO F6 Pro, longer on slower phones). Go fishing or change the settings while it works.
+**You need** Android 8 or newer, a compatible graphics driver, and about 2 GB free. See [Android architectures](docs/android-armv7.md) for ABI, GPU and preparation limits; 32-bit x86 imports prepared resources. Sign in with a Microsoft account that owns Minecraft: Java Edition, or play offline (most servers need the sign-in). No computer: on the first start Starling downloads the game's files from Mojang's servers and prepares them on the phone, once (79 seconds on a POCO F6 Pro, longer on slower phones). Go fishing or change the settings while it works.
 
-Development happens in [starling-client/starling](https://github.com/starling-client/starling), on the `starling` branch, where Starling and Horizon Android are becoming one app. Builds of every push there are **Starling Preview**, in [GitHub Actions](https://github.com/starling-client/starling/actions/workflows/android.yml) (the `starling-apk` artifact of a run; GitHub asks you to sign in to download it): an app of its own, installed beside the release, with its own `StarlingPreview` folder and sign-in. You can also [build it from source](#build-from-source).
+Development happens in [starling-client/starling](https://github.com/starling-client/starling), on the `starling` branch, where Starling and Horizon Android are now one app. Builds of every push there are **Starling Preview**, in [GitHub Actions](https://github.com/starling-client/starling/actions/workflows/android.yml) (the `starling-apk-<abi>` artifact of a run; GitHub asks you to sign in to download it): an app of its own, installed beside the release, with its own `StarlingPreview` folder and sign-in. You can also [build it from source](#build-from-source).
 
 ## What works today
 
 - **Setting up on the phone:** sign in with your Microsoft account, and the game's files come from Mojang and are prepared on the phone, by a Java runtime fetched just for that and removed after, with every language the game has. While it works, fish in a little pond, or change the settings in a hand-drawn skin made for this screen (the game's own look is part of what is being prepared). Resources prepared on a computer still open too.
 - **The game:** singleplayer with vanilla's world generation, mobs, villagers, raids, redstone, every command, the HUD and the recipe book, on saves in vanilla's format, saved as soon as the app leaves the screen. Worlds from 1.8 to 26.2 are upgraded as vanilla does. Starling follows Horizon closely: v0.2.0 has its main of 2026-11-02.
 - **Touch controls:** every action on screen, from the movement stick to the hotbar, chat, commands and F3, with a layout you can move, resize and fade in the game, before a world too, and Sneak as Hold or Toggle. Bedrock's control modes: a stick (floating or fixed) or a D-pad, and tap to interact (a tap hits the mob or uses the block under the finger, a press breaks the block, interacts with the mob or uses the item in the air) or aim crosshair. F3 held offers its combinations (chunk borders, hitboxes, tooltips...); Pick Block and the player list are buttons to turn on; the phone buzzes when a block breaks or a stack splits, and it can aim by turning (gyroscope, off by default). They wear Bedrock's own buttons, fetched on the phone from Mojang's samples repository after the preparing (Starling ships none of them, only their names and hashes), else Starling's own.
-- **Custom buttons:** tap **Add** in **Touch Controls**, or go to **Options > Controls > Custom Buttons**. Each one holds or toggles a key, a native mod's too, or sends a command or a chat line, and wears an icon or your own image, drawn on Bedrock's plate or imported as a PNG, with another for while it is pressed.
+- **Custom controls:** open **H > Controls > Customize Controls**, or **Options > Controls > Customize Layout**. The Horizon Android editor supports MCPE and GoyControl, separate presets, undo/redo, button dimensions, colors, visibility, and up to three input bindings. **Look while interacting** includes attack and use/place gestures; **360-degree movement** is off by default. See [Android controls](docs/android-controls.md).
 - **Bedrock Inventory:** the creative inventory shows the items and your inventory side by side, with six rows of items and a 2x2 crafting grid, and a tap takes a full stack. It is on by default; turn it off in **Options > Controls** for the Java layout.
 - **Your name and your skin:** in Options > Skin Customization, the name your worlds use and a skin from your files (or `Starling/skins`), classic or slim; a skin PNG opened with Starling is put on at once.
 - **The phone's own keyboard:** a tap on a text field brings it up and a tap beside it puts it away, on every screen. Its suggestions, autocorrect, swipe typing and clipboard in the chat, signs and books (commands and searches go without autocorrect), a Paste button on the chat bar, and Enter finishing a command when only one completion fits (`/gamemode c` runs `/gamemode creative`).
@@ -72,6 +72,14 @@ What the Android port covers so far; what is being done now and next is in the [
 | Setting up on the phone | <img src="docs/media/progress/100.svg" alt="100%"> | Prepared on a phone in 79 s from the official 26.3 files, with Java fetched for it; fishing and hand-drawn settings while it works |
 | Microsoft account sign-in | <img src="docs/media/progress/100.svg" alt="100%"> | On the first start and in the game (the title screen's corner); the code and the ownership check work on a phone |
 
+The title screen’s account button also manages saved Microsoft, Ely.by and offline
+profiles. See [Android accounts](docs/android-accounts.md) for switching, registration
+and provider compatibility.
+
+ARMv7 build instructions and GPU/memory limitations are documented in
+[Android architectures](docs/android-armv7.md). Release APKs are published for
+ARM64, ARMv7, x86 and x86_64; install the one matching your device.
+
 Local crash reports, Android exit history and optional CPU/GPU performance
 recordings are available under **Options → Diagnostics**. Export a diagnostic ZIP,
 review it, then share it with a bug report. See [Android diagnostics](docs/android-diagnostics.md)
@@ -83,7 +91,7 @@ reach it without starting the game.
 
 Starling runs Horizon's mods. Open the file with Starling, from your file manager or your downloads, and it shows up in **Options > Mods**.
 
-- **`.hnmod`, native mods:** tap **Compile**. Starling tells you the risks, builds the game with your mods while you fish or mine, and restarts with them. It takes a few minutes and needs a connection, and after an update you compile again. A native mod runs as part of the game, so install only the ones you trust. See [native mods](docs/native-mods.md) and [how Starling builds them](docs/starling-native-mods.md); [wrench](native-mods/wrench) is an example.
+- **`.hnmod`, native mods (ARM64 only):** tap **Compile**. Starling tells you the risks, builds the game with your mods while you fish or mine, and restarts with them. It takes a few minutes and needs a connection, and after an update you compile again. The build service currently produces ARM64 libraries; other app architectures explain this limitation and do not offer compilation or prebuilt downloads. A native mod runs as part of the game, so install only the ones you trust. See [native mods](docs/native-mods.md) and [how Starling builds them](docs/starling-native-mods.md); [wrench](native-mods/wrench) is an example.
 - **`.hmod`, content mods:** data-only mods, with nothing to compile. See [mods](docs/mods.md).
 
 The old Starling mods and the WebAssembly mod format of v0.1 are gone.
@@ -97,6 +105,11 @@ git clone -b starling https://github.com/starling-client/starling.git
 cd starling
 python packaging/android/build_apk.py            # the APK lands in target/android/
 ```
+
+The build compiles Horizon's original exporter classes with the host JDK and
+packages their checked bundle. It uses `HORIZON_MINECRAFT_DIR` as a read-only
+source when set; otherwise it downloads checksum-pinned compilation inputs into
+an ignored build cache. Minecraft jars, libraries and assets are never packaged.
 
 The setup's hand-drawn skin is made by `python packaging/lowbudget/make.py` (with Pillow) into `packaging/lowbudget/pack`, which the APK carries as it is.
 

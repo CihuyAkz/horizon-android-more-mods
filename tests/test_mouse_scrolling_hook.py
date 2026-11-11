@@ -23,6 +23,7 @@ class MouseScrollingHookTests(unittest.TestCase):
                             ("hotbar_takes_wheel", "hotbar_scroll_canceled", "hotbar_wheel_step"))
         fixture = r"""
 use std::collections::HashSet;
+const MOBILE_PLATFORM: bool = false;
 #[allow(dead_code)]
 #[path = "MOUSE_PATH"] mod mouse;
 mod horizon_client { pub mod mouse { pub use crate::mouse::*; } }

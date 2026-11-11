@@ -241,13 +241,19 @@ BlueMap is licensed under the MIT license:
 > THE SOFTWARE.
 ## OpenJDK for Android (fetched on the phone, not shipped)
 
-To prepare the game files on a phone, Starling downloads OpenJDK 25.0.5 built for Android by
+To prepare the game files on a phone, Starling downloads OpenJDK 25 built for Android.
+ARM64 and x86_64 use OpenJDK 25.0.5 from
 AngelAuraMC ([angelauramc-openjdk-build](https://github.com/AngelAuraMC/angelauramc-openjdk-build),
-release `download_jre25`, checked against the SHA-256 in `crates/starling-account/src/java.rs`),
-runs it for the preparing and deletes it after. OpenJDK is licensed under the GNU General Public
+release `download_jre25`). ARM32 uses OpenJDK 25.0.4 from
+[EclipseJRE](https://github.com/SouhardyaMaybe/EclipseJRE/releases/tag/jres-v1.0.0),
+release `jres-v1.0.0`, archive `jre25-arm-20261009-release.tar.xz`.
+Each archive is checked against the SHA-256 in `crates/starling-account/src/java.rs`;
+Starling runs it for preparation and deletes it after. OpenJDK is licensed under the GNU General Public
 License version 2 with the Classpath Exception; its sources are at
-[openjdk/jdk](https://github.com/openjdk/jdk), the build's scripts and patches in that
-repository. Starling's launcher for it (`packaging/android/native/java_launcher.c`) is MIT.
+[openjdk/jdk](https://github.com/openjdk/jdk), with build scripts and patches in the
+respective publisher's repository. Only the published runtimes are executed;
+no JDK source is copied into Starling. Starling's launcher for it
+(`packaging/android/native/java_launcher.c`) is MIT.
 
 ## Bedrock's touch buttons (fetched on the phone, not shipped)
 
@@ -258,6 +264,23 @@ revision and each file's git blob SHA-1 in `crates/horizon-client/assets/bedrock
 them. They are © Mojang AB, under the Minecraft End User License Agreement the download is subject
 to; Starling carries none of them. Where they are missing, Starling's own buttons
 (`crates/horizon-client/assets/touch`, drawn by `packaging/touch/make.py`) are MIT.
+
+## Horizon Android legacy GLES compatibility
+
+The GLES-only terrain texture selection, RGSS unrolling, varying packing,
+emissive lookup and entity overlay lowering, and HDR texture selection are
+adapted from [Vasysik/horizon-android at fa548eb7abe91c194d3780e4580b9746323cd606](https://github.com/Vasysik/horizon-android/tree/fa548eb7abe91c194d3780e4580b9746323cd606/crates/horizon-client-render/src/gfx).
+The source is MIT, copyright (c) 2026 Ludovic Marie and the Horizon contributors;
+the repository LICENSE retains its license text.
+
+The explicit panorama cube vertex buffer and preservation of GUI sprites while
+fitting a small atlas are adapted from the same revision's `gfx/panorama.rs`,
+`gfx/panorama.wgsl` and `hud.rs`. Starling's lazy panorama loading is retained;
+Android OpenGL panoramas use the fork's 256-pixel box-filtered faces. The small-atlas skyline packing and fitting policy are also ported from that revision.
+
+The adaptation preserves Starling's RGSS tiled-face argument, HDR scene varying
+and all 128 emissive entries. The emissive search uses flat early returns to keep
+shader parser/validator stack depth bounded. Vulkan terrain WGSL remains unchanged.
 
 ## Horizon Android diagnostics
 
@@ -270,6 +293,7 @@ The port uses Starling's existing logger, crash hook and GPU timers and exposes
 reports through the game's Diagnostics settings and an Android launcher shortcut,
 with a renderer-independent recovery window for interrupted startup.
 
+<<<<<<< HEAD
 ## JOML
 
 `crates/horizon-client-render/src/camera.rs` (`joml::Mat4::rotation`, `invert_orthonormal`) and
@@ -372,3 +396,59 @@ is preserved.
 [150a414b09a1](https://github.com/starling-client/starling/tree/150a414b09a18c900489d9462a7fc035dae744b7)
 (`android` branch), written mostly by Vasysik. Starling is licensed under the same MIT license as
 Horizon (Copyright (c) 2026 Ludovic Marie and the Horizon contributors).
+||||||| 121742ad89
+=======
+## Horizon Android renderer paths
+
+What only Adreno on Android's Vulkan takes here is adapted from
+[Vasysik/horizon-android at fa548eb7abe91c194d3780e4580b9746323cd606](https://github.com/Vasysik/horizon-android/tree/fa548eb7abe91c194d3780e4580b9746323cd606/crates/horizon-client-render/src),
+under the MIT license (the same [LICENSE](LICENSE) as this repository).
+Copyright (c) 2026 Ludovic Marie and the Horizon contributors. That covers `gfx/adreno.rs`, the sky
+after solid terrain (`gfx/late_sky.rs` and the far-plane vertex entries in `terrain.wgsl`,
+`entity.wgsl` and `gfx/stars.wgsl`; its commit 60211b4e8a), flat draws from 512 sections
+(`gfx/flat.rs`; its commit 1a115395f8) and the cheaper terrain shaders (`gfx/solid_paths.rs`,
+`fs_cutout_static` and `SETTLED_TERRAIN` in `terrain.wgsl`; its commits 202c962884, 3c9856cc93 and
+9771fbce2b).
+
+The fork takes them on every Android Vulkan GPU it allows; here they follow `splits_solid`, which
+holds on Adreno. Starling's sunrise fan is geometry, so it has a far-plane entry of its own. The
+fork's two specialization constants are one here, which also leaves out the distant tiles' sampling,
+and its terrain shaders also cover flat frames. The indirect offset fix in 1a115395f8 doesn't apply:
+Starling's solid passes don't rebase the indirect buffer.
+
+## Horizon Android documents provider
+
+The game folder's place in Android's Files app (`packaging/android/java/io/github/juanluci/starling/GameFolderProvider.java`
+and `GameFolder.java`) is adapted from the documents provider in [Vasysik/horizon-android at
+fa548eb7abe91c194d3780e4580b9746323cd606](https://github.com/Vasysik/horizon-android/tree/fa548eb7abe91c194d3780e4580b9746323cd606/packaging/android/java/dev/horizon/android)
+and its `crates/horizon-client/src/android/document_store.rs`, under the MIT license (the same
+[LICENSE](LICENSE) as this repository). Copyright (c) 2026 Ludovic Marie and the Horizon contributors.
+The port is plain Java over Starling's one game folder, in place of the fork's Rust store of
+profiles and fixed folders that its launcher screens share.
+
+## Horizon Android control system and editor
+
+The Android control engine, MCPE/GoyControl layouts and presets, visual editor,
+control hub, virtual pointer and auxiliary keyboard are adapted from
+[Vasysik/horizon-android at fa548eb7abe91c194d3780e4580b9746323cd606](https://github.com/Vasysik/horizon-android/tree/fa548eb7abe91c194d3780e4580b9746323cd606),
+MIT, copyright (c) 2026 Ludovic Marie and the Horizon contributors (see [LICENSE](LICENSE)).
+Source: `crates/horizon-client-render/src/touch.rs`, `touch/{layout,editor,custom}.rs`,
+`crates/horizon-client/src/{touch_ui,ui_theme,osk,ui_text}.rs`, and Android input
+integration in `game/android_input.rs`, `game/pad.rs` and `game.rs`. The
+physical D-pad/keypad profile is from `horizon-client-render/src/keypad.rs`
+and its editable bindings in `options_ui.rs`.
+
+The port uses Starling's input, IME, inventory, controller and renderer interfaces.
+Its UI rasterization shares Starling's existing runtime atlas allocator; it does
+not add a second font texture. Starling's chat shortcuts and slot gestures are
+retained. No Minecraft textures or prepared resources are included by this port.
+
+## Horizon Android account profiles and Ely.by
+
+Provider-aware profile selection and Ely.by authentication, refresh, 2FA and session routing are adapted from [Vasysik/horizon-android at fa548eb7abe91c194d3780e4580b9746323cd606](https://github.com/Vasysik/horizon-android/tree/fa548eb7abe91c194d3780e4580b9746323cd606), specifically `launcher/src/account.rs`, `launcher/src/account/ely.rs`, `crates/horizon-client/src/android/login.rs` (behavior reference) and `crates/horizon-client-render/src/auth.rs`. MIT, copyright (c) 2026 Ludovic Marie and the Horizon contributors; the repository LICENSE retains the license text. The integration preserves Starling's Microsoft public client and sealed secret store, adds provider-separated keys and offline profile metadata, and uses Starling's existing title widgets rather than the Android launcher's panel.
+## Horizon Android wardrobe
+
+Per-account skin selection and the Microsoft profile skin upload are adapted from [Vasysik/horizon-android at fa548eb7abe91c194d3780e4580b9746323cd606](https://github.com/Vasysik/horizon-android/tree/fa548eb7abe91c194d3780e4580b9746323cd606), specifically `launcher/src/skins.rs`, `launcher/src/skins/library.rs`, `launcher/src/skins/cloud.rs` and `crates/horizon-client/src/android/wardrobe.rs` (behavior reference). MIT, copyright (c) 2026 Ludovic Marie and the Horizon contributors; the repository LICENSE retains the license text. Starling keeps its `skins/` folder and Skin Customization page in place of the wardrobe's image store and launcher panel, keys each choice by the profile, uploads through its own sealed session, and sends Ely.by accounts to ely.by as Horizon Android does.
+
+The mobile attack gauge side and offhand spacing in `crates/horizon-client-render/src/hud_layout.rs` are adapted from the same Horizon Android commit fa548eb7abe91c194d3780e4580b9746323cd606 under MIT.
+>>>>>>> starling-client/starling

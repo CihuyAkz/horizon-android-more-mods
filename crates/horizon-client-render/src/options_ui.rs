@@ -236,6 +236,40 @@ impl Opt {
 
     pub(crate) fn caption(self) -> &'static str {
         match self {
+            Opt::AndroidInputSelection => "Input device",
+            Opt::TouchMode => "Control scheme",
+            Opt::TouchCrosshairGestures => "Touch gestures",
+            Opt::TouchControlHub => "Control hub button",
+            Opt::TouchUiVibration => "UI vibration",
+            Opt::TouchGameVibration => "Gameplay vibration",
+            Opt::TouchAttackButtonLook => "Look while interacting",
+            Opt::TouchMouseSensitivity => "Virtual mouse sensitivity",
+            Opt::TouchAnalog => "360-degree movement",
+            Opt::TouchCircleSize => "Touch circle size",
+            Opt::TouchAttackSide => "Attack indicator side",
+            Opt::TouchHorizontalMargin => "HUD margins: left / right",
+            Opt::TouchVerticalMargin => "HUD margins: top / bottom",
+            Opt::TouchSensitivity => "Touch sensitivity",
+            Opt::TouchSensitivityHorizontal => "Horizontal sensitivity",
+            Opt::TouchSensitivityVertical => "Vertical sensitivity",
+            Opt::TouchMouseButton => "Virtual Mouse Button",
+            Opt::TouchKeyboardButton => "Keyboard Button",
+            Opt::TouchOffhand => "Swap hands button",
+            Opt::TouchShield => "Raise shield with",
+            Opt::TouchButtonScale => "Control button size",
+            Opt::TouchInteract => "Interact button",
+            Opt::TouchLeftHand => "Left handed",
+            Opt::TouchSprintButton => "Sprint button",
+            Opt::TouchSprintToggle => "Toggle sprint button",
+            Opt::TouchInventoryControls => "Controls in inventory",
+            Opt::TouchDynamicJoystick => "Dynamic joystick",
+            Opt::TouchDynamicAreaX => "Dynamic joystick width",
+            Opt::TouchDynamicAreaY => "Dynamic joystick height",
+            Opt::AndroidGyroscope => "Gyroscope aiming",
+            Opt::AndroidGyroSensitivity => "Gyroscope sensitivity",
+            Opt::TouchSwapJumpSneak => "Swap jump / sneak",
+            Opt::TouchAutoSprint => "Auto Sprint",
+
             Opt::Fov => "options.fov",
             Opt::RenderDistance => "options.renderDistance",
             Opt::SimulationDistance => "options.simulationDistance",
@@ -371,6 +405,18 @@ impl Opt {
     pub(crate) fn kind(self, s: &Settings) -> Kind {
         let unit = |v: f32, lo: f32, hi: f32| Kind::Slider(((v - lo) / (hi - lo)).clamp(0.0, 1.0));
         match self {
+            Opt::TouchCircleSize => unit(s.touch.circle_size, 16.0, 64.0),
+            Opt::TouchDynamicAreaX => unit(s.touch.dynamic_area_x, 0.0, 1.0),
+            Opt::TouchDynamicAreaY => unit(s.touch.dynamic_area_y, 0.0, 1.0),
+            Opt::TouchHorizontalMargin => unit(s.touch.horizontal_margin, 0.0, 0.12),
+            Opt::TouchVerticalMargin => unit(s.touch.vertical_margin, 0.0, 0.12),
+            Opt::AndroidGyroSensitivity => unit(s.touch.gyro_sensitivity, 0.1, 3.0),
+            Opt::TouchSensitivity => unit(s.touch.sensitivity, 0.1, 3.0),
+            Opt::TouchSensitivityHorizontal => unit(s.touch.sensitivity_horizontal, 0.1, 3.0),
+            Opt::TouchSensitivityVertical => unit(s.touch.sensitivity_vertical, 0.1, 3.0),
+            Opt::TouchMouseSensitivity => unit(s.touch.virtual_mouse_sensitivity, 0.25, 3.0),
+            Opt::TouchButtonScale => unit(s.touch.button_scale, 0.5, 2.0),
+
             Opt::FovEffects | Opt::DarknessPulsing => {
                 Kind::Slider(s.file.double(self.file_key().unwrap()).sqrt() as f32)
             }
@@ -527,6 +573,143 @@ impl Opt {
     /// The widget message (OptionInstance.toString / CycleButton full name).
     pub fn label(self, s: &Settings) -> Text {
         let c = self.caption();
+        let touch_value = match self {
+            Opt::TouchMode => Some(
+                crate::android_controls::Mode::SCHEMES
+                    .iter()
+                    .find(|(mode, split, _)| {
+                        *mode == s.touch.mode
+                            && (!matches!(
+                                mode,
+                                crate::android_controls::Mode::Dpad
+                                    | crate::android_controls::Mode::Tap
+                            ) || *split == s.touch.split_controls)
+                    })
+                    .map_or("Joystick & aim crosshair", |(_, _, label)| *label)
+                    .to_owned(),
+            ),
+            Opt::TouchCircleSize => Some(format!("{} px", s.touch.circle_size.round())),
+            Opt::TouchAttackSide => Some(
+                if s.touch.attack_indicator_left {
+                    "Left"
+                } else {
+                    "Right"
+                }
+                .into(),
+            ),
+            Opt::TouchHorizontalMargin => {
+                Some(format!("{:.1}%", s.touch.horizontal_margin * 100.0))
+            }
+            Opt::TouchVerticalMargin => Some(format!("{:.1}%", s.touch.vertical_margin * 100.0)),
+            Opt::AndroidGyroscope => Some(if s.touch.gyroscope { "ON" } else { "OFF" }.into()),
+            Opt::AndroidGyroSensitivity => {
+                Some(format!("{:.0}%", s.touch.gyro_sensitivity * 100.0))
+            }
+            Opt::TouchSensitivity => Some(format!("{:.0}%", s.touch.sensitivity * 100.0)),
+            Opt::TouchSensitivityHorizontal => {
+                Some(format!("{:.0}%", s.touch.sensitivity_horizontal * 100.0))
+            }
+            Opt::TouchSensitivityVertical => {
+                Some(format!("{:.0}%", s.touch.sensitivity_vertical * 100.0))
+            }
+            Opt::TouchMouseButton => Some(
+                if s.touch.virtual_mouse_enabled {
+                    "On"
+                } else {
+                    "Off"
+                }
+                .into(),
+            ),
+            Opt::TouchKeyboardButton => {
+                Some(if s.touch.keyboard_button { "On" } else { "Off" }.into())
+            }
+            Opt::TouchOffhand => Some(if s.touch.offhand_button { "On" } else { "Off" }.into()),
+            Opt::TouchShield => Some(
+                if s.touch.shield_button {
+                    "Button"
+                } else {
+                    "Sneak"
+                }
+                .into(),
+            ),
+            Opt::TouchMouseSensitivity => {
+                Some(format!("{:.0}%", s.touch.virtual_mouse_sensitivity * 100.0))
+            }
+            Opt::TouchAttackButtonLook => Some(
+                if s.touch.attack_button_look {
+                    "ON"
+                } else {
+                    "OFF"
+                }
+                .into(),
+            ),
+            Opt::TouchControlHub => Some(
+                if s.touch.show_control_hub {
+                    "ON"
+                } else {
+                    "OFF"
+                }
+                .into(),
+            ),
+            Opt::TouchUiVibration => Some(if s.touch.ui_vibrate { "ON" } else { "OFF" }.into()),
+            Opt::TouchGameVibration => Some(if s.touch.vibrate { "ON" } else { "OFF" }.into()),
+            Opt::TouchCrosshairGestures => Some(
+                if s.touch.crosshair_gestures {
+                    "ON"
+                } else {
+                    "OFF"
+                }
+                .into(),
+            ),
+            Opt::TouchButtonScale => Some(format!("{:.0}%", s.touch.button_scale * 100.0)),
+            Opt::TouchAnalog => Some(if s.touch.analog_movement { "ON" } else { "OFF" }.into()),
+            Opt::TouchInteract => Some(
+                if s.touch.contextual_interact {
+                    "ON"
+                } else {
+                    "OFF"
+                }
+                .into(),
+            ),
+            Opt::TouchLeftHand => Some(if s.touch.left_handed { "ON" } else { "OFF" }.into()),
+            Opt::TouchSprintButton => Some(if s.touch.sprint_button { "ON" } else { "OFF" }.into()),
+            Opt::TouchSprintToggle => Some(if s.touch.sprint_toggle { "ON" } else { "OFF" }.into()),
+            Opt::TouchInventoryControls => Some(
+                if s.touch.inventory_controls {
+                    "ON"
+                } else {
+                    "OFF"
+                }
+                .into(),
+            ),
+            Opt::TouchDynamicJoystick => Some(
+                if s.touch.dynamic_joystick {
+                    "ON"
+                } else {
+                    "OFF"
+                }
+                .into(),
+            ),
+            Opt::TouchDynamicAreaX => Some(format!("{:.0}%", s.touch.dynamic_area_x * 100.0)),
+            Opt::TouchDynamicAreaY => Some(format!("{:.0}%", s.touch.dynamic_area_y * 100.0)),
+            Opt::TouchSwapJumpSneak => {
+                Some(if s.touch.swap_jump_sneak { "ON" } else { "OFF" }.into())
+            }
+            Opt::AndroidInputSelection => Some(s.touch.input_selection.label().into()),
+            Opt::TouchAutoSprint => Some(
+                if s.touch.sprint_with_joystick {
+                    "ON"
+                } else {
+                    "OFF"
+                }
+                .into(),
+            ),
+            _ => None,
+        };
+        if let Some(value) = touch_value {
+            return Text::literal(format!("{c}: {value}"));
+        }
+
         match self {
             Opt::ChatDelay => tr("options.chat.delay_none"),
             Opt::FovEffects
@@ -918,6 +1101,18 @@ impl Opt {
         let v = v.clamp(0.0, 1.0);
         let step = |lo: f32, hi: f32| (lo + v * (hi - lo)).round();
         match self {
+            Opt::TouchCircleSize => s.touch.circle_size = step(16.0, 64.0),
+            Opt::TouchDynamicAreaX => s.touch.dynamic_area_x = (v * 100.0).round() / 100.0,
+            Opt::TouchDynamicAreaY => s.touch.dynamic_area_y = (v * 100.0).round() / 100.0,
+            Opt::TouchHorizontalMargin => s.touch.horizontal_margin = (v * 120.0).round() / 1000.0,
+            Opt::TouchVerticalMargin => s.touch.vertical_margin = (v * 120.0).round() / 1000.0,
+            Opt::AndroidGyroSensitivity => s.touch.gyro_sensitivity = 0.1 + v * 2.9,
+            Opt::TouchSensitivity => s.touch.sensitivity = 0.1 + v * 2.9,
+            Opt::TouchSensitivityHorizontal => s.touch.sensitivity_horizontal = 0.1 + v * 2.9,
+            Opt::TouchSensitivityVertical => s.touch.sensitivity_vertical = 0.1 + v * 2.9,
+            Opt::TouchMouseSensitivity => s.touch.virtual_mouse_sensitivity = 0.25 + v * 2.75,
+            Opt::TouchButtonScale => s.touch.button_scale = 0.5 + v * 1.5,
+
             Opt::FovEffects | Opt::DarknessPulsing => s.file.set(
                 self.file_key().unwrap(),
                 crate::options_file::V::Double(f64::from(v).powi(2)),
@@ -1022,6 +1217,47 @@ impl Opt {
             }
         };
         match self {
+            Opt::TouchMode => {
+                let i = crate::android_controls::Mode::SCHEMES
+                    .iter()
+                    .position(|(mode, split, _)| {
+                        *mode == s.touch.mode
+                            && (!matches!(
+                                mode,
+                                crate::android_controls::Mode::Dpad
+                                    | crate::android_controls::Mode::Tap
+                            ) || *split == s.touch.split_controls)
+                    })
+                    .unwrap_or(0);
+                let (mode, split, _) = crate::android_controls::Mode::SCHEMES[usize::from(next(
+                    i as u8,
+                    crate::android_controls::Mode::SCHEMES.len() as u8,
+                ))];
+                s.touch.mode = mode;
+                s.touch.split_controls = split;
+            }
+            Opt::AndroidGyroscope => s.touch.gyroscope ^= true,
+            Opt::TouchAnalog => s.touch.analog_movement ^= true,
+            Opt::TouchInteract => s.touch.contextual_interact ^= true,
+            Opt::TouchMouseButton => s.touch.virtual_mouse_enabled ^= true,
+            Opt::TouchKeyboardButton => s.touch.keyboard_button ^= true,
+            Opt::TouchOffhand => s.touch.offhand_button ^= true,
+            Opt::TouchShield => s.touch.shield_button ^= true,
+            Opt::TouchLeftHand => s.touch.left_handed ^= true,
+            Opt::TouchSprintButton => s.touch.sprint_button ^= true,
+            Opt::TouchSprintToggle => s.touch.sprint_toggle ^= true,
+            Opt::TouchInventoryControls => s.touch.inventory_controls ^= true,
+            Opt::TouchDynamicJoystick => s.touch.dynamic_joystick ^= true,
+            Opt::TouchCrosshairGestures => s.touch.crosshair_gestures ^= true,
+            Opt::TouchControlHub => s.touch.show_control_hub ^= true,
+            Opt::TouchUiVibration => s.touch.ui_vibrate ^= true,
+            Opt::TouchGameVibration => s.touch.vibrate ^= true,
+            Opt::TouchAttackButtonLook => s.touch.attack_button_look ^= true,
+            Opt::TouchAttackSide => s.touch.attack_indicator_left ^= true,
+            Opt::TouchSwapJumpSneak => s.touch.swap_jump_sneak ^= true,
+            Opt::TouchAutoSprint => s.touch.sprint_with_joystick ^= true,
+            Opt::AndroidInputSelection => s.touch.input_selection.cycle(back),
+
             Opt::GuiScale => {
                 let max = crate::window::calculate_scale(framebuffer, 0, s.force_unicode) as u32;
                 let value = s.gui_scale.min(max);
@@ -1324,6 +1560,32 @@ fn set_filtering(s: &mut Settings, anisotropy_bit: i32, filtering: i32) {
 
 /// `Options.preferredGraphicsBackend`'s tooltip: the restart note once the choice differs from
 /// the startup one, the description, and Vulkan's warning.
+/// Android's own rows. A constant: horizon-mixins only reads `format!`, `matches!` and `vec!` in
+/// a function it hooks.
+const ON_A_PHONE: bool = cfg!(target_os = "android");
+
+/// The Options page's entries, with Diagnostics on a phone. Apart from `OptionsUi::layout`:
+/// horizon-mixins refuses to hook a function with a `#[cfg]` in it (E_UNSUPPORTED_CFG).
+fn with_diagnostics<const N: usize>(
+    entries: [(&'static str, Option<Page>); N],
+) -> Vec<(&'static str, Option<Page>)> {
+    let mut all = Vec::from(entries);
+    if ON_A_PHONE {
+        all.push(("starling.diagnostics.title", Some(Page::Diagnostics)));
+    }
+    all
+}
+
+/// The catalog's shelf for a page with a footer that has a Catalog button. The Resource Packs page
+/// draws its own (`pack_screen`).
+fn catalog_shelf(page: Page) -> Option<CatalogShelf> {
+    match page {
+        Page::Mods => Some(CatalogShelf::Mods),
+        Page::ShaderPacks => Some(CatalogShelf::ShaderPacks),
+        _ => None,
+    }
+}
+
 fn graphics_api_tooltip(s: &Settings) -> Text {
     let line = |key: &str| lang::get_or(key, key);
     let mut lines = Vec::new();
@@ -1556,6 +1818,7 @@ pub enum Page {
     Video,
     Sound,
     Controls,
+    Touch,
     KeyBinds,
     Mouse,
     Chat,
@@ -1629,6 +1892,19 @@ enum Act {
     Key(&'static str),
     ResetKey(&'static str),
     ResetKeys,
+<<<<<<< HEAD
+||||||| 121742ad89
+    /// Controller binds: wait for a button, reset one, reset all.
+    PadKey(&'static str),
+    ResetPadKey(&'static str),
+    ResetPadKeys,
+=======
+    KeyboardProfile,
+    /// Controller binds: wait for a button, reset one, reset all.
+    PadKey(&'static str),
+    ResetPadKey(&'static str),
+    ResetPadKeys,
+>>>>>>> starling-client/starling
     ToggleMod(usize),
     /// The Custom Buttons page, a new button there, one to change or take away, a control or a
     /// keyboard key for it, and its icon.
@@ -1658,7 +1934,10 @@ enum Act {
     /// A native mod's key (mod, key) waits for a key; a button of its page.
     NativeKey(usize, usize),
     NativeButton(usize, usize),
+    /// A button of the Mods page's game with native mods.
+    NativeGame(crate::mod_list::NativeGameAct),
     OpenModFolder,
+    OpenCatalog(CatalogShelf),
     /// The creative screen with the inventory beside it, or as the game draws it.
     BedrockInventory,
     /// The touch layout editor (phones).
@@ -1682,6 +1961,9 @@ enum Act {
     PickSkin,
     OpenSkinFolder,
     ElyBySkins,
+    /// The chosen skin to the Microsoft account's profile; an Ely.by account's skin page.
+    UploadSkin,
+    ElySkinSite,
     /// AI Agent: start or stop the repro recording.
     ToggleRecording,
     /// AI Agent: write the repro bundle now.
@@ -1767,6 +2049,15 @@ fn matches_focus(id: &FocusId, i: usize, wd: &Widget) -> bool {
         _ => false,
     }
 }
+/// The catalog's shelf a page's Catalog button opens. This crate can't depend on
+/// `starling-catalog`, so the game maps it to the catalog's own (game/options.rs).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CatalogShelf {
+    Mods,
+    ResourcePacks,
+    ShaderPacks,
+}
+
 /// What the game must do after an interaction.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Event {
@@ -1798,6 +2089,7 @@ pub enum Event {
     /// Data Packs' Open Pack Folder: create the folder if needed and open it.
     OpenDataPackFolder(std::path::PathBuf),
     OpenModFolder,
+<<<<<<< HEAD
     /// Browse mods opened: read the registry's index into `mod_browser`.
     BrowseMods,
     /// Install (or update) the registry's content mod with this id.
@@ -1807,8 +2099,19 @@ pub enum Event {
     /// Accessibility's Help link: confirm and open
     /// `CommonLinks.ACCESSIBILITY_HELP` over the options screen.
     AccessibilityHelp,
+||||||| 121742ad89
+=======
+    /// Android: a page's Catalog button (game/mod_catalog.rs).
+    OpenCatalog(CatalogShelf),
+>>>>>>> starling-client/starling
     /// The Shader Packs page opened: list `shaderpacks/` into `shader_packs`.
     ListShaderPacks,
+    /// The Mods page opened: the native mods folder read again, for a mod copied in meanwhile.
+    ListMods,
+    /// Installed mod `.0` was turned on or off (after `Changed`, which saved it).
+    ModToggled(usize),
+    /// Android: a button of the Mods page's game with native mods (`ModList::native_game`).
+    NativeGame(crate::mod_list::NativeGameAct),
     /// A shader pack or its profile was picked, or the pack turned off: save and apply it.
     ShaderPack,
     /// The Shader Packs page's folder (on a phone without the Starling folder, its offer).
@@ -1889,6 +2192,10 @@ pub enum SkinAction {
     PickFile,
     /// Ely.by Skins turned on or off (`elyby`): keep it.
     ElyBy(bool),
+    /// This skin to the playing Microsoft account's profile, for every server to show.
+    Upload(crate::own_skin::SkinChoice),
+    /// Ely.by's page where the playing Ely.by account changes its skin.
+    ElySite,
 }
 /// `SliderableValueSet.applyValueImmediately`: these apply 600 ms after
 /// the last change (`OptionInstanceSliderButton.delayedApplyAt`).
@@ -2024,6 +2331,16 @@ pub struct OptionsUi {
     /// Whether Options opens Skin Customization: the game's options do; the menus before the
     /// game, which can't put a skin on, keep vanilla's greyed button.
     pub skin_page: bool,
+    /// A profile selected by the host: names are managed in Accounts, not the legacy alias box.
+    pub profile_name: Option<String>,
+    /// That profile's key (`accounts::player_key`), under which its own skin is kept
+    /// (`own_skin::SkinChoice::for_profile`).
+    pub profile_key: Option<String>,
+    /// Where that profile's skin can go besides this game, set by the game every frame.
+    pub skin_cloud: crate::own_skin::Cloud,
+    /// Whether the Mods, Resource Packs and Shader Packs pages have their Catalog button: the
+    /// game's options on a phone (`offer_catalog`). The menus before the game can't show it.
+    catalog_buttons: bool,
     skin: SkinPage,
 }
 /// The Skin Customization page: the name being typed and the skins to choose from, read from
@@ -2129,11 +2446,71 @@ impl Default for OptionsUi {
             row_bands: Vec::new(),
             shader_profiles: Vec::new(),
             skin_page: false,
+            profile_name: None,
+            profile_key: None,
+            skin_cloud: Default::default(),
+            catalog_buttons: false,
             skin: SkinPage::default(),
             wide_extras: Vec::new(),
         }
     }
 }
+/// The longest line of a Mods page note, in characters: about a button's width.
+const NOTE_CHARS: usize = 52;
+
+/// `text` in lines of at most `max` characters, broken between words.
+fn wrap_words(text: &str, max: usize) -> Vec<String> {
+    let mut lines = Vec::new();
+    let mut line = String::new();
+    for word in text.split_whitespace() {
+        if !line.is_empty() && line.chars().count() + 1 + word.chars().count() > max {
+            lines.push(std::mem::take(&mut line));
+        }
+        if !line.is_empty() {
+            line.push(' ');
+        }
+        line.push_str(word);
+    }
+    if !line.is_empty() {
+        lines.push(line);
+    }
+    lines
+}
+
+/// Android: the Mods page's game with native mods (`ModList::native_game`): its lines, cut to the
+/// list's width, its buttons two to a row, and a gap before the mods.
+fn native_game_rows(s: &Settings) -> Vec<Row> {
+    let Some(game) = &s.mods.native_game else {
+        return Vec::new();
+    };
+    let mut rows = Vec::new();
+    for (text, warning) in &game.lines {
+        for line in wrap_words(text, NOTE_CHARS) {
+            rows.push(if *warning {
+                Row::Warning(line)
+            } else {
+                Row::Note(line)
+            });
+        }
+    }
+    let widget = |(label, act): &(String, crate::mod_list::NativeGameAct), w: f32| {
+        button(
+            0.0,
+            0.0,
+            w,
+            Text::literal(label.clone()),
+            Act::NativeGame(*act),
+        )
+    };
+    for pair in game.buttons.chunks(2) {
+        rows.push(match pair {
+            [a, b] => Row::Buttons(widget(a, 150.0), Some(widget(b, 150.0))),
+            _ => Row::Buttons(widget(&pair[0], 310.0), None),
+        });
+    }
+    rows
+}
+
 fn button(x: f32, y: f32, w: f32, label: Text, act: Act) -> Widget {
     Widget {
         x,
@@ -2294,10 +2671,11 @@ fn tooltip_text(s: &Settings, wd: &Widget) -> Option<Text> {
         Act::Cycle(opt) if !opt.available() => Some(tr("horizon.options.unavailable")),
         Act::ToggleMod(i) => match s.mods.installed.get(*i) {
             Some(installed) => {
-                let description = installed
-                    .problem
-                    .as_deref()
-                    .unwrap_or(&installed.description);
+                let description = match installed.problem.as_deref() {
+                    Some(crate::mod_list::NOT_BUILT) => lang::get(crate::mod_list::NOT_BUILT_TIP),
+                    Some(problem) => problem.to_owned(),
+                    None => installed.description.clone(),
+                };
                 Some(Text::literal(format!("{}\n{description}", installed.title)))
             }
             None => tip,
@@ -2430,6 +2808,20 @@ fn pairs(opts: &[Opt]) -> Vec<Row> {
         .map(|c| Row::Pair(c[0], c.get(1).copied()))
         .collect()
 }
+/// The focused text field as the on-screen keyboard's editor on Android mirrors it
+/// (`OptionsUi::focused_text`).
+pub struct FocusedText {
+    /// Which field: 0 the language search, 1 the settings search, 2 the pack search, 3 Skin
+    /// Customization's name, 4 a custom button's text.
+    pub index: usize,
+    /// It searches a list.
+    pub search: bool,
+    pub value: String,
+    /// The cursor and the selection's other end, in characters.
+    pub selection: (usize, usize),
+    /// The most characters it takes.
+    pub max: usize,
+}
 impl OptionsUi {
     /// No widget keeps the highlight a click gave it; a focus the keyboard
     /// moved stays.
@@ -2465,7 +2857,7 @@ impl OptionsUi {
                 .pack_screen
                 .as_ref()
                 .is_some_and(|p| p.search_focused()),
-            Page::Skin => self.skin.name.focused,
+            Page::Skin => self.profile_name.is_none() && self.skin.name.focused,
             Page::CustomButton(_) => self.custom_send.focused,
             _ => self.settings_search_active(),
         }
@@ -2478,9 +2870,78 @@ impl OptionsUi {
         match self.page() {
             Page::Language => on(&self.language_search),
             Page::Packs => self.pack_screen.as_ref().is_some_and(|p| p.search_at(x, y)),
-            Page::Skin => on(&self.skin.name),
+            Page::Skin => self.profile_name.is_none() && on(&self.skin.name),
             Page::CustomButton(_) => on(&self.custom_send),
             _ => self.settings_search_active() && on(&self.settings_search),
+        }
+    }
+    /// The text field that has the focus (`text_focused`), for the on-screen keyboard's editor
+    /// on Android.
+    pub fn focused_text(&self) -> Option<FocusedText> {
+        if !self.text_focused() {
+            return None;
+        }
+        let edit = |e: &ui::EditBox| (e.value.clone(), (e.cursor, e.highlight), e.max_length);
+        let (index, (value, selection, max)) = match self.page() {
+            Page::Language => (0, edit(&self.language_search)),
+            Page::Packs => {
+                let s = self.pack_screen.as_ref()?.search_field();
+                (2, (s.value.clone(), (s.cursor, s.highlight), s.max_length))
+            }
+            Page::Skin => (3, edit(&self.skin.name)),
+            Page::CustomButton(_) => (4, edit(&self.custom_send)),
+            _ => (1, edit(&self.settings_search)),
+        };
+        Some(FocusedText {
+            index,
+            search: index <= 2,
+            value,
+            selection,
+            max,
+        })
+    }
+    /// The on-screen keyboard's editor's text and selection on the focused field (Android),
+    /// through the field's filter and limit as typing would leave them: a position after a
+    /// character the filter drops moves back with it. A search's list goes back to its top
+    /// when its text changed, as after a typed key.
+    pub fn set_focused_text(&mut self, atlas: &HudAtlas, text: &str, cursor: usize, anchor: usize) {
+        if !self.text_focused() {
+            return;
+        }
+        let kept = |pos: usize| {
+            let before: String = text.chars().take(pos).collect();
+            crate::clipboard::filter_text(&before, false)
+                .chars()
+                .count()
+        };
+        let (cursor, anchor) = (kept(cursor), kept(anchor));
+        let value = crate::clipboard::filter_text(text, false);
+        let page = self.page();
+        let edit = match page {
+            Page::Packs => {
+                if let Some(p) = &mut self.pack_screen {
+                    p.set_search(
+                        &crate::screen_draw::Measure(&atlas.font),
+                        &value,
+                        cursor,
+                        anchor,
+                    );
+                }
+                return;
+            }
+            Page::Language => &mut self.language_search,
+            Page::Skin => &mut self.skin.name,
+            Page::CustomButton(_) => &mut self.custom_send,
+            _ => &mut self.settings_search,
+        };
+        let changed = value != edit.value;
+        if changed {
+            edit.set_value(&value);
+        }
+        edit.set_cursor(anchor, false);
+        edit.set_cursor(cursor, true);
+        if changed && !matches!(page, Page::Skin | Page::CustomButton(_)) {
+            self.scroll = 0.0;
         }
     }
     /// Read the Skin Customization page's name, skins and choice again (it opened, or a skin
@@ -2488,10 +2949,16 @@ impl OptionsUi {
     pub fn refresh_skin_page(&mut self) {
         let dir = std::env::current_dir().unwrap_or_default();
         let page = &mut self.skin;
-        page.saved = crate::offline_name::for_worlds(&dir);
+        page.saved = self
+            .profile_name
+            .clone()
+            .unwrap_or_else(|| crate::offline_name::for_worlds(&dir));
+        if self.profile_name.is_some() {
+            page.name.focused = false;
+        }
         page.account = crate::auth::current().map(|a| a.name.clone());
         page.files = crate::own_skin::list(&dir.join(crate::own_skin::DIR));
-        page.choice = crate::own_skin::SkinChoice::load(&dir);
+        page.choice = crate::own_skin::SkinChoice::for_profile(&dir, self.profile_key.as_deref());
         page.elyby = crate::elyby::enabled(&dir);
         page.warning = None;
         if !page.name.focused {
@@ -2506,9 +2973,64 @@ impl OptionsUi {
     pub fn take_skin_actions(&mut self) -> Vec<SkinAction> {
         std::mem::take(&mut self.skin.actions)
     }
+    /// What the skin button calls no file of `skins/`: an account's own skin, else the default.
+    fn skin_default_name(&self) -> String {
+        lang::get(match self.skin_cloud {
+            crate::own_skin::Cloud::Local => "starling.skin.default",
+            _ => "starling.skin.account",
+        })
+    }
+    /// Skin Customization's rows for the playing profile's account, as Horizon Android's wardrobe
+    /// has them: a Microsoft account's upload of the chosen skin to its profile, and how the last
+    /// one went; an Ely.by account's page on ely.by, where its skin is changed.
+    fn skin_cloud_rows(&self) -> Vec<Row> {
+        use crate::own_skin::{Cloud, Upload};
+        let chosen = self.skin.choice.file.is_some();
+        match &self.skin_cloud {
+            Cloud::Local => Vec::new(),
+            Cloud::Ely => vec![
+                Row::Buttons(
+                    button(
+                        0.0,
+                        0.0,
+                        310.0,
+                        tr("starling.skin.ely_site"),
+                        Act::ElySkinSite,
+                    ),
+                    None,
+                ),
+                Row::Note(lang::get("starling.skin.ely_hint")),
+            ],
+            Cloud::Microsoft(upload) => {
+                let sending = *upload == Upload::Sending;
+                let label = tr(if sending {
+                    "starling.skin.uploading"
+                } else {
+                    "starling.skin.upload"
+                });
+                let upload_button = button(0.0, 0.0, 310.0, label, Act::UploadSkin);
+                let upload_button = if chosen && !sending {
+                    upload_button
+                } else {
+                    inactive(upload_button)
+                };
+                let note = match upload {
+                    Upload::Failed(why) => Row::Warning(lang::get_or(why, why)),
+                    Upload::Sent => Row::Note(lang::get("starling.skin.uploaded")),
+                    _ if !chosen => Row::Note(lang::get("starling.skin.upload_choose")),
+                    _ => Row::Note(lang::get("starling.skin.upload_hint")),
+                };
+                vec![Row::Buttons(upload_button, None), note]
+            }
+        }
+    }
     /// The name box loses the focus: a changed name is kept when it is one, else refused and
     /// the old one back in the box.
     fn commit_name(&mut self) {
+        if self.profile_name.is_some() {
+            self.skin.name.focused = false;
+            return;
+        }
         let page = &mut self.skin;
         page.name.focused = false;
         let typed = page.name.value.clone();
@@ -2532,10 +3054,18 @@ impl OptionsUi {
     pub fn resource_packs_open(&self) -> bool {
         self.page() == Page::Packs && self.data_pack_dir.is_none()
     }
+    /// The game is up, so on a phone the pages can open its catalog.
+    pub fn offer_catalog(&mut self) {
+        self.catalog_buttons = ON_A_PHONE;
+    }
     /// The packs in `resourcepacks/` changed while the pack screen is open
     /// (`PackSelectionScreen`'s directory watcher): the screen is made again over
     /// `infos`, keeping the selection made on it so far.
     pub fn update_pack_infos(&mut self, infos: Vec<crate::pack_screen::PackInfo>) {
+        // Create World's data packs are what this page lists then, and they have their watcher.
+        if self.data_pack_dir.is_some() {
+            return;
+        }
         if let Some(p) = self.pack_screen.take()
             && p.changed
         {
@@ -2853,6 +3383,7 @@ impl OptionsUi {
             Page::Skin => "options.skinCustomisation.title",
             Page::Online => "options.online.title",
             Page::Controls => "controls.title",
+            Page::Touch => "Touch Controls",
             Page::KeyBinds => "controls.keybinds.title",
             Page::Mouse => "options.mouse_settings.title",
             Page::Chat => "options.chat.title",
@@ -3331,23 +3862,37 @@ impl OptionsUi {
                     return layers;
                 }
                 let page = &self.skin;
-                let mut rows = vec![Row::Field];
-                rows.push(match (&page.warning, &page.account) {
-                    (Some(warning), _) => Row::Warning(warning.clone()),
-                    // Online-mode servers take only the account's name, and the game can't tell
-                    // them from the others before it joins.
-                    (None, Some(account)) => {
-                        Row::Note(format!("Worlds use this name; servers use {account}"))
-                    }
-                    (None, None) => {
-                        Row::Note("Your name in worlds and on servers, from the next one".into())
-                    }
-                });
+                let mut rows = if let Some(name) = &self.profile_name {
+                    vec![
+                        Row::Note(
+                            tr("starling.account.active")
+                                .plain()
+                                .replacen("%s", name, 1),
+                        ),
+                        Row::Note(tr("starling.account.name_in_accounts").plain()),
+                    ]
+                } else {
+                    vec![Row::Field]
+                };
+                if self.profile_name.is_none() || page.warning.is_some() {
+                    rows.push(match (&page.warning, &page.account) {
+                        (Some(warning), _) => Row::Warning(warning.clone()),
+                        // Online-mode servers take only the account's name, and the game can't tell
+                        // them from the others before it joins.
+                        (None, Some(account)) => {
+                            Row::Note(format!("Worlds use this name; servers use {account}"))
+                        }
+                        (None, None) => Row::Note(
+                            "Your name in worlds and on servers, from the next one".into(),
+                        ),
+                    });
+                }
+                let default = self.skin_default_name();
                 let skin = page
                     .choice
                     .file
                     .as_deref()
-                    .map_or("Default", crate::own_skin::shown_name);
+                    .map_or(default.as_str(), crate::own_skin::shown_name);
                 let skin = button(
                     0.0,
                     0.0,
@@ -3370,6 +3915,7 @@ impl OptionsUi {
                     inactive(model)
                 };
                 rows.push(Row::Buttons(skin, Some(model)));
+                rows.extend(self.skin_cloud_rows());
                 let elyby = |width: f32| {
                     let on = if page.elyby { "ON" } else { "OFF" };
                     button(
@@ -3543,68 +4089,136 @@ impl OptionsUi {
                 rows
             }
             Page::Controls => {
-                let mut rows = vec![Row::Buttons(
+                let android = cfg!(target_os = "android");
+                let mut rows = Vec::new();
+                if android {
+                    rows.push(Row::Big(Opt::AndroidInputSelection));
+                    rows.push(Row::Buttons(
+                        button(
+                            0.,
+                            0.,
+                            150.,
+                            Text::literal("Touch Controls..."),
+                            Act::Push(Page::Touch),
+                        ),
+                        Some(button(
+                            0.,
+                            0.,
+                            150.,
+                            tr("horizon.pages.open.controller"),
+                            Act::Push(Page::Controller),
+                        )),
+                    ));
+                }
+                rows.push(Row::Buttons(
                     button(
-                        0.0,
-                        0.0,
-                        150.0,
-                        tr("options.mouse_settings"),
-                        Act::Push(Page::Mouse),
-                    ),
-                    Some(button(
-                        0.0,
-                        0.0,
-                        150.0,
+                        0.,
+                        0.,
+                        150.,
                         tr("controls.keybinds"),
                         Act::Push(Page::KeyBinds),
+                    ),
+                    Some(button(
+                        0.,
+                        0.,
+                        150.,
+                        tr("options.mouse_settings"),
+                        Act::Push(Page::Mouse),
                     )),
-                )];
-                let controls = vanilla_control_options();
-                rows.extend(pairs(&controls));
-                // Horizon's controller page, after vanilla's rows.
-                rows.push(Row::Buttons(
-                    button(
-                        0.0,
-                        0.0,
-                        310.0,
-                        tr("horizon.pages.open.controller"),
-                        Act::Push(Page::Controller),
-                    ),
-                    None,
                 ));
-                rows.push(Row::Buttons(
-                    button(
-                        0.0,
-                        0.0,
-                        310.0,
-                        Text::literal("Bedrock Inventory: ").append(on_off(s.bedrock_inventory)),
-                        Act::BedrockInventory,
-                    ),
-                    None,
-                ));
-                // The touch controls' layout, where there is a touch screen to play on.
-                if cfg!(target_os = "android") {
+                if !android {
                     rows.push(Row::Buttons(
                         button(
-                            0.0,
-                            0.0,
-                            310.0,
-                            Text::literal("Touch Controls..."),
-                            Act::TouchLayout,
-                        ),
-                        None,
-                    ));
-                    rows.push(Row::Buttons(
-                        button(
-                            0.0,
-                            0.0,
-                            310.0,
-                            Text::literal("Custom Buttons..."),
-                            Act::CustomButtons,
+                            0.,
+                            0.,
+                            310.,
+                            tr("horizon.pages.open.controller"),
+                            Act::Push(Page::Controller),
                         ),
                         None,
                     ));
                 }
+                let mut controls = vanilla_control_options();
+                if android {
+                    let at = controls.iter().position(|o| *o == Opt::AutoJump).unwrap() + 1;
+                    controls.insert(at, Opt::TouchAutoSprint);
+                    controls.retain(|o| *o != Opt::OperatorItemsTab);
+                }
+                rows.extend(pairs(&controls));
+                rows.push(Row::Buttons(
+                    button(
+                        0.,
+                        0.,
+                        150.,
+                        Text::literal("Bedrock Inventory: ").append(on_off(s.bedrock_inventory)),
+                        Act::BedrockInventory,
+                    ),
+                    Some(if android {
+                        option_widget(s, Opt::OperatorItemsTab, 0., 0., 150.)
+                    } else {
+                        button(
+                            0.,
+                            0.,
+                            150.,
+                            Text::literal("Customize Layout..."),
+                            Act::CustomButtons,
+                        )
+                    }),
+                ));
+                self.filter_option_rows(rows)
+            }
+            Page::Touch => {
+                let mut rows = vec![Row::Header("Movement & Look Sensitivity")];
+                rows.push(Row::Big(Opt::TouchMode));
+                rows.extend(pairs(&[
+                    Opt::TouchCrosshairGestures,
+                    Opt::TouchAttackButtonLook,
+                    Opt::TouchSensitivity,
+                    Opt::TouchSensitivityHorizontal,
+                    Opt::TouchSensitivityVertical,
+                ]));
+                rows.push(Row::Header("Control Hub & Feedback"));
+                rows.extend(pairs(&[
+                    Opt::TouchControlHub,
+                    Opt::TouchUiVibration,
+                    Opt::TouchGameVibration,
+                ]));
+                rows.push(Row::Header("HUD Buttons & Layout"));
+                rows.extend(pairs(&[
+                    Opt::TouchMouseButton,
+                    Opt::TouchKeyboardButton,
+                    Opt::TouchOffhand,
+                    Opt::TouchShield,
+                    Opt::TouchButtonScale,
+                    Opt::TouchCircleSize,
+                    Opt::TouchAttackSide,
+                    Opt::GuiScale,
+                    Opt::TouchLeftHand,
+                    Opt::TouchSwapJumpSneak,
+                ]));
+                rows.push(Row::Header("Joystick, Actions & Gyroscope"));
+                rows.extend(pairs(&[
+                    Opt::TouchAnalog,
+                    Opt::TouchSprintButton,
+                    Opt::TouchSprintToggle,
+                    Opt::TouchInventoryControls,
+                    Opt::TouchInteract,
+                    Opt::TouchDynamicJoystick,
+                    Opt::TouchDynamicAreaX,
+                    Opt::TouchDynamicAreaY,
+                    Opt::AndroidGyroscope,
+                    Opt::AndroidGyroSensitivity,
+                ]));
+                rows.push(Row::Buttons(
+                    button(
+                        0.0,
+                        0.0,
+                        310.0,
+                        Text::literal("Customize Touch & GoyControl Layout..."),
+                        Act::TouchLayout,
+                    ),
+                    None,
+                ));
                 self.filter_option_rows(rows)
             }
             Page::Mouse => pairs(MOUSE_OPTIONS),
@@ -3643,6 +4257,7 @@ impl OptionsUi {
             }
             Page::Font => pairs(&[Opt::ForceUnicode, Opt::JapaneseGlyphs]),
             Page::Mods => {
+<<<<<<< HEAD
                 let browse = button(
                     0.0,
                     0.0,
@@ -3653,7 +4268,18 @@ impl OptionsUi {
                 let mut rows = vec![Row::Buttons(browse, None)];
                 if let Some(note) = &self.mods_note {
                     rows.extend(wrap(note, 64).into_iter().map(Row::Note));
+||||||| 121742ad89
+                if s.mods.installed.is_empty() {
+                    return vec![Row::Header("horizon.mods.empty")];
+=======
+                // Android: which game runs, above the mods.
+                let mut rows = native_game_rows(s);
+                if s.mods.installed.is_empty() {
+                    rows.push(Row::Header("horizon.mods.empty"));
+                    return rows;
+>>>>>>> starling-client/starling
                 }
+<<<<<<< HEAD
                 if s.mods.installed.is_empty() {
                     rows.push(Row::Header("horizon.mods.empty"));
                     return rows;
@@ -3702,6 +4328,133 @@ impl OptionsUi {
                                 )
                             };
                         Row::Buttons(if dead { inactive(toggle) } else { toggle }, Some(settings))
+||||||| 121742ad89
+                s.mods
+                    .installed
+                    .iter()
+                    .enumerate()
+                    .map(|(i, installed)| {
+                        let mut label = Text::literal(format!("{}: ", installed.title))
+                            .append(on_off(s.mods.is_on(i)));
+                        if installed.problem.as_deref() == Some(crate::mod_list::NOT_BUILT) {
+                            label = label.append(tr("horizon.mods.not_built"));
+                        } else if installed.problem.is_some() {
+                            label = label.append(tr("horizon.mods.stopped"));
+                        } else if installed.dev {
+                            label = label.append(tr("horizon.mods.dev"));
+                        }
+                        let dead = installed.dev || installed.id.is_empty();
+                        // Only native mods with actual settings need a second button.
+                        if installed
+                            .native
+                            .as_ref()
+                            .is_some_and(|page| !page.keys.is_empty() || !page.buttons.is_empty())
+                        {
+                            let toggle = button(0.0, 0.0, 150.0, label, Act::ToggleMod(i));
+                            // A mod not in this game (Android): its one button, Compile, at once.
+                            let settings = if installed.problem.as_deref()
+                                == Some(crate::mod_list::NOT_BUILT)
+                            {
+                                button(
+                                    0.0,
+                                    0.0,
+                                    150.0,
+                                    Text::literal("Compile"),
+                                    Act::NativeButton(i, 0),
+                                )
+                            } else {
+                                button(
+                                    0.0,
+                                    0.0,
+                                    150.0,
+                                    tr("horizon.mods.settings"),
+                                    Act::ModSettings(i),
+                                )
+                            };
+                            Row::Buttons(
+                                if dead { inactive(toggle) } else { toggle },
+                                Some(settings),
+                            )
+                        } else {
+                            let widget = button(0.0, 0.0, 310.0, label, Act::ToggleMod(i));
+                            Row::Buttons(if dead { inactive(widget) } else { widget }, None)
+                        }
+                    })
+                    .collect()
+            }
+            Page::NativeMod(i) => self.native_rows(s, i),
+            Page::ShaderPacks => {
+                use crate::shader_pack_list::Kind as PackKind;
+                let choice = s.horizon.shader_choice();
+                let pick = |on: bool, name: &str, act: Act| {
+                    let label = if on {
+                        format!("> {name} <")
+=======
+                let mods = s.mods.installed.iter().enumerate().map(|(i, installed)| {
+                    let on = s.mods.is_on(i);
+                    let not_built =
+                        installed.problem.as_deref() == Some(crate::mod_list::NOT_BUILT);
+                    // Android: a native mod is chosen for the next build (the page's top Compile),
+                    // so its row is a box ticked or not; one chosen and not in this game says so
+                    // beside it.
+                    let compiled_here = not_built && installed.native.is_some();
+                    let chosen_box = installed.native.is_some() && !installed.id.is_empty();
+                    let mut label = if chosen_box {
+                        let tick = if on { '\u{2611}' } else { '\u{2610}' };
+                        Text::literal(format!("{tick} {}", installed.title))
+                    } else {
+                        Text::literal(format!("{}: ", installed.title)).append(on_off(on))
+                    };
+                    if not_built {
+                        if !compiled_here {
+                            label = label.append(tr("horizon.mods.not_built"));
+                        }
+                    } else if installed.problem.is_some() {
+                        label = label.append(tr("horizon.mods.stopped"));
+                    } else if installed.dev {
+                        label = label.append(tr("horizon.mods.dev"));
+                    }
+                    let dead = installed.dev || installed.id.is_empty();
+                    // Beside it: a warning, as Java's, for a native mod chosen and not in this
+                    // game (nothing to press: Compile is the page's), Settings for one in it that
+                    // has settings.
+                    let side = if compiled_here {
+                        on.then(|| {
+                            let warning = Text::literal(format!(
+                                "\u{a7}e\u{26a0} {}",
+                                lang::get("starling.mods.native.not_compiled")
+                            ));
+                            inactive(button(0.0, 0.0, 150.0, warning, Act::NativeButton(i, 0)))
+                        })
+                    } else {
+                        installed
+                            .native
+                            .as_ref()
+                            .is_some_and(|page| !page.keys.is_empty() || !page.buttons.is_empty())
+                            .then(|| {
+                                let settings = tr("horizon.mods.settings");
+                                button(0.0, 0.0, 150.0, settings, Act::ModSettings(i))
+                            })
+                    };
+                    if let Some(side) = side {
+                        let toggle = button(0.0, 0.0, 150.0, label, Act::ToggleMod(i));
+                        Row::Buttons(if dead { inactive(toggle) } else { toggle }, Some(side))
+                    } else {
+                        let widget = button(0.0, 0.0, 310.0, label, Act::ToggleMod(i));
+                        Row::Buttons(if dead { inactive(widget) } else { widget }, None)
+                    }
+                });
+                rows.extend(mods);
+                rows
+            }
+            Page::NativeMod(i) => self.native_rows(s, i),
+            Page::ShaderPacks => {
+                use crate::shader_pack_list::Kind as PackKind;
+                let choice = s.horizon.shader_choice();
+                let pick = |on: bool, name: &str, act: Act| {
+                    let label = if on {
+                        format!("> {name} <")
+>>>>>>> starling-client/starling
                     } else {
                         let widget = button(0.0, 0.0, 310.0, label, Act::ToggleMod(i));
                         Row::Buttons(if dead { inactive(widget) } else { widget }, None)
@@ -4026,9 +4779,8 @@ impl OptionsUi {
                     ("horizon.pages.open.horizon_settings", Some(Page::Horizon)),
                     ("horizon.pages.open.mods", Some(Page::Mods)),
                     ("options.credits_and_attribution", Some(Page::Credits)),
-                    #[cfg(target_os = "android")]
-                    ("starling.diagnostics.title", Some(Page::Diagnostics)),
                 ];
+<<<<<<< HEAD
                 // horizon-extras: without it, vanilla's last row instead of Horizon Settings and
                 // Mods: Telemetry Data (greyed: nothing is sent) and Credits & Attribution.
                 let plain;
@@ -4045,6 +4797,10 @@ impl OptionsUi {
                     .concat();
                     &plain
                 };
+||||||| 121742ad89
+=======
+                let entries = with_diagnostics(entries);
+>>>>>>> starling-client/starling
                 let rows = entries.len().div_ceil(2) as f32;
                 let gy = (61.0 + 30.0f32).min(h - 33.0 - rows * 24.0);
                 for (i, (key, page)) in entries.iter().enumerate() {
@@ -4076,6 +4832,27 @@ impl OptionsUi {
                 });
                 let y = (33.0 + 30.0f32).min(h - 33.0 - 76.0);
                 let x = cx - 105.0;
+                if ON_A_PHONE {
+                    // Starling's founders, then the game it is built on (THIRD_PARTY_NOTICES.md).
+                    for (i, key) in ["starling.credits.founders", "starling.credits.horizon"]
+                        .into_iter()
+                        .enumerate()
+                    {
+                        out.push(Widget {
+                            x: 0.0,
+                            y: y - 26.0 + 12.0 * i as f32,
+                            w,
+                            h: 9.0,
+                            kind: WKind::Text {
+                                text: tr(key),
+                                color: u32::MAX,
+                                centered: true,
+                            },
+                            list: false,
+                            row: 0,
+                        });
+                    }
+                }
                 out.push(button(
                     x,
                     y,
@@ -4129,17 +4906,51 @@ impl OptionsUi {
                     list: false,
                     row: 0,
                 });
+<<<<<<< HEAD
                 let mut mappings: Vec<(&str, &str)> =
                     all_mappings().map(|(n, _, c)| (*n, *c)).collect();
+||||||| 121742ad89
+                let mut mappings: Vec<(&str, &str)> =
+                    MAPPINGS.iter().map(|(n, _, c)| (*n, *c)).collect();
+=======
+                let keypad = s.keypad.enabled;
+                if ON_A_PHONE || keypad {
+                    top = 64.0;
+                    out.push(button(
+                        cx - 150.0,
+                        39.0,
+                        300.0,
+                        Text::literal(if keypad {
+                            "Input profile: D-pad / keypad"
+                        } else {
+                            "Input profile: Keyboard"
+                        }),
+                        Act::KeyboardProfile,
+                    ));
+                }
+                let label = |name: &str| {
+                    crate::keypad::ACTIONS
+                        .iter()
+                        .find(|a| a.0 == name)
+                        .map_or_else(|| lang::get(name), |a| a.1.to_owned())
+                };
+                let mut mappings: Vec<(&str, &str)> = if keypad {
+                    crate::keypad::ACTIONS
+                        .iter()
+                        .map(|a| (a.0, "movement"))
+                        .collect()
+                } else {
+                    MAPPINGS.iter().map(|(n, _, c)| (*n, *c)).collect()
+                };
+>>>>>>> starling-client/starling
                 let query = self.settings_search.value.to_lowercase();
                 mappings.retain(|(name, _)| {
-                    query.is_empty() || lang::get(name).to_lowercase().contains(&query)
+                    query.is_empty() || label(name).to_lowercase().contains(&query)
                 });
                 mappings.sort_by(|a, b| {
                     let ca = CATEGORIES.iter().position(|c| *c == a.1).unwrap_or(99);
                     let cb = CATEGORIES.iter().position(|c| *c == b.1).unwrap_or(99);
-                    ca.cmp(&cb)
-                        .then_with(|| lang::get(a.0).cmp(&lang::get(b.0)))
+                    ca.cmp(&cb).then_with(|| label(a.0).cmp(&label(b.0)))
                 });
                 let row_left = cx - 170.0;
                 let scrollbar_x = row_left + 340.0 + 6.0 + 2.0;
@@ -4196,16 +5007,40 @@ impl OptionsUi {
                         w: 200.0,
                         h: 9.0,
                         kind: WKind::Text {
-                            text: tr(name),
+                            text: if keypad {
+                                Text::literal(label(name))
+                            } else {
+                                tr(name)
+                            },
                             color: u32::MAX,
                             centered: false,
                         },
                         list: false,
                         row: 0,
                     });
-                    let key = s.keys.get(name).to_owned();
+                    let key = if keypad {
+                        s.keypad
+                            .keys(name)
+                            .first()
+                            .cloned()
+                            .unwrap_or_else(|| "key.keyboard.unknown".into())
+                    } else {
+                        s.keys.get(name).to_owned()
+                    };
                     let mut message = keybinds::display_name(&key);
-                    let conflicts = s.keys.conflicts(name);
+                    let conflicts: Vec<_> = if keypad {
+                        crate::keypad::ACTIONS
+                            .iter()
+                            .filter(|a| {
+                                a.0 != name
+                                    && s.keypad.keys(a.0).contains(&key)
+                                    && key != "key.keyboard.unknown"
+                            })
+                            .map(|a| a.0)
+                            .collect()
+                    } else {
+                        s.keys.conflicts(name)
+                    };
                     if !conflicts.is_empty() {
                         message = Text::literal("[ ")
                             .append(message.with_color(text::WHITE))
@@ -4224,7 +5059,20 @@ impl OptionsUi {
                     }
                     let reset_x = scrollbar_x - 50.0 - 10.0;
                     let change_x = reset_x - 5.0 - 75.0;
+<<<<<<< HEAD
                     let name_static = all_mappings().find(|m| m.0 == name).map_or("", |m| m.0);
+||||||| 121742ad89
+                    let name_static = MAPPINGS.iter().find(|m| m.0 == name).map_or("", |m| m.0);
+=======
+                    let name_static = if keypad {
+                        crate::keypad::ACTIONS
+                            .iter()
+                            .find(|a| a.0 == name)
+                            .map_or("", |a| a.0)
+                    } else {
+                        MAPPINGS.iter().find(|m| m.0 == name).map_or("", |m| m.0)
+                    };
+>>>>>>> starling-client/starling
                     out.push(button(change_x, y, 75.0, message, Act::Key(name_static)));
                     if !conflicts.is_empty() {
                         out.push(Widget {
@@ -4248,11 +5096,15 @@ impl OptionsUi {
                         tr("controls.reset"),
                         Act::ResetKey(name_static),
                     );
-                    out.push(if s.keys.is_default(name) {
-                        inactive(reset)
-                    } else {
-                        reset
-                    });
+                    out.push(
+                        if (keypad && !s.keypad.bindings.contains_key(name))
+                            || (!keypad && s.keys.is_default(name))
+                        {
+                            inactive(reset)
+                        } else {
+                            reset
+                        },
+                    );
                     y += 20.0;
                     rows.end(&mut out, y);
                 }
@@ -4515,7 +5367,25 @@ impl OptionsUi {
                     _ => None,
                 };
                 if let Some((label, act)) = folder {
-                    out.push(button(cx - 154.0, h - 27.0, 150.0, tr(label), act));
+                    // Android's way to find mods, resource packs and shader packs.
+                    let shelf = catalog_shelf(page).filter(|_| self.catalog_buttons);
+                    let (open_w, catalog) =
+                        crate::pack_screen::open_folder_slot(cx - 154.0, shelf.is_some());
+                    if let (Some(shelf), Some((x, width))) = (shelf, catalog) {
+                        out.push(button(
+                            x,
+                            h - 27.0,
+                            width,
+                            tr("Catalog"),
+                            Act::OpenCatalog(shelf),
+                        ));
+                    }
+                    let label = if catalog.is_some() {
+                        crate::pack_screen::SHORT_OPEN_FOLDER
+                    } else {
+                        label
+                    };
+                    out.push(button(cx - 154.0, h - 27.0, open_w, tr(label), act));
                     out.push(button(cx + 4.0, h - 27.0, 150.0, tr("gui.done"), Act::Done));
                 } else {
                     out.push(done(h - 27.0));
@@ -4617,6 +5487,14 @@ impl OptionsUi {
             Narratable::container_list(self.row_bands.len(), hovered_row, rect).key(key)
         });
     }
+    /// The finger lifted from a touch screen: the widget it tapped keeps no focus, so neither its
+    /// highlight nor its tooltip stays there. A keyboard's or a controller's focus stays.
+    pub fn drop_pointer_focus(&mut self) {
+        if !self.focus_from_keyboard {
+            self.focus = None;
+        }
+    }
+
     pub fn draw(
         &mut self,
         s: &Settings,
@@ -4962,7 +5840,7 @@ impl OptionsUi {
             }
             self.settings_search = search;
         }
-        if self.page() == Page::Skin && self.skin_page {
+        if self.page() == Page::Skin && self.skin_page && self.profile_name.is_none() {
             let mut name = self.skin.name.clone();
             if name.y >= top && name.y + name.height <= bottom {
                 // Red while what is typed is no name, which leaving the box refuses.
@@ -5147,8 +6025,14 @@ impl OptionsUi {
                     None => Event::OpenPackFolder,
                 }),
                 crate::pack_screen::Action::Done => events.extend(self.back(s)),
+<<<<<<< HEAD
                 crate::pack_screen::Action::BrowsePick(i) => {
                     events.push(Event::DownloadPack(i));
+||||||| 121742ad89
+=======
+                crate::pack_screen::Action::Catalog => {
+                    events.push(Event::OpenCatalog(CatalogShelf::ResourcePacks));
+>>>>>>> starling-client/starling
                 }
                 crate::pack_screen::Action::None => {}
             }
@@ -5179,7 +6063,12 @@ impl OptionsUi {
                 return events;
             }
         }
-        if !drag && !right && self.page() == Page::Skin && self.skin_page {
+        if !drag
+            && !right
+            && self.page() == Page::Skin
+            && self.skin_page
+            && self.profile_name.is_none()
+        {
             let field = &mut self.skin.name;
             if ui::hovered((x, y), field.x, field.y, field.width, field.height)
                 && y >= top
@@ -5304,6 +6193,9 @@ impl OptionsUi {
                                 s.shader_options = None;
                                 events.push(Event::OpenShaderOptions);
                             }
+                            if p == Page::Mods {
+                                events.push(Event::ListMods);
+                            }
                             if p == Page::Music {
                                 events.push(Event::ListMusicTracks);
                             }
@@ -5337,17 +6229,32 @@ impl OptionsUi {
                             events.push(Event::Changed);
                         }
                         Act::Key(name) => self.selected_key = Some(name),
+                        Act::KeyboardProfile => {
+                            s.keypad.enabled ^= true;
+                            self.selected_key = None;
+                            self.scroll = 0.;
+                            events.push(Event::Changed);
+                        }
                         Act::ResetKey(name) => {
-                            s.keys.set(name, KeyBinds::default_of(name));
+                            if name.starts_with("key.keypad.") {
+                                s.keypad.bindings.remove(name);
+                            } else {
+                                s.keys.set(name, KeyBinds::default_of(name));
+                            }
                             events.push(Event::Changed);
                         }
                         Act::ResetKeys => {
-                            s.keys.reset_all();
+                            if s.keypad.enabled {
+                                s.keypad.bindings.clear();
+                            } else {
+                                s.keys.reset_all();
+                            }
                             events.push(Event::Changed);
                         }
                         Act::ToggleMod(i) => {
                             s.mods.toggle(i);
                             events.push(Event::Changed);
+                            events.push(Event::ModToggled(i));
                         }
                         Act::ModSettings(i) => {
                             events.push(Event::ButtonClick);
@@ -5359,12 +6266,52 @@ impl OptionsUi {
                             self.selected_native_key = Some((i, k));
                         }
                         Act::NativeButton(i, b) => events.push(Event::NativeButton(i, b)),
+                        Act::NativeGame(act) => events.push(Event::NativeGame(act)),
                         Act::OpenModFolder => events.push(Event::OpenModFolder),
+<<<<<<< HEAD
                         Act::ModProject(i) => {
                             if let Some(listing) = self.mod_browser.listings.get(i) {
                                 self.mod_project = listing.id.clone();
                                 self.push(Page::ModProject);
                             }
+||||||| 121742ad89
+                        Act::OpenShaderPackFolder => events.push(Event::OpenShaderPackFolder),
+                        Act::ShaderResolution => {
+                            const STEPS: [u32; 6] = [100, 75, 50, 40, 30, 25];
+                            let now = s.horizon.resolution_scale;
+                            let next = STEPS.iter().position(|&v| v == now).map_or(2, |i| i + 1);
+                            s.horizon.resolution_scale = STEPS[next % STEPS.len()];
+                            events.push(Event::ShaderPack);
+                            events.push(Event::Changed);
+                        }
+                        Act::ShaderFpsLimit => {
+                            const STEPS: [u32; 4] = [30, 40, 60, 260];
+                            let next = STEPS
+                                .iter()
+                                .position(|&v| v == s.max_fps)
+                                .map_or(0, |i| i + 1);
+                            s.max_fps = STEPS[next % STEPS.len()];
+                            events.push(Event::Changed);
+=======
+                        Act::OpenCatalog(shelf) => events.push(Event::OpenCatalog(shelf)),
+                        Act::OpenShaderPackFolder => events.push(Event::OpenShaderPackFolder),
+                        Act::ShaderResolution => {
+                            const STEPS: [u32; 6] = [100, 75, 50, 40, 30, 25];
+                            let now = s.horizon.resolution_scale;
+                            let next = STEPS.iter().position(|&v| v == now).map_or(2, |i| i + 1);
+                            s.horizon.resolution_scale = STEPS[next % STEPS.len()];
+                            events.push(Event::ShaderPack);
+                            events.push(Event::Changed);
+                        }
+                        Act::ShaderFpsLimit => {
+                            const STEPS: [u32; 4] = [30, 40, 60, 260];
+                            let next = STEPS
+                                .iter()
+                                .position(|&v| v == s.max_fps)
+                                .map_or(0, |i| i + 1);
+                            s.max_fps = STEPS[next % STEPS.len()];
+                            events.push(Event::Changed);
+>>>>>>> starling-client/starling
                         }
                         Act::CustomButtons => {
                             self.push(Page::CustomButtons);
@@ -5487,6 +6434,12 @@ impl OptionsUi {
                             page.actions.push(SkinAction::ElyBy(page.elyby));
                         }
                         Act::OpenSkinFolder => self.skin.actions.push(SkinAction::OpenFolder),
+                        Act::UploadSkin => {
+                            let page = &mut self.skin;
+                            page.warning = None;
+                            page.actions.push(SkinAction::Upload(page.choice.clone()));
+                        }
+                        Act::ElySkinSite => self.skin.actions.push(SkinAction::ElySite),
                         Act::ToggleRecording => events.push(Event::ToggleRecording),
                         Act::DiagnosticsExport => events.push(Event::DiagnosticsExport),
                         Act::DiagnosticsOpen => events.push(Event::DiagnosticsOpen),
@@ -5730,6 +6683,32 @@ impl OptionsUi {
             _ => self.scroll(s, size, amount),
         }
     }
+    /// Whether `cursor` is on a button that a finger moving from it should scroll past rather than
+    /// press (touch.rs, `prefer_scroll`): any active button or language row, and on Video Settings
+    /// any row but a slider's. Sliders keep their sideways drag, and the pages with drags of their
+    /// own (packs, the canvas, calibration, split screen) are left as they are.
+    pub fn list_button_at(&mut self, s: &Settings, size: (f32, f32), cursor: (f32, f32)) -> bool {
+        if self.resource_error.is_some() || self.painting() {
+            return false;
+        }
+        if Self::graphics_page(self.page()).is_some() {
+            return self.graphics.row_button_at(s, size, cursor);
+        }
+        if matches!(
+            self.page(),
+            Page::Packs | Page::SplitSetup | Page::SplitProfiles | Page::HdrCalibration
+        ) {
+            return false;
+        }
+        let (widgets, top, bottom, _) = self.layout(s, size.0, size.1);
+        widgets.iter().any(|wd| {
+            matches!(
+                wd.kind,
+                WKind::Button { active: true, .. } | WKind::LanguageRow { .. }
+            ) && ui::hovered(cursor, wd.x, wd.y, wd.w, wd.h)
+                && !(wd.list && (cursor.1 < top || cursor.1 >= bottom))
+        })
+    }
     /// `VideoSettingsScreen.mouseScrolled`: with Ctrl held the wheel steps the GUI scale
     /// (auto counts as one past the maximum) and the list goes back to the top.
     pub fn video_wheel_gui_scale(
@@ -5788,7 +6767,11 @@ impl OptionsUi {
                 self.pack_screen = Some(screen);
             }
         }
-        self.pack_screen.as_mut().expect("made above")
+        // Here, not when it's made: the menu's screen goes on as the game's (`offer_catalog`).
+        let catalog = self.catalog_buttons && self.data_pack_dir.is_none();
+        let screen = self.pack_screen.as_mut().expect("made above");
+        screen.catalog = catalog;
+        screen
     }
     /// Escape or Done: leave the current page, applying page results.
     /// After an input on HDR calibration: Save keeps what it landed on, Cancel what was
@@ -5821,6 +6804,12 @@ impl OptionsUi {
             .as_ref()
             .filter(|_| self.page() == Page::HdrCalibration)
             .map(|c| c.picture(h))
+    }
+    /// A lifted finger no longer hovers a button. Text editing retains its focus.
+    pub fn release_touch_focus(&mut self) {
+        if !self.focus_from_keyboard && self.focus != Some(FocusId::Search) {
+            self.focus = None;
+        }
     }
     pub fn back(&mut self, s: &mut Settings) -> Vec<Event> {
         let mut events = Vec::new();
@@ -5880,7 +6869,9 @@ impl OptionsUi {
                 }
             }
             // Done or Escape with the name box focused keeps what it holds, as leaving it does.
-            Page::Skin if self.skin.name.focused => self.commit_name(),
+            Page::Skin if self.profile_name.is_none() && self.skin.name.focused => {
+                self.commit_name()
+            }
             // Done keeps a canvas that changed: the file, the atlas's slot, and the button's look.
             Page::CustomDraw(id) => {
                 if std::mem::take(&mut self.painter.dirty) {
@@ -5992,7 +6983,8 @@ impl OptionsUi {
         } else if self.settings_search_active() {
             self.settings_search.insert_text(text);
             self.scroll = 0.0;
-        } else if self.page() == Page::Skin && self.skin.name.focused {
+        } else if self.page() == Page::Skin && self.profile_name.is_none() && self.skin.name.focused
+        {
             self.skin.name.insert_text(text);
         } else if matches!(self.page(), Page::CustomButton(_)) && self.custom_send.focused {
             self.custom_send.insert_text(text);
@@ -6039,7 +7031,7 @@ impl OptionsUi {
             }
             return true;
         }
-        if self.page() == Page::Skin && self.skin.name.focused {
+        if self.page() == Page::Skin && self.profile_name.is_none() && self.skin.name.focused {
             self.skin.name.shortcut(shortcut, clipboard);
             return true;
         }
@@ -6053,6 +7045,10 @@ impl OptionsUi {
         let Some(name) = self.selected_key.take() else {
             return Vec::new();
         };
+        if name.starts_with("key.keypad.") {
+            s.keypad.set(name, value);
+            return vec![Event::Changed];
+        }
         if name == NATIVE_KEY {
             let (i, k) = self.selected_native_key.take().unwrap_or_default();
             let Some(m) = s.mods.installed.get(i) else {
@@ -6226,7 +7222,8 @@ impl OptionsUi {
                 }
             }
             self.scroll = 0.0;
-        } else if self.page() == Page::Skin && self.skin.name.focused {
+        } else if self.page() == Page::Skin && self.profile_name.is_none() && self.skin.name.focused
+        {
             // Enter (the on-screen keyboard's Done) keeps the name.
             if matches!(key, K::Enter | K::NumpadEnter) {
                 self.commit_name();
@@ -6440,6 +7437,9 @@ impl OptionsUi {
                                 s.shader_options = None;
                                 events.push(Event::OpenShaderOptions);
                             }
+                            if p == Page::Mods {
+                                events.push(Event::ListMods);
+                            }
                             if p == Page::Music {
                                 events.push(Event::ListMusicTracks);
                             }
@@ -6478,17 +7478,32 @@ impl OptionsUi {
                             events.push(Event::Changed);
                         }
                         Act::Key(name) => self.selected_key = Some(name),
+                        Act::KeyboardProfile => {
+                            s.keypad.enabled ^= true;
+                            self.selected_key = None;
+                            self.scroll = 0.;
+                            events.push(Event::Changed);
+                        }
                         Act::ResetKey(name) => {
-                            s.keys.set(name, KeyBinds::default_of(name));
+                            if name.starts_with("key.keypad.") {
+                                s.keypad.bindings.remove(name);
+                            } else {
+                                s.keys.set(name, KeyBinds::default_of(name));
+                            }
                             events.push(Event::Changed);
                         }
                         Act::ResetKeys => {
-                            s.keys.reset_all();
+                            if s.keypad.enabled {
+                                s.keypad.bindings.clear();
+                            } else {
+                                s.keys.reset_all();
+                            }
                             events.push(Event::Changed);
                         }
                         Act::ToggleMod(i) => {
                             s.mods.toggle(i);
                             events.push(Event::Changed);
+                            events.push(Event::ModToggled(i));
                         }
                         Act::ModSettings(i) => {
                             self.focus = None;
@@ -6502,11 +7517,45 @@ impl OptionsUi {
                             self.selected_native_key = Some((i, k));
                         }
                         Act::NativeButton(i, b) => events.push(Event::NativeButton(i, b)),
+                        Act::NativeGame(act) => events.push(Event::NativeGame(act)),
                         Act::OpenModFolder => events.push(Event::OpenModFolder),
+<<<<<<< HEAD
                         Act::ModProject(i) => {
                             if let Some(listing) = self.mod_browser.listings.get(i) {
                                 self.mod_project = listing.id.clone();
                                 self.push(Page::ModProject);
+||||||| 121742ad89
+                        Act::PickShaderPack(i) => {
+                            let pick = match i {
+                                Some(i) => s.shader_packs.get(i).map(|p| p.file.clone()),
+                                None => Some(String::new()),
+                            };
+                            if let Some(pick) = pick {
+                                s.horizon.shader_pack = if s.horizon.shader_pack == pick {
+                                    String::new()
+                                } else {
+                                    pick
+                                };
+                                s.horizon.shader_profile.clear();
+                                self.refresh_shader_profiles(s);
+                                events.push(Event::ShaderPack);
+=======
+                        Act::OpenCatalog(shelf) => events.push(Event::OpenCatalog(shelf)),
+                        Act::PickShaderPack(i) => {
+                            let pick = match i {
+                                Some(i) => s.shader_packs.get(i).map(|p| p.file.clone()),
+                                None => Some(String::new()),
+                            };
+                            if let Some(pick) = pick {
+                                s.horizon.shader_pack = if s.horizon.shader_pack == pick {
+                                    String::new()
+                                } else {
+                                    pick
+                                };
+                                s.horizon.shader_profile.clear();
+                                self.refresh_shader_profiles(s);
+                                events.push(Event::ShaderPack);
+>>>>>>> starling-client/starling
                             }
                         }
                         Act::InstallMod => {
@@ -6552,7 +7601,9 @@ impl OptionsUi {
                         | Act::SkinModel
                         | Act::PickSkin
                         | Act::OpenSkinFolder
-                        | Act::ElyBySkins => {}
+                        | Act::ElyBySkins
+                        | Act::UploadSkin
+                        | Act::ElySkinSite => {}
                         Act::None => {}
                     }
                     return events;
@@ -7270,8 +8321,185 @@ mod tests {
             false,
         );
         assert!(events.contains(&Event::Changed));
+        // The game hears which: a native mod changes the next start's build.
+        assert!(events.contains(&Event::ModToggled(0)));
         assert!(!s.mods.is_on(0));
         assert!(s.mods.disabled.contains("no_settings"));
+    }
+
+    #[test]
+    fn the_mods_page_says_which_game_runs_above_the_mods_and_its_buttons_act() {
+        use crate::mod_list::{NativeGame, NativeGameAct};
+        let atlas = atlas();
+        let mut s = Settings::default();
+        let mut ui = OptionsUi::default();
+        let size = (480.0, 400.0);
+        let now = "Now: Starling 0.8.0 from the APK, without native mods.";
+        let old = "The build with Wrench was made for an earlier install of Starling, so it no \
+                   longer loads. Compile again.";
+        s.mods.native_game = Some(NativeGame {
+            lines: vec![(now.into(), false), (old.into(), true)],
+            buttons: vec![
+                ("Compile".into(), NativeGameAct::Compile),
+                ("Use GitHub (slower)".into(), NativeGameAct::CompileOnGithub),
+                (
+                    "Play without native mods".into(),
+                    NativeGameAct::PlayWithout,
+                ),
+            ],
+        });
+        s.mods.installed.push(crate::mod_list::Installed {
+            id: "wrench".into(),
+            title: "Wrench 0.1.0".into(),
+            description: String::new(),
+            problem: Some(crate::mod_list::NOT_BUILT.into()),
+            dev: false,
+            native: Some(crate::mod_list::NativePage::default()),
+        });
+        ui.show(Page::Mods);
+        let (widgets, ..) = ui.layout(&s, size.0, size.1);
+        // Each line in pieces that fit a button's width, red for the build that no longer loads.
+        let lines = |color: u32| -> Vec<String> {
+            widgets
+                .iter()
+                .filter_map(|w| match &w.kind {
+                    WKind::Text { text, color: c, .. } if *c == color => Some(text.plain()),
+                    _ => None,
+                })
+                .filter(|line| !line.is_empty())
+                .collect()
+        };
+        let grey = lines(0xFFA0A0A0);
+        let red = lines(rgba(255, 85, 85, 255));
+        assert!(grey.len() > 1 && red.len() > 1, "{grey:?} {red:?}");
+        for line in wrap_words(old, NOTE_CHARS) {
+            assert!(
+                line.chars().count() <= NOTE_CHARS && red.contains(&line),
+                "{line}"
+            );
+        }
+        assert!(grey.join(" ").contains(now), "{grey:?}");
+        let old_words = old.split_whitespace().collect::<Vec<_>>().join(" ");
+        assert!(red.join(" ").contains(&old_words), "{red:?}");
+        let shown = |act: NativeGameAct| {
+            widgets
+                .iter()
+                .find(
+                    |w| matches!(w.kind, WKind::Button { act: Act::NativeGame(a), .. } if a == act),
+                )
+                .unwrap_or_else(|| panic!("{act:?}'s button"))
+        };
+        // Two to a row; the one left over takes the row.
+        assert_eq!(shown(NativeGameAct::Compile).w, 150.0);
+        assert_eq!(shown(NativeGameAct::CompileOnGithub).w, 150.0);
+        let without = shown(NativeGameAct::PlayWithout);
+        assert_eq!(without.w, 310.0);
+        let (x, y) = (without.x + 1.0, without.y + 1.0);
+        let events = ui.click(&mut s, &atlas, x, y, size, [480, 400], false, false);
+        assert_eq!(
+            events.last(),
+            Some(&Event::NativeGame(NativeGameAct::PlayWithout))
+        );
+        // Above the mods. The mod is chosen and not in this game: its row is a ticked box, without
+        // "(Not built)" after it, and beside it a warning that presses nothing (Compile is the
+        // page's, at the top).
+        // The row's toggle (where, how wide, its label) and the button beside it, if any.
+        let row = |widgets: &[Widget]| {
+            let toggle = widgets
+                .iter()
+                .find_map(|w| match &w.kind {
+                    WKind::Button {
+                        label,
+                        act: Act::ToggleMod(0),
+                        ..
+                    } => Some(([w.x, w.y, w.w], label.plain())),
+                    _ => None,
+                })
+                .expect("the mod's row");
+            let side = widgets.iter().find_map(|w| match &w.kind {
+                WKind::Button {
+                    act: Act::NativeButton(0, 0),
+                    ..
+                } => Some([w.x, w.y, w.w]),
+                _ => None,
+            });
+            (toggle, side)
+        };
+        let ((toggle, label), warning) = row(&widgets);
+        assert!(toggle[1] > without.y);
+        assert!(label.starts_with('\u{2611}'), "{label}");
+        assert!(
+            !label.contains(&tr("horizon.mods.not_built").plain()),
+            "{label}"
+        );
+        let warning = warning.expect("the warning beside the row");
+        assert_eq!(
+            (toggle[2], warning[2], warning[1]),
+            (150.0, 150.0, toggle[1])
+        );
+        let (x, y) = (warning[0] + 1.0, warning[1] + 1.0);
+        let events = ui.click(&mut s, &atlas, x, y, size, [480, 400], false, false);
+        assert!(!events.contains(&Event::NativeButton(0, 0)), "{events:?}");
+        // Not chosen, it has nothing to compile: the row is the box alone.
+        let (x, y) = (toggle[0] + 1.0, toggle[1] + 1.0);
+        ui.click(&mut s, &atlas, x, y, size, [480, 400], false, false);
+        assert!(!s.mods.is_on(0));
+        let (widgets, ..) = ui.layout(&s, size.0, size.1);
+        let ((toggle, label), warning) = row(&widgets);
+        assert!(label.starts_with('\u{2610}'), "{label}");
+        assert!(warning.is_none());
+        assert_eq!(toggle[2], 310.0);
+    }
+
+    #[test]
+    fn a_tapped_row_keeps_no_tooltip_once_the_finger_lifts() {
+        let atlas = atlas();
+        let mut s = Settings::default();
+        let size = (480.0, 400.0);
+        s.mods.installed.push(crate::mod_list::Installed {
+            id: "zoom".into(),
+            title: "Zoom 2.0.0".into(),
+            description: "Zooms in.".into(),
+            problem: None,
+            dev: false,
+            native: Some(crate::mod_list::NativePage::default()),
+        });
+        let mut tapped = OptionsUi::default();
+        tapped.show(Page::Mods);
+        let mut never = OptionsUi::default();
+        never.show(Page::Mods);
+        let (widgets, ..) = tapped.layout(&s, size.0, size.1);
+        let toggle = widgets
+            .iter()
+            .find(|w| {
+                matches!(
+                    w.kind,
+                    WKind::Button {
+                        act: Act::ToggleMod(0),
+                        ..
+                    }
+                )
+            })
+            .expect("the mod's row");
+        let (x, y) = (toggle.x + 1.0, toggle.y + 1.0);
+        tapped.click(&mut s, &atlas, x, y, size, [480, 400], false, false);
+        // The finger went away (the game draws with no pointer then).
+        let away = (-10_000.0, -10_000.0);
+        let drawn = |ui: &mut OptionsUi| {
+            let mut batch = HudBatch::new([480, 400]);
+            ui.draw(&s, &mut batch, &atlas, away);
+            batch.vertices
+        };
+        let plain = drawn(&mut never);
+        // A click's focus keeps the row's tooltip beside it, wherever the pointer went...
+        assert!(drawn(&mut tapped).len() > plain.len());
+        // ...which a lifted finger lets go of.
+        tapped.drop_pointer_focus();
+        let after = drawn(&mut tapped);
+        assert_eq!(
+            bytemuck::cast_slice::<_, u8>(&after),
+            bytemuck::cast_slice::<_, u8>(&plain)
+        );
     }
 
     #[test]
@@ -9227,6 +10455,33 @@ mod tests {
     }
 
     #[test]
+    fn a_selected_profile_prevents_the_legacy_skin_page_from_changing_its_name() {
+        let atlas = atlas();
+        let mut settings = Settings::default();
+        let mut ui = OptionsUi {
+            skin_page: true,
+            profile_name: Some("TabletAlpha".into()),
+            ..Default::default()
+        };
+        ui.stack.push(Page::Skin);
+        ui.skin.saved = "OldAlias".into();
+        ui.skin.name.set_value("OldAlias");
+        ui.skin.name.focused = true;
+        assert!(!ui.text_focused());
+        assert!(!ui.text_field_at(ui.skin.name.x, ui.skin.name.y));
+        ui.type_text(&atlas, "X");
+        ui.key(
+            &mut settings,
+            &atlas,
+            winit::keyboard::KeyCode::KeyA,
+            Some("X"),
+        );
+        ui.commit_name();
+        assert_eq!(ui.skin.name.value, "OldAlias");
+        assert!(ui.take_skin_actions().is_empty());
+    }
+
+    #[test]
     fn the_skin_page_takes_a_name_and_cycles_the_skins() {
         use winit::keyboard::KeyCode;
         let atlas = atlas();
@@ -9341,6 +10596,73 @@ mod tests {
             .collect();
         assert!(acts.contains(&&Act::Cycle(Opt::ModelPart(0))));
         assert!(!acts.contains(&&Act::NextSkin) && !acts.contains(&&Act::OpenSkinFolder));
+    }
+
+    #[test]
+    fn an_account_profile_sends_its_skin_where_its_account_keeps_it() {
+        use crate::own_skin::{Cloud, SkinChoice, Upload};
+        let atlas = atlas();
+        let mut s = Settings::default();
+        let mut ui = OptionsUi {
+            skin_page: true,
+            profile_name: Some("Notch".into()),
+            skin_cloud: Cloud::Microsoft(Upload::None),
+            ..Default::default()
+        };
+        ui.stack.push(Page::Skin);
+        ui.skin.files = vec!["alex.png".into()];
+        let size = (427.0, 240.0);
+        let buttons = |ui: &mut OptionsUi| {
+            let (widgets, ..) = ui.layout(&Settings::default(), size.0, size.1);
+            widgets
+                .iter()
+                .filter_map(|w| match &w.kind {
+                    WKind::Button { act, active, .. } => {
+                        Some((act.clone(), (w.x + 2.0, w.y + 2.0), *active))
+                    }
+                    _ => None,
+                })
+                .collect::<Vec<_>>()
+        };
+        let find = |ui: &mut OptionsUi, wanted: Act| {
+            buttons(ui)
+                .into_iter()
+                .find(|(act, ..)| *act == wanted)
+                .map(|(_, at, active)| (at, active))
+        };
+        // The account's own skin is nothing to upload.
+        assert_eq!(find(&mut ui, Act::UploadSkin).map(|b| b.1), Some(false));
+        ui.skin.choice = SkinChoice {
+            file: Some("alex.png".into()),
+            slim: true,
+        };
+        let (at, active) = find(&mut ui, Act::UploadSkin).unwrap();
+        assert!(active);
+        ui.click(&mut s, &atlas, at.0, at.1, size, [1281, 720], false, false);
+        assert_eq!(
+            ui.take_skin_actions(),
+            [SkinAction::Upload(ui.skin.choice.clone())]
+        );
+        // One upload at a time; a refusal shows in red.
+        ui.skin_cloud = Cloud::Microsoft(Upload::Sending);
+        assert_eq!(find(&mut ui, Act::UploadSkin).map(|b| b.1), Some(false));
+        ui.skin_cloud = Cloud::Microsoft(Upload::Failed("Mojang said no".into()));
+        assert!(
+            ui.list_rows(&s)
+                .iter()
+                .any(|r| matches!(r, Row::Warning(w) if w == "Mojang said no"))
+        );
+        // Ely.by takes no uploads: its page instead.
+        ui.skin_cloud = Cloud::Ely;
+        assert_eq!(find(&mut ui, Act::UploadSkin), None);
+        let (at, active) = find(&mut ui, Act::ElySkinSite).unwrap();
+        assert!(active);
+        ui.click(&mut s, &atlas, at.0, at.1, size, [1281, 720], false, false);
+        assert_eq!(ui.take_skin_actions(), [SkinAction::ElySite]);
+        // An offline profile's skin stays in this game.
+        ui.skin_cloud = Cloud::Local;
+        let acts: Vec<Act> = buttons(&mut ui).into_iter().map(|b| b.0).collect();
+        assert!(!acts.contains(&Act::UploadSkin) && !acts.contains(&Act::ElySkinSite));
     }
 
     #[test]
@@ -9493,6 +10815,45 @@ mod tests {
         let events = ui.wheel(&mut s, size, cursor, [854, 480], 1.0);
         assert_eq!(s.master_volume, 0.5);
         assert!(!events.iter().any(|e| matches!(e, Event::Volume(0, _))));
+    }
+
+    #[test]
+    fn a_finger_scrolls_from_a_cycle_button_and_drags_a_slider() {
+        let s = Settings::default();
+        let mut ui = OptionsUi::default();
+        let size = (480.0, 600.0);
+        ui.show(Page::Extras);
+        let (widgets, _, _, _) = ui.layout(&s, size.0, size.1);
+        let sort = widgets
+            .iter()
+            .find(|w| {
+                matches!(
+                    w.kind,
+                    WKind::Button {
+                        act: Act::Extra(crate::extras::Item::Sort),
+                        ..
+                    }
+                )
+            })
+            .unwrap();
+        let on_sort = (sort.x + 5.0, sort.y + 5.0);
+        assert!(ui.list_button_at(&s, size, on_sort));
+        ui.show(Page::Sound);
+        let (widgets, _, _, _) = ui.layout(&s, size.0, size.1);
+        let master = widgets
+            .iter()
+            .find(|w| {
+                matches!(
+                    w.kind,
+                    WKind::Slider {
+                        opt: Opt::Volume(0),
+                        ..
+                    }
+                )
+            })
+            .unwrap();
+        let on_master = (master.x + 10.0, master.y + 10.0);
+        assert!(!ui.list_button_at(&s, size, on_master));
     }
 
     #[test]
@@ -9897,6 +11258,7 @@ mod tests {
         assert!(s.extras.music_off.is_empty());
     }
 
+<<<<<<< HEAD
     #[test]
     fn options_cycle_button_cycles_forward_and_shift_click_cycles_backward_with_wrapping() {
         let atlas = atlas();
@@ -10005,5 +11367,214 @@ mod tests {
         ui.click(&mut s, &atlas, px, py, size, [854, 480], false, false);
         assert_eq!(s.particles, 0);
         ui.shift = false;
+||||||| 121742ad89
+=======
+    /// The GUI sizes a landscape phone has, across its GUI scales.
+    const PHONE_GUI: [(f32, f32); 5] = [
+        (427.0, 240.0),
+        (533.0, 240.0),
+        (600.0, 270.0),
+        (800.0, 360.0),
+        (1200.0, 540.0),
+    ];
+
+    /// A pack as the pack screen lists it.
+    fn pack_info(id: &str) -> crate::pack_screen::PackInfo {
+        crate::pack_screen::PackInfo {
+            id: id.into(),
+            title: Text::literal(id),
+            description: Text::literal(""),
+            description_style: crate::text::Style::default(),
+            source: crate::pack_screen::Source::Default,
+            compat: crate::pack_screen::Compat::Compatible,
+            icon: None,
+            required: false,
+            position: crate::packs::Position::Top,
+            fixed: false,
+        }
+    }
+
+    #[test]
+    fn the_mods_and_shader_packs_pages_open_the_catalog_on_their_own_shelf() {
+        let atlas = atlas();
+        let mut s = Settings::default();
+        for size in PHONE_GUI {
+            for (page, shelf) in [
+                (Page::Mods, CatalogShelf::Mods),
+                (Page::ShaderPacks, CatalogShelf::ShaderPacks),
+            ] {
+                let mut ui = OptionsUi {
+                    catalog_buttons: true,
+                    ..OptionsUi::default()
+                };
+                ui.show(page);
+                let (widgets, ..) = ui.layout(&s, size.0, size.1);
+                let footer: Vec<&Widget> = widgets
+                    .iter()
+                    .filter(|w| !w.list && matches!(w.kind, WKind::Button { .. }))
+                    .collect();
+                assert_eq!(footer.len(), 3, "{page:?} at {size:?}");
+                let catalog = footer
+                    .iter()
+                    .find(|w| {
+                        matches!(&w.kind, WKind::Button { act: Act::OpenCatalog(on), .. } if *on == shelf)
+                    })
+                    .expect("Catalog button");
+                // On the screen, on the footer's row, and clear of its two buttons.
+                assert!(catalog.x >= 0.0, "{page:?} at {size:?}");
+                for other in &footer {
+                    assert_eq!(other.y, size.1 - 27.0);
+                    if std::ptr::eq(*other, *catalog) {
+                        continue;
+                    }
+                    // Open Folder is left of it and Done right of it, with room between.
+                    let clear = if other.x < catalog.x {
+                        other.x + other.w < catalog.x
+                    } else {
+                        catalog.x + catalog.w < other.x
+                    };
+                    assert!(
+                        clear,
+                        "{page:?} at {size:?}: Catalog runs into the button at {}",
+                        other.x
+                    );
+                    if other.x < catalog.x {
+                        // Together they fill the 150 Open Folder had.
+                        assert_eq!(catalog.x + catalog.w - other.x, 150.0);
+                    }
+                }
+                let (x, y) = (catalog.x + catalog.w / 2.0, catalog.y + catalog.h / 2.0);
+                let events = ui.click(&mut s, &atlas, x, y, size, [854, 480], false, false);
+                assert_eq!(events, vec![Event::ButtonClick, Event::OpenCatalog(shelf)]);
+            }
+        }
+    }
+
+    #[test]
+    fn the_resource_packs_page_opens_the_catalog_on_its_shelf() {
+        let atlas = atlas();
+        let mut s = Settings::default();
+        let size = (800.0, 360.0);
+        let mut ui = OptionsUi {
+            catalog_buttons: true,
+            ..OptionsUi::default()
+        };
+        ui.show(Page::Packs);
+        // The right half of Open Folder's slot: the footer starts at (800 - 308) / 2.
+        let events = ui.click(&mut s, &atlas, 330.0, 344.0, size, [854, 480], false, false);
+        assert_eq!(
+            events,
+            vec![
+                Event::ButtonClick,
+                Event::OpenCatalog(CatalogShelf::ResourcePacks)
+            ]
+        );
+        assert_eq!(ui.page(), Page::Packs);
+    }
+
+    #[test]
+    fn without_the_offer_no_page_has_a_catalog_button() {
+        let atlas = atlas();
+        let mut s = Settings::default();
+        let size = (800.0, 360.0);
+        let mut ui = OptionsUi::default();
+        for page in [Page::Mods, Page::ShaderPacks] {
+            ui.show(page);
+            let (widgets, ..) = ui.layout(&s, size.0, size.1);
+            assert!(!widgets.iter().any(|w| matches!(
+                w.kind,
+                WKind::Button {
+                    act: Act::OpenCatalog(_),
+                    ..
+                }
+            )));
+        }
+        ui.show(Page::Packs);
+        // Left of the footer, where the button used to be.
+        let events = ui.click(&mut s, &atlas, 200.0, 344.0, size, [854, 480], false, false);
+        assert_eq!(events, Vec::new());
+    }
+
+    #[test]
+    fn only_a_phone_takes_the_offer_of_the_catalog() {
+        let mut ui = OptionsUi::default();
+        ui.offer_catalog();
+        assert_eq!(ui.catalog_buttons, cfg!(target_os = "android"));
+    }
+
+    #[test]
+    fn create_worlds_data_packs_have_no_catalog_button() {
+        let atlas = atlas();
+        let mut s = Settings::default();
+        let dir = std::env::temp_dir().join(format!("horizon-catalog-{}", std::process::id()));
+        let mut ui = OptionsUi {
+            catalog_buttons: true,
+            ..OptionsUi::default()
+        };
+        ui.open_data_packs(dir.clone(), Vec::new(), dir);
+        let events = ui.click(
+            &mut s,
+            &atlas,
+            192.0,
+            344.0,
+            (800.0, 360.0),
+            [854, 480],
+            false,
+            false,
+        );
+        assert_eq!(events, Vec::new());
+    }
+
+    /// The catalog installs with Options open: from the Mods page there was no reading the folder
+    /// again, as `pack_infos` is read when Options opens and the watcher runs on this page only.
+    #[test]
+    fn a_pack_installed_with_options_open_is_on_the_resource_packs_page() {
+        let atlas = atlas();
+        let mut ui = OptionsUi {
+            pack_infos: vec![pack_info("file/old")],
+            ..OptionsUi::default()
+        };
+        ui.show(Page::Mods);
+        ui.update_pack_infos(vec![pack_info("file/old"), pack_info("file/new")]);
+        ui.show(Page::Packs);
+        let listed = &ui.packs(&atlas, (800.0, 360.0)).model.unselected;
+        assert!(listed.iter().any(|p| p.id == "file/new"));
+    }
+
+    #[test]
+    fn a_pack_installed_over_the_page_keeps_what_was_chosen_on_it() {
+        let atlas = atlas();
+        let size = (800.0, 360.0);
+        let mut ui = OptionsUi {
+            pack_infos: vec![pack_info("file/a"), pack_info("file/b")],
+            ..OptionsUi::default()
+        };
+        ui.show(Page::Packs);
+        let screen = ui.packs(&atlas, size);
+        screen.model.activate(false, 0, true);
+        screen.changed = true;
+        let chosen = screen.commit();
+        assert_eq!(chosen.len(), 1);
+        ui.update_pack_infos(vec![
+            pack_info("file/a"),
+            pack_info("file/b"),
+            pack_info("file/new"),
+        ]);
+        let screen = ui.packs(&atlas, size);
+        assert_eq!(screen.commit(), chosen);
+        assert!(screen.changed, "Done still applies it");
+        assert!(screen.model.unselected.iter().any(|p| p.id == "file/new"));
+    }
+
+    #[test]
+    fn a_resource_pack_installed_leaves_create_worlds_data_packs_alone() {
+        let dir = std::env::temp_dir().join(format!("horizon-catalog-{}", std::process::id()));
+        let mut ui = OptionsUi::default();
+        ui.open_data_packs(dir.clone(), Vec::new(), dir);
+        let listed = ui.pack_infos.len();
+        ui.update_pack_infos(vec![pack_info("file/new")]);
+        assert_eq!(ui.pack_infos.len(), listed);
+        assert!(!ui.pack_infos.iter().any(|p| p.id == "file/new"));
+>>>>>>> starling-client/starling
     }
 }

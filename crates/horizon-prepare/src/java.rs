@@ -39,6 +39,7 @@ pub fn supply(runtime: Supplied) -> bool {
 /// 1.25 GB instead of 2 GB.
 pub(crate) const BATCH_OPTIONS: [&str; 2] = ["-XX:TieredStopAtLevel=1", "-XX:+UseSerialGC"];
 
+<<<<<<< HEAD
 /// The variables a JVM reads extra options from. A collector chosen there, such as a player's
 /// global `-XX:+UseZGC`, stops a JVM started with [`BATCH_OPTIONS`]: "Multiple garbage collectors
 /// selected" (#10067).
@@ -46,6 +47,67 @@ const JVM_OPTION_VARS: [&str; 3] = ["JAVA_TOOL_OPTIONS", "_JAVA_OPTIONS", "JDK_J
 
 /// Exporters and JDK probes write to pipes or log files: on Windows they open no terminal. They
 /// run with [`BATCH_OPTIONS`] alone, whatever options the player's environment sets for Java.
+||||||| 121742ad89
+/// Exporters and JDK probes write to pipes or log files: on Windows they open no terminal.
+=======
+pub(crate) const SMALL_ANDROID: bool =
+    cfg!(all(target_os = "android", target_pointer_width = "32"));
+
+/// 32-bit Android cannot reserve multi-gigabyte heaps. This is a maximum, not
+/// committed memory; smaller exporter requests keep their original limit.
+pub(crate) fn heap_arg(heap: &str) -> String {
+    heap_for(heap, max_heap_mib())
+}
+
+/// Maximum exporter heap on Android 32-bit; other targets retain their requests.
+/// Below 1.5 GiB, leave more RAM for Android and the installer's renderer.
+pub fn max_heap_mib() -> Option<u64> {
+    if !SMALL_ANDROID {
+        return None;
+    }
+    static LIMIT: std::sync::OnceLock<u64> = std::sync::OnceLock::new();
+    Some(
+        *LIMIT.get_or_init(|| {
+            small_heap_limit(&fs::read_to_string("/proc/meminfo").unwrap_or_default())
+        }),
+    )
+}
+
+fn small_heap_limit(meminfo: &str) -> u64 {
+    let total_kib = meminfo.lines().find_map(|line| {
+        let mut fields = line.split_whitespace();
+        if fields.next()? != "MemTotal:" {
+            return None;
+        }
+        let kib = fields.next()?.parse::<u64>().ok()?;
+        (fields.next()? == "kB").then_some(kib)
+    });
+    if total_kib.is_some_and(|kib| kib >= 1536 * 1024) {
+        512
+    } else {
+        384
+    }
+}
+
+fn heap_for(heap: &str, limit: Option<u64>) -> String {
+    let bytes = heap
+        .strip_suffix(['G', 'g'])
+        .and_then(|n| n.parse::<u64>().ok())
+        .and_then(|n| n.checked_mul(1024 * 1024 * 1024))
+        .or_else(|| {
+            heap.strip_suffix(['M', 'm'])
+                .and_then(|n| n.parse::<u64>().ok())
+                .and_then(|n| n.checked_mul(1024 * 1024))
+        });
+    if let Some(cap) = limit.filter(|cap| bytes.is_none_or(|n| n > cap * 1024 * 1024)) {
+        format!("-Xmx{cap}M")
+    } else {
+        format!("-Xmx{heap}")
+    }
+}
+
+/// Exporters and JDK probes write to pipes or log files: on Windows they open no terminal.
+>>>>>>> starling-client/starling
 pub(crate) fn command(program: impl AsRef<OsStr>) -> Command {
     let mut command = Command::new(program);
     for var in JVM_OPTION_VARS {
@@ -418,6 +480,9 @@ impl Jdk {
     /// stdout=log, stderr=STDOUT, timeout=3600)`.
     pub fn javac(&self, major: i64, args: &[String], log: &fs::File) -> Result<(), String> {
         let mut command = command(&self.javac);
+        if SMALL_ANDROID {
+            command.arg(format!("-J{}", heap_arg("512M")));
+        }
         command
             .args(BATCH_OPTIONS.map(|option| format!("-J{option}")))
             .args(["--release", &major.to_string(), "-proc:none"])
@@ -427,7 +492,15 @@ impl Jdk {
 
     pub fn java(&self, args: &[String], cwd: Option<&Path>, log: &fs::File) -> Result<(), String> {
         let mut command = command(&self.java);
-        command.args(BATCH_OPTIONS).args(args);
+        command.args(BATCH_OPTIONS);
+        // The vanilla data generator has no explicit heap argument either.
+        if SMALL_ANDROID && !args.iter().any(|arg| arg.starts_with("-Xmx")) {
+            command.arg(heap_arg("512M"));
+        }
+        command.args(args.iter().map(|arg| {
+            arg.strip_prefix("-Xmx")
+                .map_or_else(|| arg.clone(), heap_arg)
+        }));
         if let Some(dir) = cwd {
             command.current_dir(dir);
         }
@@ -472,6 +545,7 @@ mod tests {
     use super::*;
 
     #[test]
+<<<<<<< HEAD
     fn missing_timezone_data_explains_which_java_to_repair() {
         let dir = std::env::temp_dir().join(format!("horizon-java-tzdb-{}", std::process::id()));
         fs::create_dir_all(&dir).unwrap();
@@ -529,6 +603,30 @@ mod tests {
                 "{var} reaches the JVM"
             );
         }
+||||||| 121742ad89
+=======
+    fn small_android_caps_large_heaps_without_enlarging_small_requests() {
+        for heap in ["2G", "1G", "768M"] {
+            assert_eq!(heap_for(heap, Some(512)), "-Xmx512M");
+            assert_eq!(heap_for(heap, Some(384)), "-Xmx384M");
+            assert_eq!(heap_for(heap, None), format!("-Xmx{heap}"));
+        }
+        assert_eq!(heap_for("512M", Some(384)), "-Xmx384M");
+        assert_eq!(heap_for("128M", Some(384)), "-Xmx128M");
+    }
+
+    #[test]
+    fn small_phones_reserve_more_memory_for_android_and_the_renderer() {
+        assert_eq!(
+            small_heap_limit("MemTotal: 913568 kB\nMemFree: 12345 kB\n"),
+            384
+        );
+        assert_eq!(small_heap_limit("MemTotal: 1572863 kB\n"), 384);
+        assert_eq!(small_heap_limit("MemTotal: 1572864 kB\n"), 512);
+        assert_eq!(small_heap_limit("MemTotal: 8388608 kB\n"), 512);
+        assert_eq!(small_heap_limit("unavailable"), 384);
+        assert_eq!(small_heap_limit("MemTotal: invalid kB"), 384);
+>>>>>>> starling-client/starling
     }
 
     #[test]

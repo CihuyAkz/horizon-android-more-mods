@@ -148,6 +148,7 @@ impl StartupMenu {
             game.ui.options = std::mem::take(&mut self.options);
             game.ui.options.resource_error =
                 game.ui.options.resource_error.take().or(resource_error);
+            game.ui.options.offer_catalog();
             game.screen = Screen::Options;
             game.options_from_title = true;
             game.dragging = self.dragging;
@@ -593,6 +594,22 @@ impl Loading {
         true
     }
 
+    /// Whether a finger landing at `touch` is on a button of the options (a cycle button, a row of
+    /// Video Settings), which a drag starting sideways would press: it only scrolls.
+    pub(super) fn menu_options_button_at(&mut self, touch: &winit::event::Touch) -> bool {
+        if !self.menu.options_open || self.gui.is_none() {
+            return false;
+        }
+        let batch = HudBatch::new(self.menu_size());
+        let cursor = (
+            touch.location.x as f32 / batch.scale,
+            touch.location.y as f32 / batch.scale,
+        );
+        self.menu
+            .options
+            .list_button_at(&self.settings, (batch.width, batch.height), cursor)
+    }
+
     pub(super) fn poll_menu_resources(&mut self) -> Result<()> {
         // Once `Done` arrived the generation is over: the caller may have taken
         // its result, and the finished loader's channel is closed.
@@ -816,6 +833,8 @@ impl Loading {
                     self.settings.shader_packs =
                         horizon_client::shader_pack_list::scan(&Game::shader_packs_dir());
                 }
+                // Before the game starts the mods are listed as it starts (`start_mods`).
+                Event::ListMods => {}
                 Event::ShaderPack => self.save_menu_settings(),
                 Event::OpenCustomButtons => {
                     self.settings.custom_buttons = super::touch::saved_custom_buttons();
@@ -883,8 +902,19 @@ impl Loading {
                     super::packs::open_uri(super::options::ACCESSIBILITY_HELP_LINK)
                 }
                 // Mods' settings pages open only in a running game.
+<<<<<<< HEAD
                 // The HUD editor needs a world: its button is inactive here.
                 Event::NativeSettings(_) | Event::NativeButton(..) | Event::HudEditor => {}
+||||||| 121742ad89
+                Event::NativeSettings(_) | Event::NativeButton(..) => {}
+=======
+                Event::NativeSettings(_)
+                | Event::NativeButton(..)
+                | Event::OpenCatalog(_)
+                | Event::NativeGame(_) => {}
+                // Saved by `Changed`; the game reads the native mods' set as it starts.
+                Event::ModToggled(_) => {}
+>>>>>>> starling-client/starling
                 // Options.createSoundSliderOptionInstance: the preview plays without a level,
                 // once the menu's sound output is up.
                 Event::Volume(source, volume) => {
@@ -1407,14 +1437,24 @@ impl Loading {
                     MouseScrollDelta::LineDelta(_, y) => y,
                     MouseScrollDelta::PixelDelta(p) => (p.y / 30.0) as f32,
                 };
-                let amount = if self.settings.discrete_scroll {
+                // A phone's pixel scrolls are a finger's (touch.rs): they only scroll, as in game.
+                let finger =
+                    cfg!(target_os = "android") && matches!(delta, MouseScrollDelta::PixelDelta(_));
+                let amount = if self.settings.discrete_scroll && !finger {
                     horizon_client::mouse::java_signum(f64::from(raw)) as f32
                 } else {
                     raw
                 } * self.settings.mouse_wheel_sensitivity;
                 let size = self.menu_size();
                 let batch = HudBatch::new(size);
-                if self.menu.options_open {
+                if self.menu.options_open && finger {
+                    self.menu.options.scroll_at(
+                        &self.settings,
+                        (batch.width, batch.height),
+                        self.menu.cursor,
+                        amount,
+                    );
+                } else if self.menu.options_open {
                     let events = self.menu.options.wheel(
                         &mut self.settings,
                         (batch.width, batch.height),

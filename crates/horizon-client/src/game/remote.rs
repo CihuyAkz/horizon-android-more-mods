@@ -864,6 +864,24 @@ const OVERDUE_CHUNK_PACKETS_PER_FRAME: Duration = Duration::from_millis(4);
 /// A gap in the ticks or movement sent to the server worth a log line (an old server's
 /// anticheat behind ViaVersion counts on one each tick, and a reminder every 20).
 const GAP_LOGGED: Duration = Duration::from_millis(1100);
+
+/// A movement packet in the log, when it came late or was the first. Apart from
+/// `remote_send_state`: horizon-mixins refuses to hook a function that calls `log::info!`
+/// (E_UNSUPPORTED_MACRO).
+fn log_movement_gap(moved_at: &mut Option<Instant>, play_began: Option<Instant>) {
+    let now = Instant::now();
+    match moved_at.replace(now).map(|at| now - at) {
+        Some(gap) if gap >= GAP_LOGGED => log::info!(
+            "Horizon: {} ms between two movement packets",
+            gap.as_millis()
+        ),
+        Some(_) => {}
+        None => log::info!(
+            "Horizon: the first movement packet {} ms after the play phase began",
+            play_began.map_or(0, |at| (now - at).as_millis())
+        ),
+    }
+}
 /// How many movement packets the first setback's log line shows.
 const TRAIL: usize = 12;
 /// Free stick direction rests this long after a hit, a use or a drop: those go with the view's
@@ -966,6 +984,15 @@ fn number_format(f: &play::NumberFormat) -> horizon_client::scoreboard::NumberFo
 }
 
 impl Game<'_> {
+    #[cfg(target_os = "android")]
+    pub(super) fn touch_mining_progress(&self) -> f32 {
+        self.remote
+            .as_ref()
+            .and_then(|r| r.destroying.map(|d| d.2))
+            .or_else(|| self.mining.as_ref().map(|m| m.progress))
+            .unwrap_or(0.)
+    }
+
     /// A `Holder<SoundEvent>` off the wire: an inline event's location, or
     /// the name of a registered one.
     pub(super) fn remote_sound_name(
@@ -6440,6 +6467,15 @@ impl Game<'_> {
         // Skin Customization's Ely.by Skins: on a server that sends no skin for a player (offline
         // mode), the one their name has on Ely.by, as offline launchers show it.
         let mut from_elyby = std::collections::HashSet::new();
+        // An Ely.by account's own skin where the server sent none: Ely.by's, as Mojang's profile
+        // is a Microsoft account's (`own_profile` asks Mojang nothing for it).
+        if !entries.iter().any(|(u, t)| *u == local && t.skin.is_some())
+            && let Some(textures) = self.own_elyby_textures()
+        {
+            entries.retain(|(u, _)| *u != local);
+            entries.push((local, textures));
+            from_elyby.insert(local);
+        }
         if !online_mode {
             for (uuid, name) in names {
                 if entries.iter().any(|(u, t)| *u == uuid && t.skin.is_some()) {
@@ -8640,6 +8676,7 @@ impl Game<'_> {
             if crouching {
                 shared |= 0x02;
             }
+<<<<<<< HEAD
             if sprinting {
                 shared |= 0x08;
             }
@@ -8669,6 +8706,28 @@ impl Game<'_> {
                 );
                 r.session.record_clientbound(&pkt);
             }
+||||||| 121742ad89
+            r.trail
+                .push_back((pos, on_ground, r.last_input, Instant::now()));
+            let now = Instant::now();
+            match r.moved_at.replace(now).map(|at| now - at) {
+                Some(gap) if gap >= GAP_LOGGED => log::info!(
+                    "Horizon: {} ms between two movement packets",
+                    gap.as_millis()
+                ),
+                Some(_) => {}
+                None => log::info!(
+                    "Horizon: the first movement packet {} ms after the play phase began",
+                    r.play_began.map_or(0, |at| (now - at).as_millis())
+                ),
+            }
+            out.push(packet);
+=======
+            r.trail
+                .push_back((pos, on_ground, r.last_input, Instant::now()));
+            log_movement_gap(&mut r.moved_at, r.play_began);
+            out.push(packet);
+>>>>>>> starling-client/starling
         }
         // Creative inventory edits are sent slot by slot (SetCreativeModeSlot).
         let mut creative_slots = Vec::new();
@@ -10287,6 +10346,22 @@ impl Game<'_> {
     /// the main hand's item, then the off hand's turn (its block, its item).
     /// The server does each packet's part with that packet's hand only.
     fn remote_use_hands(&mut self) {
+        #[cfg(target_os = "android")]
+        if self.mobile.touch_shield {
+            let hand = if self
+                .offhand
+                .as_ref()
+                .is_some_and(|s| self.blocks_attacks(s).is_some())
+            {
+                Hand::Off
+            } else {
+                Hand::Main
+            };
+            if self.remote_use_item(hand) {
+                self.heights.item_used(hand);
+            }
+            return;
+        }
         // A successful Item.use always drops the hand (LocalPlayer.itemUsed).
         if self.remote_use_item(Hand::Main) {
             self.heights.item_used(Hand::Main);
@@ -10595,7 +10670,7 @@ impl Game<'_> {
         }
     }
 
-    fn remote_start_attack(&mut self) -> bool {
+    pub(in crate::game) fn remote_start_attack(&mut self) -> bool {
         if self.clicks.miss_time > 0 {
             return false;
         }
@@ -12308,7 +12383,13 @@ fn boat_interact_passes(chest: bool, sneaking: bool, out_of_control: bool, has_r
 /// server decides; this is the client's guess of whether to go on. A carrot or warped fungus
 /// on a stick is not here: `FoodOnAStickItem.use` passes on a client, and only the server's
 /// answer to a boost that can run swings the hand.
+<<<<<<< HEAD
 pub(super) fn item_has_use(info: &horizon_client::items::ItemInfo) -> bool {
+||||||| 121742ad89
+fn item_has_use(info: &horizon_client::items::ItemInfo) -> bool {
+=======
+pub(in crate::game) fn item_has_use(info: &horizon_client::items::ItemInfo) -> bool {
+>>>>>>> starling-client/starling
     let id = info.id.trim_start_matches("minecraft:");
     id.ends_with("_spear")
         || info.consumable.is_some()
@@ -12410,9 +12491,28 @@ struct RemoteUseWorld<'g, 'a>(&'g mut Game<'a>);
 
 impl horizon_client::interaction_input::TargetUseWorld for RemoteUseWorld<'_, '_> {
     fn use_entity(&mut self) -> bool {
+        #[cfg(target_os = "android")]
+        if self.0.mobile.touch_shield {
+            return false;
+        }
         self.0.remote_use_entity(Hand::Main)
     }
     fn use_block(&mut self) -> bool {
+        #[cfg(target_os = "android")]
+        if self.0.mobile.touch_shield {
+            let transformer = self
+                .0
+                .stack_in(self.0.selected)
+                .and_then(|s| self.0.items().get(&s.item))
+                .is_some_and(|i| i.block_transformer.is_some());
+            if self.0.mobile.controls.settings.shield_button
+                || self.0.mobile.controls.shield_held()
+                || !transformer
+                || self.0.pick().is_none()
+            {
+                return false;
+            }
+        }
         self.0.remote_use_block(Hand::Main)
     }
     fn use_item(&mut self) {

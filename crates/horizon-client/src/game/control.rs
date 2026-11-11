@@ -445,6 +445,7 @@ impl Game<'_> {
                 .chain(super::studio::HELP)
                 .collect::<Vec<_>>() }))),
             "setblock" | "fill" | "particle" | "signedit" => self.render_command(&words),
+            "sky-order" => self.sky_order_command(&words),
             "section-draws" => {
                 let r = self.renderer.as_mut().ok_or("no renderer")?;
                 match words.get(1).copied() {
@@ -455,6 +456,7 @@ impl Game<'_> {
                 }
                 Ok(Some(json!({ "ok": true, "flat": r.flat_draws() })))
             }
+            "static-cutout" => self.static_cutout_command(&words),
             "section-cull" => {
                 let r = self.renderer.as_mut().ok_or("no renderer")?;
                 match words.get(1).copied() {
@@ -465,6 +467,7 @@ impl Game<'_> {
                 }
                 Ok(Some(json!({ "ok": true, "cull": r.section_cull() })))
             }
+            "settled-terrain" => self.settled_terrain_command(&words),
             "gpu-passes" => {
                 match words.get(1).copied() {
                     None => {}
@@ -1679,8 +1682,10 @@ fn account_control(words: &[&str]) -> Result<Option<Value>> {
     }
     let mut out = match accounts::state() {
         State::Offline => json!({ "state": "offline" }),
+        State::OfflineProfile(name) => json!({ "state": "offline", "name": name }),
         State::Resuming => json!({ "state": "resuming" }),
         State::Starting => json!({ "state": "starting" }),
+        State::Progress(stage) => json!({ "state": "progress", "stage": stage.key() }),
         State::Code { code, link } => json!({ "state": "code", "code": code, "link": link }),
         State::SignedIn(account) => {
             json!({ "state": "signed-in", "name": account.name, "uuid": account.uuid })

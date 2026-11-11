@@ -605,7 +605,7 @@ impl Game<'_> {
         };
         match &title.mode {
             Mode::Main => json!({ "mode": "main", "worlds": worlds() }),
-            Mode::Account => json!({ "mode": "account" }),
+            Mode::Account(_) => json!({ "mode": "account" }),
             Mode::Select {
                 worlds: list,
                 selected,
