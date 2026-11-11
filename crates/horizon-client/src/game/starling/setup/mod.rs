@@ -138,7 +138,13 @@ pub(super) struct Setup {
     fishing_open: bool,
     /// The low-budget skin put on the menus, once.
     skinned: bool,
+    /// The skin loading off the window's thread: its atlas waits for the renderer's word on the
+    /// GPU's largest texture (`hud::atlas_limit`), and the renderer is built on this thread.
+    skin: Option<std::thread::JoinHandle<Option<SkinLoad>>>,
 }
+
+/// The unpacked skin's folder and its menus, or why they did not load.
+type SkinLoad = (std::path::PathBuf, Result<UiResources, String>);
 
 impl Setup {
     /// How soon the screen draws again: often while the water or the settings show.
@@ -471,7 +477,12 @@ impl Loading {
         }
         // The fishing's sounds, on an output of its own: the game's sounds are not there yet.
         if self.audio.is_none() && self.setup.pond.get().is_some() {
-            let mut audio = Audio::with_registry(&horizon_assets::resource_source::ResourceSource::directory(self.vanilla_root.clone()), Default::default());
+            let mut audio = Audio::with_registry(
+                &horizon_assets::resource_source::ResourceSource::directory(
+                    self.vanilla_root.clone(),
+                ),
+                Default::default(),
+            );
             audio.master = self.settings.master_volume;
             self.audio = Some(audio);
         }
@@ -487,11 +498,25 @@ impl Loading {
         // The menus in the skin the app carries: their own resources are what is missing.
         if !self.setup.skinned {
             self.setup.skinned = true;
-            if let Some(root) = preparer::skin() {
-                match UiResources::load(&horizon_assets::resource_source::ResourceSource::directory(root.clone())) {
-                    Ok(gui) => self.set_ui(gui, root),
-                    Err(e) => log::warn!("Horizon: the setup's skin did not load: {e}"),
-                }
+            self.setup.skin = std::thread::Builder::new()
+                .name("setup-skin".into())
+                .spawn(|| {
+                    let root = preparer::skin()?;
+                    let source =
+                        horizon_assets::resource_source::ResourceSource::directory(root.clone());
+                    Some((root, UiResources::load(&source).map_err(|e| e.to_string())))
+                })
+                .inspect_err(|e| log::warn!("Horizon: the setup's skin did not start: {e}"))
+                .ok();
+        }
+        if self.setup.skin.as_ref().is_some_and(|h| h.is_finished())
+            && let Some(handle) = self.setup.skin.take()
+        {
+            match handle.join() {
+                Ok(Some((root, Ok(gui)))) => self.set_ui(gui, root),
+                Ok(Some((_, Err(e)))) => log::warn!("Horizon: the setup's skin did not load: {e}"),
+                Ok(None) => {}
+                Err(_) => log::warn!("Horizon: the setup's skin load panicked"),
             }
         }
         if preparer::stage() == Stage::Done {
@@ -522,7 +547,12 @@ impl Loading {
     }
 
     pub(super) fn draw_setup(&self, batch: &mut HudBatch, failure: &str) {
-        let Some(gui) = &self.gui else { return };
+        let Some(gui) = &self.gui else {
+            // The skin is still loading: the boot screen holds the window meanwhile.
+            let logs = horizon_client::logging::recent_lines();
+            horizon_client::ui_theme::draw_boot(&self.boot, batch, &logs);
+            return;
+        };
         let step = step(&self.setup, failure);
         let (title, body, note) = texts(&step);
         let mut ui = Ui::new(&gui.atlas, batch, (-1.0, -1.0));

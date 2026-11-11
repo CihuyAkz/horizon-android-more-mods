@@ -299,7 +299,11 @@ impl Form {
                 rect[2],
                 rect[3],
                 8.,
-                if i == 0 { color::ACCENT } else { color::raised() },
+                if i == 0 {
+                    color::ACCENT
+                } else {
+                    color::raised()
+                },
             );
             ui.text_centered(
                 Face::Semibold,
