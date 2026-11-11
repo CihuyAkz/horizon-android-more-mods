@@ -242,8 +242,17 @@ pub(super) fn install_registration_data(root: &Path) -> horizon_client::Result<(
         use std::os::windows::ffi::OsStrExt;
         mod_api::InstanceDirectory::Windows(directory.as_os_str().encode_wide().collect())
     };
+    // Android starts before the game files exist (its setup screen prepares them, no launcher did):
+    // with none yet there is nothing to read, and no native mod runs in the APK's own game.
+    let names = match builtin_registry_names(root) {
+        Ok(names) => names,
+        Err(_) if cfg!(target_os = "android") && !root.join("horizon-resources.json").is_file() => {
+            BTreeMap::new()
+        }
+        Err(e) => return Err(e),
+    };
     mod_api::__private::install_registration_data(mod_api::__private::RegistrationData::new(
-        builtin_registry_names(root)?,
+        names,
         horizon_world::native_load_context::capture_settings(
             &Game::mod_data_root(),
             packages.ids(),
