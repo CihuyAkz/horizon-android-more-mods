@@ -132,8 +132,10 @@ pub(super) async fn open_adapter(
     // targets with the adapter's own format features) and R11F_G11F_B10F: a float
     // stand-in neither clamps nor drops NaN. Subgroups: shader packs' compute programs
     // (`MC_GL_KHR_shader_subgroup_*`); storage buffers in vertex shaders, clearing and
-    // atomics on images: their buffers and images. Filtering 32-bit float textures: shader
-    // packs' RGBA32F buffers, which GL filters and mipmaps. Count draws: GPU culling's (`gpu_culling`).
+    // atomics on images: their buffers and images. Depth clamping: what lies between the light
+    // and a shader pack's shadow camera still casts its shadow (`light_frustum`). Filtering
+    // 32-bit float textures: shader packs' RGBA32F buffers, which GL filters and mipmaps. Count
+    // draws: GPU culling's (`gpu_culling`).
     let features = timing::GpuTimer::features(adapter)
         | cull::Cull::features(adapter)
         | oit::features(adapter)
@@ -149,8 +151,10 @@ pub(super) async fn open_adapter(
                 | wgpu::Features::VERTEX_WRITABLE_STORAGE
                 | wgpu::Features::CLEAR_TEXTURE
                 | wgpu::Features::TEXTURE_ATOMIC
+                | wgpu::Features::DEPTH_CLIP_CONTROL
                 | wgpu::Features::FLOAT32_FILTERABLE));
     let driver = format!("{} {}", info.driver, info.driver_info);
+    crate::hud::set_gpu_texture_side(adapter.limits().max_texture_dimension_2d);
     startup_step(format_args!(
         "requesting the device (driver {}) with features [{features}] and the adapter's \
          limits (buffers up to {} bytes, storage bindings up to {} bytes, {} texture layers)",

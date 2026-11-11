@@ -45,17 +45,8 @@ impl ParsedModels {
             })
             .collect();
         let parsed = crate::par::par_map(&files, |(_, path)| {
-<<<<<<< HEAD
-            let text = horizon_core::prepared_files::read_to_string(path).ok()?;
-            let model = CuboidModel::from_json(&text).ok()?;
-            Some(Arc::new(model))
-||||||| c98a51a664
-            let text = horizon_core::prepared_files::read_to_string(path).ok()?;
-            CuboidModel::from_json(&text).ok().map(Arc::new)
-=======
             let text = source.read_to_string(path).ok()?;
             CuboidModel::from_json(&text).ok().map(Arc::new)
->>>>>>> arismoko/main
         });
         let models = files
             .into_iter()

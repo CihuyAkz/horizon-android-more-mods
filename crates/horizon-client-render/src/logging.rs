@@ -450,7 +450,6 @@ impl Floods {
 
 static LOGGER: std::sync::OnceLock<Logger> = std::sync::OnceLock::new();
 
-<<<<<<< HEAD
 /// Where messages are printed instead of stderr, which a platform may discard (Android's
 /// logcat, set by horizon-android). It gets every message the file gets, and other crates'
 /// warnings too (the graphics driver's, wgpu's), since nothing else shows them there.
@@ -461,33 +460,6 @@ pub fn set_console(console: fn(log::Level, &str)) {
     let _ = CONSOLE.set(console);
 }
 
-/// What [`set_line_hook`] installed: level (`INFO`, `WARN`, `ERROR`), thread, message, and the
-/// lines as `latest.log` got them.
-type LineHook = fn(&str, &str, &str, &str);
-static LINE_HOOK: std::sync::OnceLock<LineHook> = std::sync::OnceLock::new();
-
-/// Calls `hook` on the log's writer thread for each message written to the log, once the file
-/// has it, so the thread that logged never waits on it. Once per process; a second call keeps
-/// the first.
-pub fn set_line_hook(hook: LineHook) {
-    let _ = LINE_HOOK.set(hook);
-}
-
-||||||| c98a51a664
-/// What [`set_line_hook`] installed: level (`INFO`, `WARN`, `ERROR`), thread, message, and the
-/// lines as `latest.log` got them.
-type LineHook = fn(&str, &str, &str, &str);
-static LINE_HOOK: std::sync::OnceLock<LineHook> = std::sync::OnceLock::new();
-
-/// Calls `hook` on the log's writer thread for each message written to the log, once the file
-/// has it, so the thread that logged never waits on it. Once per process; a second call keeps
-/// the first.
-pub fn set_line_hook(hook: LineHook) {
-    let _ = LINE_HOOK.set(hook);
-}
-
-=======
->>>>>>> arismoko/main
 fn ours(target: &str) -> bool {
     target.starts_with("horizon")
 }

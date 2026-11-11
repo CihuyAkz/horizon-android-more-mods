@@ -16,7 +16,16 @@ pub const DIR: &str = "horizon-mods";
 /// game the launcher built with them.
 pub const NATIVE_DIR: &str = "horizon-native-mods";
 /// Why a native mod installed in [`NATIVE_DIR`] doesn't run in this game.
+#[cfg(not(target_os = "android"))]
 pub const NOT_BUILT: &str = "Installed, not built into this game: build the game with it in the launcher (Settings > Native mods), then play the instance that build is in.";
+#[cfg(target_os = "android")]
+pub const NOT_BUILT: &str =
+    "Installed, not in this game yet: Compile builds the game with it on Starling's build server.";
+/// [`NOT_BUILT`] in the player's language, as the Mods page's tooltip says it.
+#[cfg(not(target_os = "android"))]
+pub const NOT_BUILT_TIP: &str = "horizon.mods.not_built_tip";
+#[cfg(target_os = "android")]
+pub const NOT_BUILT_TIP: &str = "starling.mods.native.not_built_tip";
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ModList {
@@ -32,6 +41,32 @@ pub struct ModList {
     pub installed: Vec<Installed>,
     /// What the Mods screen's panel shows of each installed mod, by id.
     pub info: BTreeMap<String, ModInfo>,
+    /// Android: which game runs and which the next start runs, above the mods.
+    pub native_game: Option<NativeGame>,
+}
+
+/// Android: the game with native mods as the Mods page says it (game/native_builds.rs): the APK's
+/// own or a build with some mods compiled in, then what the player can do about it.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct NativeGame {
+    /// Lines of text, each with whether it is a warning (red).
+    pub lines: Vec<(String, bool)>,
+    pub buttons: Vec<(String, NativeGameAct)>,
+}
+
+/// A button of [`NativeGame`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum NativeGameAct {
+    /// The mods turned on, compiled on the build server, or on GitHub's machines through it.
+    Compile,
+    CompileOnGithub,
+    /// The compile under way, shown again.
+    ShowCompile,
+    Restart,
+    /// The next start runs the APK's own game.
+    PlayWithout,
+    /// Another build server.
+    BuildServer,
 }
 
 /// What the Mods screen shows of a mod besides its row: the manifest's descriptive fields and
@@ -307,6 +342,7 @@ impl ModList {
             keys,
             installed: Vec::new(),
             info: BTreeMap::new(),
+            native_game: None,
         }
     }
     pub fn serialize(&self) -> String {

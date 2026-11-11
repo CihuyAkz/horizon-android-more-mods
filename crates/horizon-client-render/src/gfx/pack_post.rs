@@ -2189,15 +2189,6 @@ fn build_pass(
                 )
             })
         });
-<<<<<<< HEAD
-        (
-            layout,
-            pack.render_pipeline(device, job),
-            sky_parts,
-            prepass,
-||||||| c98a51a664
-        (layout, pack.render_pipeline(device, job), sky_parts)
-=======
         // The water patches' pipeline: the same program, depth only.
         let water_mask = water_mask.then(|| {
             let targets = (job.targets.iter())
@@ -2220,17 +2211,11 @@ fn build_pass(
             layout,
             pack.render_pipeline(device, job),
             sky_parts,
+            prepass,
             water_mask,
->>>>>>> arismoko/main
         )
     });
-<<<<<<< HEAD
-    let (layout, pipeline, sky_parts, prepass) = match created {
-||||||| c98a51a664
-    let (layout, pipeline, sky_parts) = match created {
-=======
-    let (layout, pipeline, sky_parts, water_mask) = match created {
->>>>>>> arismoko/main
+    let (layout, pipeline, sky_parts, prepass, water_mask) = match created {
         Ok(created) => created,
         Err(e) => {
             notes.push(format!("{}: skipped: {e}", p.name));

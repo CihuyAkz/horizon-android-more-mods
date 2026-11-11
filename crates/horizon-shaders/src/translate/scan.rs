@@ -1180,7 +1180,6 @@ impl<'p> Stage<'p> {
     }
 }
 
-<<<<<<< HEAD
 /// The largest literal `N` of `x.a < N) discard` (`<=`, `{ discard`) in `tokens`.
 pub(super) fn alpha_cut(tokens: &[&str]) -> Option<f32> {
     let t: Vec<&str> = tokens
@@ -1201,8 +1200,8 @@ pub(super) fn alpha_cut(tokens: &[&str]) -> Option<f32> {
         .filter(|&i| t[i] == "discard")
         .filter_map(cut)
         .reduce(f32::max)
-||||||| c98a51a664
-=======
+}
+
 #[cfg(test)]
 mod tests {
     use crate::translate::Target;
@@ -1224,5 +1223,4 @@ mod tests {
         let inputs = p.fragment.entry_points[0].function.arguments.len();
         assert_eq!(inputs, 2, "{inputs} inputs");
     }
->>>>>>> arismoko/main
 }

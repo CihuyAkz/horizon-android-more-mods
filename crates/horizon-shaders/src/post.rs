@@ -460,14 +460,8 @@ pub struct Post {
     pub entities: Option<PostProgram>,
     /// What draws block entities, after terrain.
     pub block: Option<PostProgram>,
-<<<<<<< HEAD
-    /// What draws the cracks on blocks being broken, after those.
-    pub damaged_block: Option<PostProgram>,
-||||||| c98a51a664
-=======
     /// An authored translucent block variant; absent or failed keeps the ordinary block path.
     pub block_translucent: Option<PostProgram>,
->>>>>>> arismoko/main
     /// What draws translucent entities (name tags, shadows), after the others.
     pub entities_translucent: Option<PostProgram>,
     /// What draws particles.
@@ -476,6 +470,8 @@ pub struct Post {
     pub particles_translucent: Option<PostProgram>,
     /// What draws beacon and End gateway beams (after deferred, blended).
     pub beacon_beam: Option<PostProgram>,
+    /// What draws the cracks on blocks being broken, after those.
+    pub damaged_block: Option<PostProgram>,
     /// What draws the game's clouds.
     pub clouds: Option<PostProgram>,
     /// What draws lines (the block outline), with the pack's own transform and look.
@@ -601,13 +597,8 @@ impl Post {
             &self.block_translucent,
             &self.entities_translucent,
             &self.particles,
-<<<<<<< HEAD
-||||||| c98a51a664
-            &self.damaged_block,
-=======
             &self.particles_translucent,
             &self.damaged_block,
->>>>>>> arismoko/main
             &self.clouds,
             &self.weather,
             &self.hand,
@@ -742,16 +733,12 @@ pub fn load_post(
         sky_textured: None,
         entities: None,
         block: None,
-<<<<<<< HEAD
-        damaged_block: None,
-||||||| c98a51a664
-=======
         block_translucent: None,
->>>>>>> arismoko/main
         entities_translucent: None,
         particles: None,
         particles_translucent: None,
         beacon_beam: None,
+        damaged_block: None,
         clouds: None,
         lines: None,
         weather: None,
@@ -1105,16 +1092,12 @@ pub fn load_post(
     loader.post.sky_textured = sky_textured;
     loader.post.entities = entities;
     loader.post.block = block;
-<<<<<<< HEAD
-    loader.post.damaged_block = damaged_block;
-||||||| c98a51a664
-=======
     loader.post.block_translucent = block_translucent;
->>>>>>> arismoko/main
     loader.post.entities_translucent = entities_translucent;
     loader.post.particles = particles;
     loader.post.particles_translucent = particles_translucent;
     loader.post.beacon_beam = beacon_beam;
+    loader.post.damaged_block = damaged_block;
     loader.post.clouds_off = properties.get("clouds").is_some_and(|v| v.trim() == "off");
     loader.post.clouds = clouds.filter(|_| !loader.post.clouds_off);
     loader.post.lines = lines;
@@ -1159,16 +1142,12 @@ fn load_shadow(
         &post.sky_textured,
         &post.entities,
         &post.block,
-<<<<<<< HEAD
-        &post.damaged_block,
-||||||| c98a51a664
-=======
         &post.block_translucent,
->>>>>>> arismoko/main
         &post.entities_translucent,
         &post.particles,
         &post.particles_translucent,
         &post.beacon_beam,
+        &post.damaged_block,
         &post.clouds,
         &post.weather,
         &post.hand,

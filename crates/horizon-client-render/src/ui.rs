@@ -54,9 +54,10 @@ fn parse_nine_slice(v: &serde_json::Value) -> Option<NineSlice> {
 static BUTTON_TAKES: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
 static PRESSED_LABEL: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
 
-fn load_skin(root: &Path) {
+fn load_skin(root: &ResourceSource) {
     use std::sync::atomic::Ordering::Relaxed;
-    let skin: serde_json::Value = std::fs::read(root.join("assets/starling/skin.json"))
+    let skin: serde_json::Value = root
+        .read("assets/starling/skin.json")
         .ok()
         .and_then(|b| serde_json::from_slice(&b).ok())
         .unwrap_or_default();
@@ -103,18 +104,10 @@ pub struct UiMetadata(HashMap<String, NineSlice>);
 pub fn set_metadata(metadata: UiMetadata) {
     *NINE_SLICE.write().unwrap_or_else(|e| e.into_inner()) = Some(metadata.0);
 }
-<<<<<<< HEAD
-/// Reads the metadata [`load_metadata`] puts in use, without putting it in use.
-pub fn read_metadata(root: &Path) -> UiMetadata {
-    load_skin(root);
-||||||| c98a51a664
-/// Reads the metadata [`load_metadata`] puts in use, without putting it in use.
-pub fn read_metadata(root: &Path) -> UiMetadata {
-=======
 /// Reads the metadata [`load_metadata`] puts in use, without putting it in use. Another
 /// namespace's sprites are named with it (`lobby:gui/sprites/...`), as the GUI atlas packs them.
 pub fn read_metadata(root: &ResourceSource) -> UiMetadata {
->>>>>>> arismoko/main
+    load_skin(root);
     let mut map = HashMap::new();
     for namespace in root.namespaces("assets") {
         let base = format!("assets/{namespace}/textures/");
@@ -1680,52 +1673,18 @@ impl EditBox {
     }
     /// EditBox.insertText: replace the selection, respecting the maximum length.
     pub fn insert_text(&mut self, text: &str) {
-<<<<<<< HEAD
-        let filtered = crate::clipboard::filter_text(text, self.multiline);
-        self.insert_filtered(&filtered);
-    }
-    /// Passwords are not Minecraft chat: a section sign is a legal credential.
-    pub fn insert_password(&mut self, text: &str) {
-        let filtered: String = text.chars().filter(|c| !c.is_control()).collect();
-        self.insert_filtered(&filtered);
-    }
-    fn insert_filtered(&mut self, filtered: &str) {
-        let (a, b) = self.selected();
-        let room = self
-            .max_length
-            .saturating_sub(char_len(&self.value) - (b - a));
-        let insert: String = filtered.chars().take(room).collect();
-        let (ba, bb) = (byte_index(&self.value, a), byte_index(&self.value, b));
-        self.value.replace_range(ba..bb, &insert);
-        let pos = a + char_len(&insert);
-        self.set_cursor(pos, false);
-    }
-    /// Delete `n` characters (negative: backwards) or the selection.
-    pub fn delete_chars(&mut self, n: isize) {
-        if self.cursor != self.highlight {
-            self.insert_text("");
-||||||| c98a51a664
-        let (a, b) = self.selected();
-        let filtered = crate::clipboard::filter_text(text, self.multiline);
-        let room = self
-            .max_length
-            .saturating_sub(char_len(&self.value) - (b - a));
-        let insert: String = filtered.chars().take(room).collect();
-        let (ba, bb) = (byte_index(&self.value, a), byte_index(&self.value, b));
-        self.value.replace_range(ba..bb, &insert);
-        let pos = a + char_len(&insert);
-        self.set_cursor(pos, false);
-    }
-    /// Delete `n` characters (negative: backwards) or the selection.
-    pub fn delete_chars(&mut self, n: isize) {
-        if self.cursor != self.highlight {
-            self.insert_text("");
-=======
         if !self.editable {
->>>>>>> arismoko/main
             return;
         }
         self.edit.insert_text(text);
+        self.moved();
+    }
+    /// Passwords are not Minecraft chat: a section sign is a legal credential.
+    pub fn insert_password(&mut self, text: &str) {
+        if !self.editable {
+            return;
+        }
+        self.edit.insert_password(text);
         self.moved();
     }
     /// Delete `n` characters (negative: backwards) or the selection. A

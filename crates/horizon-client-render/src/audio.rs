@@ -1420,50 +1420,23 @@ impl Audio {
     pub fn new(root: &ResourceSource) -> Self {
         Self::with_device(root, "")
     }
-<<<<<<< HEAD
-    pub fn with_device(root: &Path, device_name: &str) -> Self {
+    pub fn with_device(root: &ResourceSource, device_name: &str) -> Self {
         Self::with_output(root, SoundRegistry::load(root), true, device_name)
     }
     /// With the sound events already read (`SoundRegistry::load`, on another thread), on the
     /// system's default output (`set_device` moves it).
-    pub fn with_registry(root: &Path, registry: SoundRegistry) -> Self {
+    pub fn with_registry(root: &ResourceSource, registry: SoundRegistry) -> Self {
         Self::with_output(root, registry, true, "")
-||||||| c98a51a664
-    pub fn with_device(root: &Path, device_name: &str) -> Self {
-        Self::with_output(root, true, device_name)
-=======
-    pub fn with_device(root: &ResourceSource, device_name: &str) -> Self {
-        Self::with_output(root, true, device_name)
->>>>>>> arismoko/main
     }
     /// No output device: the dedicated server.
-<<<<<<< HEAD
-    pub fn silent(root: &Path) -> Self {
-        Self::with_output(root, SoundRegistry::load(root), false, "")
-||||||| c98a51a664
-    pub fn silent(root: &Path) -> Self {
-        Self::with_output(root, false, "")
-=======
     pub fn silent(root: &ResourceSource) -> Self {
-        Self::with_output(root, false, "")
->>>>>>> arismoko/main
+        Self::with_output(root, SoundRegistry::load(root), false, "")
     }
     /// The output device asked for (`soundDevice`), empty for the system's default; the
     /// default plays when that one can't be opened, as in vanilla.
     pub fn device(&self) -> &str {
         &self.device_name
     }
-<<<<<<< HEAD
-    fn with_output(
-        root: &Path,
-        registry: SoundRegistry,
-        output: bool,
-        target_device: &str,
-    ) -> Self {
-||||||| c98a51a664
-    fn with_output(root: &Path, output: bool, target_device: &str) -> Self {
-        let registry = SoundRegistry::load(root);
-=======
     /// The loop context of this client's current resource generation.
     pub fn loop_context(&self) -> Option<&horizon_world::native_load_context::LoopContext> {
         self.engine.loop_context()
@@ -1474,9 +1447,12 @@ impl Audio {
         self.engine.set_loop_context(context);
         self.engine.notify_loaded();
     }
-    fn with_output(root: &ResourceSource, output: bool, target_device: &str) -> Self {
-        let registry = SoundRegistry::load(root);
->>>>>>> arismoko/main
+    fn with_output(
+        root: &ResourceSource,
+        registry: SoundRegistry,
+        output: bool,
+        target_device: &str,
+    ) -> Self {
         if output && registry.is_empty() {
             // The game then plays nothing on a working output (#1035, #1076).
             log::warn!(

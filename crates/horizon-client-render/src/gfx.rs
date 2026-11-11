@@ -359,14 +359,8 @@ fn packed_wanted() -> bool {
     std::env::var("HORIZON_PACKED_QUADS").as_deref() != Ok("0")
 }
 
-<<<<<<< HEAD
 mod adreno;
-mod animate;
-||||||| c98a51a664
-mod animate;
-=======
 pub(crate) mod animate;
->>>>>>> arismoko/main
 mod arena;
 pub mod capture;
 pub mod compositor;
@@ -386,14 +380,8 @@ mod hdr_icc;
 mod hdr_start;
 mod hdr_stats;
 pub(crate) mod hud_coverage;
-<<<<<<< HEAD
 mod terrain_source;
-pub use hdr::Calibration as HdrCalibration;
-||||||| c98a51a664
-pub use hdr::Calibration as HdrCalibration;
-=======
 pub use hdr::{Calibration as HdrCalibration, Output as HdrOutput};
->>>>>>> arismoko/main
 mod hold;
 pub use hold::WorldHold;
 pub use output::{DisplayReading, EffectiveOutput, FrameConfiguration, FrameRequest};
@@ -434,14 +422,10 @@ pub mod panorama;
 mod readback;
 mod resident;
 mod reuse;
-<<<<<<< HEAD
-mod solid_paths;
-||||||| c98a51a664
-=======
 mod screenshot;
 pub use screenshot::{PendingScreenshot, ScreenshotSave};
 mod screenshot_readback;
->>>>>>> arismoko/main
+mod solid_paths;
 mod stars;
 mod surface_setup;
 use surface_setup::{AdapterChoice, AdapterFailure, open_adapter, pick_adapter, set_up_surface};
@@ -2752,165 +2736,6 @@ async fn open_backend(
             },
         );
     }
-<<<<<<< HEAD
-    // Mappable primary buffers: section pages that no longer fit in
-    // video memory go to system memory. Shader packs' 16-bit normalized buffers (render
-    // targets with the adapter's own format features) and R11F_G11F_B10F: a float
-    // stand-in neither clamps nor drops NaN. Subgroups: shader packs' compute programs
-    // (`MC_GL_KHR_shader_subgroup_*`); storage buffers in vertex shaders, clearing and
-    // atomics on images: their buffers and images. Depth clamping: what lies between the light
-    // and a shader pack's shadow camera still casts its shadow (`light_frustum`). Filtering
-    // 32-bit float textures: shader packs' RGBA32F buffers, which GL filters and mipmaps. Count
-    // draws: GPU culling's (`gpu_culling`).
-    let features = timing::GpuTimer::features(&adapter)
-        | cull::Cull::features(&adapter)
-        | oit::features(&adapter)
-        | (adapter.features()
-            & (wgpu::Features::INDIRECT_FIRST_INSTANCE
-                | wgpu::Features::MULTI_DRAW_INDIRECT_COUNT
-                | wgpu::Features::MAPPABLE_PRIMARY_BUFFERS
-                | wgpu::Features::TEXTURE_FORMAT_16BIT_NORM
-                | wgpu::Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES
-                | wgpu::Features::RG11B10UFLOAT_RENDERABLE
-                | wgpu::Features::SUBGROUP
-                | wgpu::Features::VERTEX_WRITABLE_STORAGE
-                | wgpu::Features::CLEAR_TEXTURE
-                | wgpu::Features::TEXTURE_ATOMIC
-                | wgpu::Features::DEPTH_CLIP_CONTROL
-                | wgpu::Features::FLOAT32_FILTERABLE));
-    let driver = format!("{} {}", info.driver, info.driver_info);
-    crate::hud::set_gpu_texture_side(adapter.limits().max_texture_dimension_2d);
-    startup_step(format_args!(
-        "requesting the device (driver {}) with features [{features}] and the adapter's \
-         limits (buffers up to {} bytes, storage bindings up to {} bytes, {} texture layers)",
-        match driver.trim() {
-            "" => "unnamed",
-            driver => driver,
-        },
-        limits.max_buffer_size,
-        limits.max_storage_buffer_binding_size,
-        limits.max_texture_array_layers,
-    ));
-    let desc = wgpu::DeviceDescriptor {
-        label: Some("Horizon device"),
-        required_features: features,
-        required_limits: limits,
-        // Video memory in blocks of 8-64 MiB instead of 128-256 MiB (Vulkan and DirectX 12):
-        // with the larger blocks a few small buffers kept whole blocks the arena's pages had
-        // left, and over half the video memory reserved was unused (1,344 MiB for 500).
-        memory_hints: wgpu::MemoryHints::MemoryUsage,
-        ..Default::default()
-    };
-    #[cfg(not(target_os = "macos"))]
-    let opened = match info.backend {
-        wgpu::Backend::Vulkan => horizon_hdr::open_vulkan_device(&adapter, &desc),
-        _ => None,
-    };
-    #[cfg(target_os = "macos")]
-    let opened = None;
-    let opened = match opened {
-        Some(opened) => opened,
-        None => adapter.request_device(&desc).await,
-    };
-    match opened {
-        Ok((device, queue)) => {
-            let device_lost = Arc::new(std::sync::atomic::AtomicBool::new(false));
-            let lost = device_lost.clone();
-            device.set_device_lost_callback(move |reason, message| {
-                // A device destroyed on purpose was not lost.
-                if reason == wgpu::DeviceLostReason::Destroyed {
-                    return;
-                }
-                log::warn!(
-                    "Horizon renderer: the graphics device was lost ({reason:?}: {message})"
-                );
-                lost.store(true, std::sync::atomic::Ordering::Relaxed);
-            });
-            Ok(Opened {
-                instance,
-                surface,
-                adapter,
-                device,
-                queue,
-                device_lost,
-||||||| c98a51a664
-    // Mappable primary buffers: section pages that no longer fit in
-    // video memory go to system memory. Shader packs' 16-bit normalized buffers (render
-    // targets with the adapter's own format features) and R11F_G11F_B10F: a float
-    // stand-in neither clamps nor drops NaN. Subgroups: shader packs' compute programs
-    // (`MC_GL_KHR_shader_subgroup_*`); storage buffers in vertex shaders, clearing and
-    // atomics on images: their buffers and images. Filtering 32-bit float textures: shader
-    // packs' RGBA32F buffers, which GL filters and mipmaps. Count draws: GPU culling's (`gpu_culling`).
-    let features = timing::GpuTimer::features(&adapter)
-        | cull::Cull::features(&adapter)
-        | oit::features(&adapter)
-        | (adapter.features()
-            & (wgpu::Features::INDIRECT_FIRST_INSTANCE
-                | wgpu::Features::MULTI_DRAW_INDIRECT_COUNT
-                | wgpu::Features::MAPPABLE_PRIMARY_BUFFERS
-                | wgpu::Features::TEXTURE_FORMAT_16BIT_NORM
-                | wgpu::Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES
-                | wgpu::Features::RG11B10UFLOAT_RENDERABLE
-                | wgpu::Features::SUBGROUP
-                | wgpu::Features::VERTEX_WRITABLE_STORAGE
-                | wgpu::Features::CLEAR_TEXTURE
-                | wgpu::Features::TEXTURE_ATOMIC
-                | wgpu::Features::FLOAT32_FILTERABLE));
-    let driver = format!("{} {}", info.driver, info.driver_info);
-    startup_step(format_args!(
-        "requesting the device (driver {}) with features [{features}] and the adapter's \
-         limits (buffers up to {} bytes, storage bindings up to {} bytes, {} texture layers)",
-        match driver.trim() {
-            "" => "unnamed",
-            driver => driver,
-        },
-        limits.max_buffer_size,
-        limits.max_storage_buffer_binding_size,
-        limits.max_texture_array_layers,
-    ));
-    let desc = wgpu::DeviceDescriptor {
-        label: Some("Horizon device"),
-        required_features: features,
-        required_limits: limits,
-        // Video memory in blocks of 8-64 MiB instead of 128-256 MiB (Vulkan and DirectX 12):
-        // with the larger blocks a few small buffers kept whole blocks the arena's pages had
-        // left, and over half the video memory reserved was unused (1,344 MiB for 500).
-        memory_hints: wgpu::MemoryHints::MemoryUsage,
-        ..Default::default()
-    };
-    #[cfg(not(target_os = "macos"))]
-    let opened = match info.backend {
-        wgpu::Backend::Vulkan => horizon_hdr::open_vulkan_device(&adapter, &desc),
-        _ => None,
-    };
-    #[cfg(target_os = "macos")]
-    let opened = None;
-    let opened = match opened {
-        Some(opened) => opened,
-        None => adapter.request_device(&desc).await,
-    };
-    match opened {
-        Ok((device, queue)) => {
-            let device_lost = Arc::new(std::sync::atomic::AtomicBool::new(false));
-            let lost = device_lost.clone();
-            device.set_device_lost_callback(move |reason, message| {
-                // A device destroyed on purpose was not lost.
-                if reason == wgpu::DeviceLostReason::Destroyed {
-                    return;
-                }
-                log::warn!(
-                    "Horizon renderer: the graphics device was lost ({reason:?}: {message})"
-                );
-                lost.store(true, std::sync::atomic::Ordering::Relaxed);
-            });
-            Ok(Opened {
-                instance,
-                surface,
-                adapter,
-                device,
-                queue,
-                device_lost,
-=======
     // Adapters that could not present to the window: the next one of this backend
     // that can is tried before the next backend (#13493).
     let mut tried = Vec::new();
@@ -2942,7 +2767,6 @@ async fn open_backend(
                     .as_ref()
                     .is_some_and(|s| !s.get_capabilities(other).formats.is_empty()),
                 tried: tried.contains(&other.get_info()),
->>>>>>> arismoko/main
             })
             .collect();
         let Some(next) = pick_adapter(&choices, allow_cpu) else {
@@ -3347,87 +3171,6 @@ impl Renderer {
         crate::graphics::suggest_reduced_far_detail(crate::graphics::lod_capped(&info));
         let size = window.inner_size();
         let max_side = device.limits().max_texture_dimension_2d;
-<<<<<<< HEAD
-        let (config, present_modes, hdr_output) = if let Some(surface) = &surface {
-            let mut config = surface
-                .get_default_config(
-                    &adapter,
-                    size.width.clamp(1, max_side),
-                    size.height.clamp(1, max_side),
-                )
-                .ok_or("surface has no supported configuration")?;
-            let caps = surface.get_capabilities(&adapter);
-            config.format = surface_format(&caps.formats, config.format);
-            config.view_formats = vec![config.format.remove_srgb_suffix()];
-            // Screenshots copy the presented frame back from the swapchain, frame
-            // generation's present thread copies its frames in.
-            if caps.usages.contains(wgpu::TextureUsages::COPY_SRC) {
-                config.usage |= wgpu::TextureUsages::COPY_SRC;
-            }
-            if caps.usages.contains(wgpu::TextureUsages::COPY_DST) {
-                config.usage |= wgpu::TextureUsages::COPY_DST;
-            }
-            config.present_mode = previous
-                .map(|renderer| renderer.config.present_mode)
-                .filter(|mode| caps.present_modes.contains(mode))
-                .unwrap_or_else(|| {
-                    if caps.present_modes.contains(&wgpu::PresentMode::Mailbox) {
-                        wgpu::PresentMode::Mailbox
-                    } else {
-                        wgpu::PresentMode::Fifo
-                    }
-                });
-            if previous.is_none() {
-                startup_step(format_args!(
-                    "device ready; configuring the surface ({}x{} {:?}, {:?})",
-                    config.width, config.height, config.format, config.present_mode
-                ));
-            }
-            surface.configure(&device, &config);
-            // Until its first frame the window shows what was behind it (on Android, the
-            // launcher through the app's empty window): clear it now, before the pipelines
-            // take their few hundred milliseconds.
-            if previous.is_none() {
-                clear_surface(&device, &queue, surface, config.format);
-            }
-||||||| c98a51a664
-        let (config, present_modes, hdr_output) = if let Some(surface) = &surface {
-            let mut config = surface
-                .get_default_config(
-                    &adapter,
-                    size.width.clamp(1, max_side),
-                    size.height.clamp(1, max_side),
-                )
-                .ok_or("surface has no supported configuration")?;
-            let caps = surface.get_capabilities(&adapter);
-            config.format = surface_format(&caps.formats, config.format);
-            config.view_formats = vec![config.format.remove_srgb_suffix()];
-            // Screenshots copy the presented frame back from the swapchain, frame
-            // generation's present thread copies its frames in.
-            if caps.usages.contains(wgpu::TextureUsages::COPY_SRC) {
-                config.usage |= wgpu::TextureUsages::COPY_SRC;
-            }
-            if caps.usages.contains(wgpu::TextureUsages::COPY_DST) {
-                config.usage |= wgpu::TextureUsages::COPY_DST;
-            }
-            config.present_mode = previous
-                .map(|renderer| renderer.config.present_mode)
-                .filter(|mode| caps.present_modes.contains(mode))
-                .unwrap_or_else(|| {
-                    if caps.present_modes.contains(&wgpu::PresentMode::Mailbox) {
-                        wgpu::PresentMode::Mailbox
-                    } else {
-                        wgpu::PresentMode::Fifo
-                    }
-                });
-            if previous.is_none() {
-                startup_step(format_args!(
-                    "device ready; configuring the surface ({}x{} {:?}, {:?})",
-                    config.width, config.height, config.format, config.present_mode
-                ));
-            }
-            surface.configure(&device, &config);
-=======
         let configured = match (&surface, configured) {
             (Some(_), Some(configured)) => Some(configured),
             (Some(surface), None) => Some(set_up_surface(
@@ -3442,8 +3185,15 @@ impl Renderer {
             )?),
             (None, _) => None,
         };
+        // Until its first frame the window shows what was behind it (on Android, the
+        // launcher through the app's empty window): clear it now, before the pipelines
+        // take their few hundred milliseconds.
+        if previous.is_none()
+            && let (Some(surface), Some((config, _))) = (&surface, &configured)
+        {
+            clear_surface(&device, &queue, surface, config.format);
+        }
         let (config, present_modes, hdr_output) = if let Some((config, caps)) = configured {
->>>>>>> arismoko/main
             let hdr_output = hdr::output(&caps);
             if previous.is_none() {
                 log::info!(
@@ -9597,13 +9347,7 @@ impl Renderer {
         // cutout ones (`Part`), each solid pass drawing its own: `[..opaque_draws]`,
         // then the rest; phase 2 likewise. A fading list's quads all draw in the
         // cutout pass.
-<<<<<<< HEAD
-        let split_solid = splits_solid(&self.info) && !warp_on;
-||||||| c98a51a664
-        let split_solid = self.info.backend == wgpu::Backend::Metal && !warp_on;
-=======
-        let split_solid = self.info.backend == wgpu::Backend::Metal;
->>>>>>> arismoko/main
+        let split_solid = splits_solid(&self.info);
         let parts = |fading: bool| -> &'static [(u8, Quads)] {
             match (split_solid, fading) {
                 (false, _) => &[(0, Quads::All)],
@@ -11199,10 +10943,9 @@ impl Renderer {
         let hdr = self.hdr.is_some();
         let solid_pipeline = material.map_or(self.solid.get(hdr), |(m, _)| &m.solid);
         // Two solid passes only where a discard costs the GPU its hidden surface
-<<<<<<< HEAD
         // removal: Apple's tiled GPUs, behind Metal, and Adreno's Vulkan (`splits_solid`).
         // Elsewhere the second pass would double the solid draw calls and vertex work.
-        let split_solid = splits_solid(&self.info) && !warp_on;
+        let split_solid = splits_solid(&self.info);
         // What this frame's instances allow its two solid passes (`solid_paths`).
         let solid_passes = self
             .solid_paths
@@ -11212,24 +10955,7 @@ impl Renderer {
             .map_or_else(Default::default, |paths| {
                 paths.for_frame(&self.origins, self.texture_filtering)
             });
-        let translucent_pipeline = match warped {
-            Some(w) => &w.translucent,
-            None => material.map_or(&self.translucent, |(m, _)| &m.translucent),
-        };
-||||||| c98a51a664
-        // removal: Apple's tiled GPUs, behind Metal. Elsewhere the second pass
-        // would double the solid draw calls and vertex work for nothing.
-        let split_solid = self.info.backend == wgpu::Backend::Metal && !warp_on;
-        let translucent_pipeline = match warped {
-            Some(w) => &w.translucent,
-            None => material.map_or(&self.translucent, |(m, _)| &m.translucent),
-        };
-=======
-        // removal: Apple's tiled GPUs, behind Metal. Elsewhere the second pass
-        // would double the solid draw calls and vertex work for nothing.
-        let split_solid = self.info.backend == wgpu::Backend::Metal;
         let translucent_pipeline = material.map_or(&self.translucent, |(m, _)| &m.translucent);
->>>>>>> arismoko/main
         let pack_flat = material.and_then(|(m, _)| m.flat.as_ref());
         // A material stage's translucent pass reads a copy of the depth the solid terrain
         // left: it is stored across the pass that ends before the copy.
@@ -11739,10 +11465,6 @@ impl Renderer {
                 pack_frame(&mut pass);
                 pass.set_index_buffer(self.indices.slice(..), wgpu::IndexFormat::Uint32);
             }
-<<<<<<< HEAD
-            let hdr_mark = warped.map_or(&self.hdr_mark_pipeline, |w| &w.hdr_mark);
-            let hdr_entity_mark =
-                warped.map_or(&self.hdr_entity_mark_pipeline, |w| &w.hdr_entity_mark);
             // At the far plane, it reads the depth solids left, in the usual order of its parts.
             if let Some(sky) = late_sky.filter(|_| sky_visible) {
                 pass.set_pipeline(&sky.sky);
@@ -11769,12 +11491,6 @@ impl Renderer {
                     pass.draw(0..3, 0..1);
                 }
             }
-||||||| c98a51a664
-            let hdr_mark = warped.map_or(&self.hdr_mark_pipeline, |w| &w.hdr_mark);
-            let hdr_entity_mark =
-                warped.map_or(&self.hdr_entity_mark_pipeline, |w| &w.hdr_entity_mark);
-=======
->>>>>>> arismoko/main
             if static_entity_quads > 0 {
                 pass.set_pipeline(&self.static_entity_pipeline);
                 pass.set_bind_group(0, &self.entity_group, &[]);
@@ -14263,7 +13979,6 @@ mod tests {
         assert_eq!(os_reported(&wgpu::DisplayHdrInfo::default()), None);
     }
     #[test]
-<<<<<<< HEAD
     fn a_clamped_shadow_view_keeps_what_lies_toward_the_light() {
         use glam::{Mat4, Vec3};
         // The shadow camera with the sun overhead: 128 blocks up, 256 deep (wgpu depth).
@@ -14277,8 +13992,7 @@ mod tests {
         assert!(!super::light_frustum(cull, true).intersects(beside.0, beside.1));
     }
 
-||||||| c98a51a664
-=======
+    #[test]
     fn system_hdr_changes_are_kept_without_luminance_changes() {
         let reading = |hdr| {
             super::DisplayReading::os(&wgpu::DisplayHdrInfo {
@@ -14331,7 +14045,6 @@ mod tests {
             assert_eq!(super::macos_hdr(&info(4.0, potential)), None);
         }
     }
->>>>>>> arismoko/main
     #[test]
     fn surface_is_8_bit_and_not_srgb() {
         use super::surface_format;

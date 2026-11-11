@@ -1782,90 +1782,7 @@ impl HudAtlas {
                 }
             }
         }
-<<<<<<< HEAD
-        let assets = root.join("assets");
-        // A native mod's particle type names its textures `<ns>:particle/<path>`
-        // and needn't ship content, so every namespace's folder is packed.
-        if folders.contains(&"particle")
-            && let Ok(namespaces) = fs::read_dir(&assets)
-        {
-            for ns in namespaces.flatten() {
-                if ns.file_name() != "minecraft" {
-                    walk(&ns.path().join("textures/particle"), &mut files);
-                }
-            }
-        }
-        // Content mods' GUI textures, for their screens: `<namespace>:gui/...`, and packs' own
-        // sprites such as `starling:touch/jump` (`<namespace>:gui/sprites/<path>`). Every other
-        // namespace's equipment textures too: a server pack's custom armour.
-        if full && let Ok(dirs) = fs::read_dir(&assets) {
-            for ns in dirs.flatten() {
-                let name = ns.file_name().to_string_lossy().into_owned();
-                if name == "minecraft" {
-                    continue;
-                }
-                walk(&ns.path().join("textures/gui"), &mut files);
-                if folders.contains(&"entity") && !namespaces.contains(&name) {
-                    walk(&ns.path().join("textures/entity/equipment"), &mut files);
-                }
-            }
-        }
-        // The title panorama and the New World preset pictures load on their own. The
-        // Realms world-slot pictures are drawn from this atlas (vanilla draws their
-        // textures full size): the three faces and `presets/isles.png` stay, costing
-        // one 1024-tall shelf.
-        files.retain(|p| {
-            let s = p.to_string_lossy().replace('\\', "/");
-            let slot_picture = [
-                "textures/gui/title/background/panorama_0.png",
-                "textures/gui/title/background/panorama_2.png",
-                "textures/gui/title/background/panorama_3.png",
-                "textures/gui/presets/isles.png",
-            ]
-            .iter()
-            .any(|kept| s.ends_with(kept));
-            slot_picture || (!s.contains("title/background") && !s.contains("presets"))
-        });
-||||||| c98a51a664
-        let assets = root.join("assets");
-        // A native mod's particle type names its textures `<ns>:particle/<path>`
-        // and needn't ship content, so every namespace's folder is packed.
-        if folders.contains(&"particle")
-            && let Ok(namespaces) = fs::read_dir(&assets)
-        {
-            for ns in namespaces.flatten() {
-                if ns.file_name() != "minecraft" {
-                    walk(&ns.path().join("textures/particle"), &mut files);
-                }
-            }
-        }
-        // Content mods' GUI textures, for their screens: `<namespace>:gui/...`.
-        if full && let Ok(namespaces) = fs::read_dir(&assets) {
-            for ns in namespaces.flatten() {
-                if ns.file_name() != "minecraft" {
-                    walk(&ns.path().join("textures/gui"), &mut files);
-                }
-            }
-        }
-        // The title panorama and the New World preset pictures load on their own. The
-        // Realms world-slot pictures are drawn from this atlas (vanilla draws their
-        // textures full size): the three faces and `presets/isles.png` stay, costing
-        // one 1024-tall shelf.
-        files.retain(|p| {
-            let s = p.to_string_lossy().replace('\\', "/");
-            let slot_picture = [
-                "textures/gui/title/background/panorama_0.png",
-                "textures/gui/title/background/panorama_2.png",
-                "textures/gui/title/background/panorama_3.png",
-                "textures/gui/presets/isles.png",
-            ]
-            .iter()
-            .any(|kept| s.ends_with(kept));
-            slot_picture || (!s.contains("title/background") && !s.contains("presets"))
-        });
-=======
         files.retain(|p| !menu_pictures::menu_picture_only(p));
->>>>>>> arismoko/main
         // OptiFine random entity variants, under the names their scan gives them (those
         // outside `textures/` are `<ns>:optifine/random/...`).
         let random_textures = if folders.contains(&"entity") {
@@ -2422,7 +2339,6 @@ fn clip_polygon(poly: &[HudVertex], axis: usize, limit: f32, keep_below: bool) -
     }
     out
 }
-<<<<<<< HEAD
 /// Which take of a letter a hand-written font draws at the `i`th character of text at `x, y`:
 /// the same each frame for text that stays put.
 fn take_seed(x: f32, y: f32, i: usize) -> u32 {
@@ -2432,20 +2348,12 @@ fn take_seed(x: f32, y: f32, i: usize) -> u32 {
     h ^= h >> 15;
     h.wrapping_mul(0x2c1b_3c6d) >> 7
 }
-/// The GUI Scale option (0 = auto).
-pub static GUI_SCALE: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
-||||||| c98a51a664
-/// The GUI Scale option (0 = auto).
-pub static GUI_SCALE: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
-=======
 /// Scale inputs for one view, copied from its owner's settings.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct GuiScale {
     pub requested: u32,
     pub unicode: bool,
 }
-
->>>>>>> arismoko/main
 /// One frame of overlay geometry in GUI pixels.
 pub struct HudBatch {
     pub pictures: Vec<Arc<pictures::Picture>>,

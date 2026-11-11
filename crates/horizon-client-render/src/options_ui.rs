@@ -438,7 +438,6 @@ impl Opt {
     pub(crate) fn kind(self, s: &Settings) -> Kind {
         let unit = |v: f32, lo: f32, hi: f32| Kind::Slider(((v - lo) / (hi - lo)).clamp(0.0, 1.0));
         match self {
-<<<<<<< HEAD
             Opt::TouchCircleSize => unit(s.touch.circle_size, 16.0, 64.0),
             Opt::TouchDynamicAreaX => unit(s.touch.dynamic_area_x, 0.0, 1.0),
             Opt::TouchDynamicAreaY => unit(s.touch.dynamic_area_y, 0.0, 1.0),
@@ -451,12 +450,9 @@ impl Opt {
             Opt::TouchMouseSensitivity => unit(s.touch.virtual_mouse_sensitivity, 0.25, 3.0),
             Opt::TouchButtonScale => unit(s.touch.button_scale, 0.5, 2.0),
 
-||||||| c98a51a664
-=======
             Opt::ModSetting(i, j) => {
                 Kind::Slider(mod_setting(s, i, j).map_or(0.0, |m| m.value.fraction()))
             }
->>>>>>> arismoko/main
             Opt::FovEffects | Opt::DarknessPulsing => {
                 Kind::Slider(s.file.double(self.file_key().unwrap()).sqrt() as f32)
             }
@@ -2007,31 +2003,23 @@ pub enum Page {
     ModProject,
     /// A native mod's settings page: its index in `mods.installed`.
     NativeMod(usize),
-<<<<<<< HEAD
-    /// Horizon's shader packs, either kind (`shader_pack_list`): one on or none, and a
-    /// `shaders/` pack's profile.
-||||||| c98a51a664
-    /// Horizon's shader packs, either kind (`shader_pack_list`).
-=======
+    /// Android: the game with native mods and the mods chosen for its next build.
+    NativeGame,
     /// A page a crate registered (`horizon_hooks::pages`): its index in `OptionsUi::pages`.
     Added(usize),
-    /// Horizon's shader packs, either kind (`shader_pack_list`).
->>>>>>> arismoko/main
+    /// Horizon's shader packs, either kind (`shader_pack_list`): one on or none, and a
+    /// `shaders/` pack's profile.
     ShaderPacks,
     /// The picked pack's options: the shader screen (`shader_ui`) at the pack's main screen.
     ShaderOptions,
-<<<<<<< HEAD
     /// The player's own touch buttons (`Settings::custom_buttons`), and what one of them does.
     CustomButtons,
     CustomButton(u32),
     CustomPick(u32, CustomPick),
     /// Drawing a custom button's own image.
     CustomDraw(u32),
-||||||| c98a51a664
-=======
     /// The selected resource packs' Polytone options (`pack_options_ui`), from the pack screen.
     PackOptions,
->>>>>>> arismoko/main
     /// Horizon's graphics settings (`graphics_ui`).
     Graphics,
     GraphicsAdvanced,
@@ -2085,8 +2073,8 @@ enum Act {
     Key(&'static str),
     ResetKey(&'static str),
     ResetKeys,
-<<<<<<< HEAD
     KeyboardProfile,
+    /// A native mod chosen (or not) for the next build, on the native game page (Android).
     ToggleMod(usize),
     /// The Custom Buttons page, a new button there, one to change or take away, a control or a
     /// keyboard key for it, and its icon.
@@ -2107,38 +2095,24 @@ enum Act {
     CanvasClear,
     CanvasPlate,
     CanvasImport(u32),
-||||||| c98a51a664
-    ToggleMod(usize),
-=======
->>>>>>> arismoko/main
     /// PvP & HUD's PvP preset (`pvp::apply_preset`).
     PvpPreset,
     /// PvP & HUD's Edit HUD button.
     HudEditor,
     /// A native mod's key (mod, key) waits for a key; a button of its page.
-<<<<<<< HEAD
-    NativeKey(usize, usize),
-    NativeButton(usize, usize),
     /// A button of the Mods page's game with native mods.
     NativeGame(crate::mod_list::NativeGameAct),
-    OpenModFolder,
     OpenCatalog(CatalogShelf),
     /// The creative screen with the inventory beside it, or as the game draws it.
     BedrockInventory,
     /// The touch layout editor (phones).
     TouchLayout,
-||||||| c98a51a664
-    NativeKey(usize, usize),
-    NativeButton(usize, usize),
-    OpenModFolder,
-=======
     /// A key a native mod registered (mod, mapping) waits for a key, or is reset.
     ModKey(usize, usize),
     ResetModKey(usize, usize),
     /// Setting `.1` of native mod `.0`'s page clicked: a toggle, choice or colour steps on.
     NativeSetting(usize, usize),
     PageRow(usize, usize),
->>>>>>> arismoko/main
     /// Browse mods: the page of listing `.0` of `mod_browser`.
     ModProject(usize),
     /// The open project page's Install or Update.
@@ -2258,20 +2232,16 @@ pub enum CatalogShelf {
 /// What the game must do after an interaction.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Event {
-<<<<<<< HEAD
     DiagnosticsExport,
     DiagnosticsOpen,
     DiagnosticsRecord,
     DiagnosticsGpu,
-||||||| c98a51a664
-=======
     /// The Pack Options page closed with changes: the player's choices of its entries, the
     /// ones that differ from their defaults (the others went back to theirs).
     PackOptions {
         entries: Vec<String>,
         chosen: std::collections::BTreeMap<String, horizon_polytone::pack::ConfigValue>,
     },
->>>>>>> arismoko/main
     /// An accepted button press or the release of a slider.
     ButtonClick,
     /// Horizon's own: download the Modrinth hit at this index of the pack
@@ -2334,10 +2304,6 @@ pub enum Event {
     NativePackOptions(usize),
     /// Native mod `.0`'s page opened: the game reads its settings' kept values again.
     NativeSettings(usize),
-<<<<<<< HEAD
-    /// Button `.1` of native mod `.0`'s page was pressed: the game tells the
-    /// mod and refreshes the page.
-    NativeButton(usize, usize),
     /// Close the options and edit the touch controls' layout over the world.
     TouchLayout,
     /// The Custom Buttons page opened: `Settings::custom_buttons` takes what the layout has.
@@ -2348,15 +2314,9 @@ pub enum Event {
     CustomImage(u32, Vec<u8>),
     /// Ask the system for a picture for a custom button.
     ImportButtonImage(u32),
-||||||| c98a51a664
-    /// Button `.1` of native mod `.0`'s page was pressed: the game tells the
-    /// mod and refreshes the page.
-    NativeButton(usize, usize),
-=======
     /// Setting `.1` of native mod `.0`'s page changed (`settings.mods`): the game keeps it and
     /// tells the mod (`setting_changed`).
     NativeSetting(usize, usize),
->>>>>>> arismoko/main
     /// Roll the credits (`CreditsAndAttributionScreen.openCreditsScreen`).
     Credits,
     /// PvP & HUD's Edit HUD: open the HUD editor over the game.
@@ -2557,7 +2517,6 @@ pub struct OptionsUi {
     /// pixels), for the narration's row under the mouse.
     row_bands: Vec<[f32; 2]>,
     /// The Shader Packs page's chosen pack's profiles ("" first: its defaults).
-    shader_profiles: Vec<String>,
     /// The PvP & HUD items that take a whole row (`wide_extras`), measured
     /// when the page is drawn.
     wide_extras: Vec<crate::extras::Item>,
@@ -2685,7 +2644,6 @@ impl Default for OptionsUi {
             framebuffer: [1280, 720],
             split_guest: false,
             row_bands: Vec::new(),
-            shader_profiles: Vec::new(),
             skin_page: false,
             profile_name: None,
             profile_key: None,
@@ -2748,6 +2706,35 @@ fn native_game_rows(s: &Settings) -> Vec<Row> {
             [a, b] => Row::Buttons(widget(a, 150.0), Some(widget(b, 150.0))),
             _ => Row::Buttons(widget(&pair[0], 310.0), None),
         });
+    }
+    rows
+}
+
+/// Android: the native game page: which game runs and its buttons, then each native mod as a box
+/// ticked when it is chosen for the next build (the buttons' Compile builds with those), and one
+/// chosen and not in this game says so beside it.
+fn native_game_page_rows(s: &Settings) -> Vec<Row> {
+    let mut rows = native_game_rows(s);
+    let natives: Vec<_> = (s.mods.installed.iter().enumerate())
+        .filter(|(_, m)| m.native.is_some() && !m.id.is_empty() && !m.dev)
+        .collect();
+    if natives.is_empty() {
+        rows.push(Row::Header("horizon.mods.empty"));
+        return rows;
+    }
+    for (i, installed) in natives {
+        let tick = if s.mods.is_on(i) { '\u{2611}' } else { '\u{2610}' };
+        let mut label = Text::literal(format!("{tick} {}", installed.title));
+        if installed.problem.as_deref() == Some(crate::mod_list::NOT_BUILT) {
+            if s.mods.is_on(i) {
+                label = label.append(tr("starling.mods.native.not_compiled"));
+            } else {
+                label = label.append(tr("horizon.mods.not_built"));
+            }
+        } else if installed.problem.is_some() {
+            label = label.append(tr("horizon.mods.stopped"));
+        }
+        rows.push(Row::Buttons(button(0.0, 0.0, 310.0, label, Act::ToggleMod(i)), None));
     }
     rows
 }
@@ -2894,7 +2881,7 @@ fn tooltip_text(s: &Settings, wd: &Widget) -> Option<Text> {
     }
     match act {
         Act::Cycle(opt) if !opt.available() => Some(tr("horizon.options.unavailable")),
-<<<<<<< HEAD
+        Act::PageRow(page, row) => pages::tooltip(*page, *row),
         Act::ToggleMod(i) => match s.mods.installed.get(*i) {
             Some(installed) => {
                 let description = match installed.problem.as_deref() {
@@ -2906,23 +2893,6 @@ fn tooltip_text(s: &Settings, wd: &Widget) -> Option<Text> {
             }
             None => tip,
         },
-        Act::Key(name) => {
-            let conflicts = s.keys.conflicts(name);
-||||||| c98a51a664
-        Act::ToggleMod(i) => match s.mods.installed.get(*i) {
-            Some(installed) => {
-                let description = installed
-                    .problem
-                    .as_deref()
-                    .unwrap_or(&installed.description);
-                Some(Text::literal(format!("{}\n{description}", installed.title)))
-            }
-            None => tip,
-        },
-        Act::Key(name) => {
-            let conflicts = s.keys.conflicts(name);
-=======
-        Act::PageRow(page, row) => pages::tooltip(*page, *row),
         Act::ModKey(i, k) => {
             let installed = s.mods.installed.get(*i)?;
             let mapping = installed.native.as_ref()?.mappings.get(*k)?;
@@ -2940,7 +2910,6 @@ fn tooltip_text(s: &Settings, wd: &Widget) -> Option<Text> {
                 mapping.context,
                 key == mapping.key && modifiers == mapping.modifiers,
             );
->>>>>>> arismoko/main
             if conflicts.is_empty() {
                 return tip;
             }
@@ -3539,208 +3508,6 @@ impl OptionsUi {
     pub fn reveal(&mut self, s: &Settings, size: (f32, f32), rect: [f32; 4]) -> Option<f32> {
         self.shell_mut()?.reveal(s, size, rect)
     }
-<<<<<<< HEAD
-    /// The window's size, for the graphics screen's vanilla rows that step through its
-    /// resolutions: before each input that can press one.
-    fn graphics_framebuffer(&mut self) {
-        self.graphics.screen.framebuffer = self.framebuffer;
-    }
-    /// What a shell screen's outputs do to these options.
-    fn shell_events(&mut self, s: &mut Settings, outputs: Vec<shell::Output>) -> Vec<Event> {
-        let mut events = Vec::new();
-        for output in outputs {
-            match output {
-                shell::Output::Event(event) => events.push(event),
-                shell::Output::BindKey(name) => self.selected_key = Some(name),
-                shell::Output::Push(page) => {
-                    if page == Page::HdrCalibration {
-                        self.calibration = Some(crate::hdr_calibration::Calibration::new(s));
-                    }
-                    self.push(page);
-                }
-                shell::Output::Done => events.extend(self.back(s)),
-            }
-        }
-        events
-    }
-    /// What the controller screen's actions do to these options.
-    fn controller_events(
-        &mut self,
-        s: &mut Settings,
-        actions: Vec<crate::controller_ui::Action>,
-    ) -> Vec<Event> {
-        use crate::controller_ui::Action;
-        let mut events = Vec::new();
-        for action in actions {
-            match action {
-                Action::ButtonClick => events.push(Event::ButtonClick),
-                Action::Changed => events.push(Event::Changed),
-                Action::SliderDrag => events.push(Event::SliderDrag),
-                Action::BindPad(action) => self.selected_pad_action = Some(action),
-                Action::Done => events.extend(self.back(s)),
-            }
-        }
-        events
-    }
-    /// What the shader screen's actions do to these options.
-    fn shader_events(
-        &mut self,
-        s: &mut Settings,
-        actions: Vec<crate::shader_ui::Action>,
-    ) -> Vec<Event> {
-        use crate::shader_ui::Action;
-        let mut events = Vec::new();
-        for action in actions {
-            match action {
-                Action::ButtonClick => events.push(Event::ButtonClick),
-                Action::Changed => events.push(Event::Changed),
-                Action::SliderDrag => events.push(Event::SliderDrag),
-                Action::Picked => {
-                    // The last pack's changed options are kept before the next one's are read.
-                    if s.shader_options.as_ref().is_some_and(|o| o.changed) {
-                        events.push(Event::ShaderOptions);
-                    }
-                    s.horizon.shader_profile.clear();
-                    self.refresh_shader_profiles(s);
-                    events.push(Event::ShaderPack);
-                    events.push(Event::OpenShaderOptions);
-                }
-                Action::Reload => events.push(Event::ShaderPack),
-                Action::NextPackProfile => {
-                    let now = s.horizon.shader_choice().map(|c| c.1).unwrap_or_default();
-                    let list = &self.shader_profiles;
-                    let at = list.iter().position(|p| *p == now).unwrap_or(0);
-                    if let Some(next) = list.get((at + 1) % list.len().max(1)) {
-                        // Empty would fall back to the variable's: the pack's own
-                        // defaults are `default`, and empty is what means Auto.
-                        s.horizon.shader_profile = match next.as_str() {
-                            "" => "default".into(),
-                            crate::graphics::AUTO_PROFILE => String::new(),
-                            next => next.to_owned(),
-                        };
-                    }
-                    events.push(Event::ShaderPack);
-                }
-                Action::OpenFolder => events.push(Event::OpenShaderPackFolder),
-                Action::Apply => {
-                    events.push(Event::ShaderOptions);
-                    events.push(Event::OpenShaderOptions);
-                }
-                Action::NativeChanged(pack) => events.push(Event::NativePackOptions(pack)),
-                Action::Done => events.extend(self.back(s)),
-            }
-        }
-        events
-    }
-    /// Where the shader screen opens for `page`, if it is one of its pages.
-    fn shader_page(page: Page) -> Option<crate::shader_ui::Tab> {
-        match page {
-            Page::ShaderPacks => Some(crate::shader_ui::Tab::Packs),
-            Page::ShaderOptions => Some(crate::shader_ui::Tab::Screen(0)),
-            _ => None,
-        }
-    }
-    /// Where the controller screen opens for `page`, if it is one of its pages.
-    fn controller_page(page: Page) -> Option<crate::controller_ui::Page> {
-        match page {
-            Page::Controller => Some(crate::controller_ui::Page::General),
-            Page::PadBinds => Some(crate::controller_ui::Page::Bindings),
-            _ => None,
-        }
-    }
-||||||| c98a51a664
-    /// The window's size, for the graphics screen's vanilla rows that step through its
-    /// resolutions: before each input that can press one.
-    fn graphics_framebuffer(&mut self) {
-        self.graphics.screen.framebuffer = self.framebuffer;
-    }
-    /// What a shell screen's outputs do to these options.
-    fn shell_events(&mut self, s: &mut Settings, outputs: Vec<shell::Output>) -> Vec<Event> {
-        let mut events = Vec::new();
-        for output in outputs {
-            match output {
-                shell::Output::Event(event) => events.push(event),
-                shell::Output::BindKey(name) => self.selected_key = Some(name),
-                shell::Output::Push(page) => {
-                    if page == Page::HdrCalibration {
-                        self.calibration = Some(crate::hdr_calibration::Calibration::new(s));
-                    }
-                    self.push(page);
-                }
-                shell::Output::Done => events.extend(self.back(s)),
-            }
-        }
-        events
-    }
-    /// What the controller screen's actions do to these options.
-    fn controller_events(
-        &mut self,
-        s: &mut Settings,
-        actions: Vec<crate::controller_ui::Action>,
-    ) -> Vec<Event> {
-        use crate::controller_ui::Action;
-        let mut events = Vec::new();
-        for action in actions {
-            match action {
-                Action::ButtonClick => events.push(Event::ButtonClick),
-                Action::Changed => events.push(Event::Changed),
-                Action::SliderDrag => events.push(Event::SliderDrag),
-                Action::BindPad(action) => self.selected_pad_action = Some(action),
-                Action::Done => events.extend(self.back(s)),
-            }
-        }
-        events
-    }
-    /// What the shader screen's actions do to these options.
-    fn shader_events(
-        &mut self,
-        s: &mut Settings,
-        actions: Vec<crate::shader_ui::Action>,
-    ) -> Vec<Event> {
-        use crate::shader_ui::Action;
-        let mut events = Vec::new();
-        for action in actions {
-            match action {
-                Action::ButtonClick => events.push(Event::ButtonClick),
-                Action::Changed => events.push(Event::Changed),
-                Action::SliderDrag => events.push(Event::SliderDrag),
-                Action::Picked => {
-                    // The last pack's changed options are kept before the next one's are read.
-                    if s.shader_options.as_ref().is_some_and(|o| o.changed) {
-                        events.push(Event::ShaderOptions);
-                    }
-                    events.push(Event::ShaderPack);
-                    events.push(Event::OpenShaderOptions);
-                }
-                Action::OpenFolder => events.push(Event::OpenShaderPackFolder),
-                Action::Apply => {
-                    events.push(Event::ShaderOptions);
-                    events.push(Event::OpenShaderOptions);
-                }
-                Action::NativeChanged(pack) => events.push(Event::NativePackOptions(pack)),
-                Action::Done => events.extend(self.back(s)),
-            }
-        }
-        events
-    }
-    /// Where the shader screen opens for `page`, if it is one of its pages.
-    fn shader_page(page: Page) -> Option<crate::shader_ui::Tab> {
-        match page {
-            Page::ShaderPacks => Some(crate::shader_ui::Tab::Packs),
-            Page::ShaderOptions => Some(crate::shader_ui::Tab::Screen(0)),
-            _ => None,
-        }
-    }
-    /// Where the controller screen opens for `page`, if it is one of its pages.
-    fn controller_page(page: Page) -> Option<crate::controller_ui::Page> {
-        match page {
-            Page::Controller => Some(crate::controller_ui::Page::General),
-            Page::PadBinds => Some(crate::controller_ui::Page::Bindings),
-            _ => None,
-        }
-    }
-=======
->>>>>>> arismoko/main
     /// Whether a video settings screen is open, Horizon's or vanilla's: the fullscreen mode
     /// waits for it to close, and Ctrl with the wheel steps the GUI scale.
     pub fn video_open(&self) -> bool {
@@ -3776,18 +3543,15 @@ impl OptionsUi {
             Page::ModBrowser => "horizon.mods.browse.title",
             Page::ModProject => "horizon.mods.browse.project",
             Page::NativeMod(_) => "Mod Settings",
+            Page::NativeGame => "Native Mods Game",
             Page::Added(i) => pages::title(i),
             Page::ShaderPacks => "horizon.pages.shader_packs",
             Page::ShaderOptions => "horizon.pages.shader_options",
-<<<<<<< HEAD
             Page::CustomButtons
             | Page::CustomButton(_)
             | Page::CustomPick(..)
             | Page::CustomDraw(_) => "Custom Buttons",
-||||||| c98a51a664
-=======
             Page::PackOptions => "horizon.pack.options.title",
->>>>>>> arismoko/main
             Page::Graphics | Page::GraphicsAdvanced | Page::GraphicsHdr | Page::HdrCalibration => {
                 "options.videoTitle"
             }
@@ -4131,101 +3895,7 @@ impl OptionsUi {
                 flush(&mut rows, &mut section);
                 rows
             }
-<<<<<<< HEAD
-            Page::Horizon => {
-                // Two to a row, as vanilla's OptionsList.addSmall lays out
-                // buttons; each opens one of Horizon's settings pages. Each page has
-                // one way in: graphics and shader packs are Video Settings' (the graphics
-                // screen), the controller is Controls', mods are the Options screen's.
-                let open =
-                    |key: &str, page: Page| button(0.0, 0.0, 150.0, tr(key), Act::Push(page));
-                vec![
-                    Row::Buttons(
-                        open("horizon.pages.open.extras", Page::Extras),
-                        Some(open("horizon.pages.open.pvp", Page::Pvp)),
-                    ),
-                    Row::Buttons(
-                        open(
-                            "horizon.pages.open.split_setup",
-                            if self.split_guest {
-                                Page::SplitProfiles
-                            } else {
-                                Page::SplitSetup
-                            },
-                        ),
-                        Some(open("horizon.pages.open.studio", Page::Studio)),
-                    ),
-                    // No AI hides the AI Agent page and everything AI.
-                    {
-                        let ai = if s.extras.no_ai {
-                            self.extra_button(s, crate::extras::Item::NoAi)
-                        } else {
-                            open("horizon.pages.open.agent", Page::Agent)
-                        };
-                        // A phone has no Discord client to show the game in.
-                        if cfg!(target_os = "android") {
-                            Row::Buttons(ai, None)
-                        } else {
-                            Row::Buttons(
-                                self.extra_button(s, crate::extras::Item::DiscordPresence),
-                                Some(ai),
-                            )
-                        }
-                    },
-                ]
-                .into_iter()
-                .chain(
-                    (!s.extras.no_ai).then(|| {
-                        Row::Buttons(self.extra_button(s, crate::extras::Item::NoAi), None)
-                    }),
-                )
-                .collect()
-            }
-||||||| c98a51a664
-            Page::Horizon => {
-                // Two to a row, as vanilla's OptionsList.addSmall lays out
-                // buttons; each opens one of Horizon's settings pages. Each page has
-                // one way in: graphics and shader packs are Video Settings' (the graphics
-                // screen), the controller is Controls', mods are the Options screen's.
-                let open =
-                    |key: &str, page: Page| button(0.0, 0.0, 150.0, tr(key), Act::Push(page));
-                vec![
-                    Row::Buttons(
-                        open("horizon.pages.open.extras", Page::Extras),
-                        Some(open("horizon.pages.open.pvp", Page::Pvp)),
-                    ),
-                    Row::Buttons(
-                        open(
-                            "horizon.pages.open.split_setup",
-                            if self.split_guest {
-                                Page::SplitProfiles
-                            } else {
-                                Page::SplitSetup
-                            },
-                        ),
-                        Some(open("horizon.pages.open.studio", Page::Studio)),
-                    ),
-                    // No AI hides the AI Agent page and everything AI.
-                    Row::Buttons(
-                        self.extra_button(s, crate::extras::Item::DiscordPresence),
-                        Some(if s.extras.no_ai {
-                            self.extra_button(s, crate::extras::Item::NoAi)
-                        } else {
-                            open("horizon.pages.open.agent", Page::Agent)
-                        }),
-                    ),
-                ]
-                .into_iter()
-                .chain(
-                    (!s.extras.no_ai).then(|| {
-                        Row::Buttons(self.extra_button(s, crate::extras::Item::NoAi), None)
-                    }),
-                )
-                .collect()
-            }
-=======
             Page::Horizon => self.horizon_rows(s),
->>>>>>> arismoko/main
             Page::Agent => {
                 let mut rows = vec![Row::Buttons(
                     self.extra_button(s, crate::extras::Item::AgentControl),
@@ -4670,151 +4340,10 @@ impl OptionsUi {
                 rows
             }
             Page::Font => pairs(&[Opt::ForceUnicode, Opt::JapaneseGlyphs]),
-<<<<<<< HEAD
-            Page::Mods => {
-                let browse = button(
-                    0.0,
-                    0.0,
-                    310.0,
-                    tr("horizon.mods.browse"),
-                    Act::Push(Page::ModBrowser),
-                );
-                // Android: which game runs, above the mods.
-                let mut rows = native_game_rows(s);
-                rows.push(Row::Buttons(browse, None));
-                if let Some(note) = &self.mods_note {
-                    rows.extend(wrap(note, 64).into_iter().map(Row::Note));
-                }
-                if s.mods.installed.is_empty() {
-                    rows.push(Row::Header("horizon.mods.empty"));
-                    return rows;
-                }
-                let mods = s.mods.installed.iter().enumerate().map(|(i, installed)| {
-                    let on = s.mods.is_on(i);
-                    let not_built =
-                        installed.problem.as_deref() == Some(crate::mod_list::NOT_BUILT);
-                    // Android: a native mod is chosen for the next build (the page's top Compile),
-                    // so its row is a box ticked or not; one chosen and not in this game says so
-                    // beside it.
-                    let compiled_here = not_built && installed.native.is_some();
-                    let chosen_box = installed.native.is_some() && !installed.id.is_empty();
-                    let mut label = if chosen_box {
-                        let tick = if on { '\u{2611}' } else { '\u{2610}' };
-                        Text::literal(format!("{tick} {}", installed.title))
-                    } else {
-                        Text::option_name_value(
-                            Text::literal(installed.title.clone()),
-                            on_off(on),
-                        )
-                    };
-                    if not_built {
-                        if !compiled_here {
-                            label = label.append(tr("horizon.mods.not_built"));
-                        }
-                    } else if installed.problem.is_some() {
-                        label = label.append(tr("horizon.mods.stopped"));
-                    } else if installed.dev {
-                        label = label.append(tr("horizon.mods.dev"));
-                    }
-                    let frozen = self.mod_frozen(installed);
-                    if frozen {
-                        label = label.append(tr("horizon.mods.in_world"));
-                    }
-                    let dead = installed.dev || installed.id.is_empty() || frozen;
-                    // Beside it: a warning, as Java's, for a native mod chosen and not in this
-                    // game (nothing to press: Compile is the page's), Settings for one in it that
-                    // has settings.
-                    let side = if compiled_here {
-                        on.then(|| {
-                            let warning = Text::literal(format!(
-                                "\u{a7}e\u{26a0} {}",
-                                lang::get("starling.mods.native.not_compiled")
-                            ));
-                            inactive(button(0.0, 0.0, 150.0, warning, Act::NativeButton(i, 0)))
-                        })
-                    } else {
-                        installed
-                            .native
-                            .as_ref()
-                            .is_some_and(|page| !page.keys.is_empty() || !page.buttons.is_empty())
-                            .then(|| {
-                                let settings = tr("horizon.mods.settings");
-                                button(0.0, 0.0, 150.0, settings, Act::ModSettings(i))
-                            })
-                    };
-                    if let Some(side) = side {
-                        let toggle = button(0.0, 0.0, 150.0, label, Act::ToggleMod(i));
-                        Row::Buttons(if dead { inactive(toggle) } else { toggle }, Some(side))
-                    } else {
-                        let widget = button(0.0, 0.0, 310.0, label, Act::ToggleMod(i));
-                        Row::Buttons(if dead { inactive(widget) } else { widget }, None)
-                    }
-                });
-                rows.extend(mods);
-                rows
-            }
-||||||| c98a51a664
-            Page::Mods => {
-                let browse = button(
-                    0.0,
-                    0.0,
-                    310.0,
-                    tr("horizon.mods.browse"),
-                    Act::Push(Page::ModBrowser),
-                );
-                let mut rows = vec![Row::Buttons(browse, None)];
-                if let Some(note) = &self.mods_note {
-                    rows.extend(wrap(note, 64).into_iter().map(Row::Note));
-                }
-                if s.mods.installed.is_empty() {
-                    rows.push(Row::Header("horizon.mods.empty"));
-                    return rows;
-                }
-                rows.extend(s.mods.installed.iter().enumerate().map(|(i, installed)| {
-                    let mut label = Text::option_name_value(
-                        Text::literal(installed.title.clone()),
-                        on_off(s.mods.is_on(i)),
-                    );
-                    if installed.problem.as_deref() == Some(crate::mod_list::NOT_BUILT) {
-                        label = label.append(tr("horizon.mods.not_built"));
-                    } else if installed.problem.is_some() {
-                        label = label.append(tr("horizon.mods.stopped"));
-                    } else if installed.dev {
-                        label = label.append(tr("horizon.mods.dev"));
-                    }
-                    let frozen = self.mod_frozen(installed);
-                    if frozen {
-                        label = label.append(tr("horizon.mods.in_world"));
-                    }
-                    let dead = installed.dev || installed.id.is_empty() || frozen;
-                    // Only native mods with actual settings need a second button.
-                    if installed
-                        .native
-                        .as_ref()
-                        .is_some_and(|page| !page.keys.is_empty() || !page.buttons.is_empty())
-                    {
-                        let toggle = button(0.0, 0.0, 150.0, label, Act::ToggleMod(i));
-                        let settings = button(
-                            0.0,
-                            0.0,
-                            150.0,
-                            tr("horizon.mods.settings"),
-                            Act::ModSettings(i),
-                        );
-                        Row::Buttons(if dead { inactive(toggle) } else { toggle }, Some(settings))
-                    } else {
-                        let widget = button(0.0, 0.0, 310.0, label, Act::ToggleMod(i));
-                        Row::Buttons(if dead { inactive(widget) } else { widget }, None)
-                    }
-                }));
-                rows
-            }
-=======
->>>>>>> arismoko/main
             Page::ModBrowser => self.mod_browser_rows(),
             Page::ModProject => self.mod_project_rows(),
             Page::NativeMod(i) => self.native_rows(s, i),
-<<<<<<< HEAD
+            Page::NativeGame => native_game_page_rows(s),
             Page::CustomButtons => {
                 let mut rows = vec![Row::Note(
                     "Buttons of your own: place them in Touch Controls".into(),
@@ -4924,7 +4453,7 @@ impl OptionsUi {
             Page::CustomDraw(id) => vec![Row::Canvas(id)],
             Page::CustomPick(id, CustomPick::Control) => {
                 let mut mappings: Vec<(&'static str, &'static str)> =
-                    all_mappings().map(|(n, _, c)| (*n, *c)).collect();
+                    MAPPINGS.iter().map(|(n, _, c)| (*n, *c)).collect();
                 mappings.retain(|(name, _)| keybinds::key_code(s.keys.get(name)).is_some());
                 mappings.sort_by(|a, b| {
                     let ca = CATEGORIES.iter().position(|c| *c == a.1).unwrap_or(99);
@@ -5000,10 +4529,7 @@ impl OptionsUi {
                 }
                 rows
             }
-||||||| c98a51a664
-=======
             Page::Added(i) => self.added_rows(i),
->>>>>>> arismoko/main
             _ => {
                 let _ = s;
                 Vec::new()
@@ -5013,35 +4539,7 @@ impl OptionsUi {
     /// The chosen pack's profiles (`profile.<name>` in its shaders.properties, in
     /// `shaderpacks/` beside `options.txt`), for the Shader Packs page.
     fn refresh_shader_profiles(&mut self, s: &Settings) {
-        let dir = std::env::current_dir()
-            .unwrap_or_default()
-            .join(crate::shader_pack_list::DIR);
-        self.shader_profiles = vec![String::new()];
-        if cfg!(target_os = "android") {
-            self.shader_profiles
-                .insert(0, crate::graphics::AUTO_PROFILE.to_owned());
-        }
-        if let Some((pack, _)) = s.horizon.shader_choice()
-            && let Ok(pack) = horizon_shaders::Pack::open(&dir.join(pack))
-        {
-            let text = pack.read_text("shaders.properties").unwrap_or_default();
-            let macros = horizon_shaders::Macros::standard();
-            let properties = horizon_shaders::Properties::parse(&text, &macros);
-            // Only the profiles that set a switch or a number: some packs list labels or
-            // single choices (a tonemap) under `profile.` and those pick nothing to run.
-            let ranked = horizon_shaders::Values::profiles_by_cost(
-                &properties,
-                &horizon_shaders::options(&pack),
-            );
-            self.shader_profiles.extend(
-                properties
-                    .entries
-                    .iter()
-                    .filter_map(|e| e.key.strip_prefix("profile."))
-                    .filter(|name| ranked.iter().any(|(n, _)| n == name))
-                    .map(str::to_owned),
-            );
-        }
+        self.shader.screen.refresh_profiles(s);
     }
     /// A section heading of a list (`Row::Header`, `Row::Heading`), at `y`.
     fn heading_row(&self, out: &mut Vec<Widget>, label: Text, y: &mut f32, w: f32, top: f32) {
@@ -5256,7 +4754,6 @@ impl OptionsUi {
                     list: false,
                     row: 0,
                 });
-<<<<<<< HEAD
                 let keypad = s.keypad.enabled;
                 if ON_A_PHONE || keypad {
                     top = 64.0;
@@ -5284,15 +4781,8 @@ impl OptionsUi {
                         .map(|a| (a.0, "movement"))
                         .collect()
                 } else {
-                    all_mappings().map(|(n, _, c)| (*n, *c)).collect()
+                    MAPPINGS.iter().map(|(n, _, c)| (*n, *c)).collect()
                 };
-||||||| c98a51a664
-                let mut mappings: Vec<(&str, &str)> =
-                    all_mappings().map(|(n, _, c)| (*n, *c)).collect();
-=======
-                let mut mappings: Vec<(&str, &str)> =
-                    MAPPINGS.iter().map(|(n, _, c)| (*n, *c)).collect();
->>>>>>> arismoko/main
                 let query = self.settings_search.value.to_lowercase();
                 mappings.retain(|(name, _)| {
                     query.is_empty() || label(name).to_lowercase().contains(&query)
@@ -5378,7 +4868,6 @@ impl OptionsUi {
                         s.keys.get(name).to_owned()
                     };
                     let mut message = keybinds::display_name(&key);
-<<<<<<< HEAD
                     let conflicts: Vec<_> = if keypad {
                         crate::keypad::ACTIONS
                             .iter()
@@ -5387,24 +4876,19 @@ impl OptionsUi {
                                     && s.keypad.keys(a.0).contains(&key)
                                     && key != "key.keyboard.unknown"
                             })
-                            .map(|a| a.0)
+                            .map(|a| a.0.to_owned())
                             .collect()
                     } else {
-                        s.keys.conflicts(name)
+                        key_conflicts(
+                            s,
+                            "",
+                            name,
+                            s.keys.get(name),
+                            0,
+                            crate::mod_list::KeyConflictContext::Universal,
+                            s.keys.is_default(name),
+                        )
                     };
-||||||| c98a51a664
-                    let conflicts = s.keys.conflicts(name);
-=======
-                    let conflicts = key_conflicts(
-                        s,
-                        "",
-                        name,
-                        s.keys.get(name),
-                        0,
-                        crate::mod_list::KeyConflictContext::Universal,
-                        s.keys.is_default(name),
-                    );
->>>>>>> arismoko/main
                     if !conflicts.is_empty() {
                         message = Text::literal("[ ")
                             .append(message.with_color(text::WHITE))
@@ -5423,20 +4907,14 @@ impl OptionsUi {
                     }
                     let reset_x = scrollbar_x - 50.0 - 10.0;
                     let change_x = reset_x - 5.0 - 75.0;
-<<<<<<< HEAD
                     let name_static = if keypad {
                         crate::keypad::ACTIONS
                             .iter()
                             .find(|a| a.0 == name)
                             .map_or("", |a| a.0)
                     } else {
-                        all_mappings().find(|m| m.0 == name).map_or("", |m| m.0)
+                        MAPPINGS.iter().find(|m| m.0 == name).map_or("", |m| m.0)
                     };
-||||||| c98a51a664
-                    let name_static = all_mappings().find(|m| m.0 == name).map_or("", |m| m.0);
-=======
-                    let name_static = MAPPINGS.iter().find(|m| m.0 == name).map_or("", |m| m.0);
->>>>>>> arismoko/main
                     out.push(button(change_x, y, 75.0, message, Act::Key(name_static)));
                     if !conflicts.is_empty() {
                         out.push(Widget {
@@ -5813,13 +5291,7 @@ impl OptionsUi {
                     Page::Accessibility => {
                         Some(("options.accessibility.link", Act::AccessibilityHelp))
                     }
-<<<<<<< HEAD
                     Page::Skin if self.skin_page => Some(("Open Skin Folder", Act::OpenSkinFolder)),
-                    Page::Mods => Some(("horizon.mods.open_folder", Act::OpenModFolder)),
-||||||| c98a51a664
-                    Page::Mods => Some(("horizon.mods.open_folder", Act::OpenModFolder)),
-=======
->>>>>>> arismoko/main
                     _ => None,
                 };
                 if let Some((label, act)) = folder {
@@ -5943,7 +5415,6 @@ impl OptionsUi {
             Narratable::container_list(self.row_bands.len(), hovered_row, rect).key(key)
         });
     }
-<<<<<<< HEAD
     /// The finger lifted from a touch screen: the widget it tapped keeps no focus, so neither its
     /// highlight nor its tooltip stays there. A keyboard's or a controller's focus stays.
     pub fn drop_pointer_focus(&mut self) {
@@ -5952,12 +5423,9 @@ impl OptionsUi {
         }
     }
 
-||||||| c98a51a664
-=======
     /// `output`: that of the renderer the options are drawn for, each draw, so the graphics
     /// screen's rows and calibration read its offer and report as they are now, not another
     /// window's, and not one from before the page opened.
->>>>>>> arismoko/main
     pub fn draw(
         &mut self,
         s: &Settings,
@@ -6542,11 +6010,9 @@ impl OptionsUi {
                 crate::pack_screen::Action::BrowsePick(i) => {
                     events.push(Event::DownloadPack(i));
                 }
-<<<<<<< HEAD
                 crate::pack_screen::Action::Catalog => {
                     events.push(Event::OpenCatalog(CatalogShelf::ResourcePacks));
-||||||| c98a51a664
-=======
+                }
                 crate::pack_screen::Action::Options(id) => {
                     let mut configs = horizon_polytone::pack::Configs::default();
                     if let Some(own) = self.pack_configs.get(&id) {
@@ -6554,7 +6020,6 @@ impl OptionsUi {
                     }
                     self.pack_options = crate::pack_options_ui::PackOptionsUi::open(configs);
                     self.push(Page::PackOptions);
->>>>>>> arismoko/main
                 }
                 crate::pack_screen::Action::None => {}
             }
@@ -6766,35 +6231,23 @@ impl OptionsUi {
                             events.push(Event::Changed);
                         }
                         Act::ResetKeys => {
-<<<<<<< HEAD
                             if s.keypad.enabled {
                                 s.keypad.bindings.clear();
                             } else {
                                 s.keys.reset_all();
+                              s.mods.keys.clear();
                             }
-||||||| c98a51a664
-                            s.keys.reset_all();
-=======
-                            s.keys.reset_all();
-                            s.mods.keys.clear();
->>>>>>> arismoko/main
                             events.push(Event::Changed);
                         }
-<<<<<<< HEAD
                         Act::ToggleMod(i) => {
                             s.mods.toggle(i);
                             events.push(Event::Changed);
                             events.push(Event::ModToggled(i));
-||||||| c98a51a664
-                        Act::ToggleMod(i) => {
-                            s.mods.toggle(i);
-                            events.push(Event::Changed);
-=======
+                        }
                         Act::ModKey(i, k) => {
                             self.selected_key = Some(MOD_KEY);
                             self.selected_mod_key = Some((i, k));
                             self.pending_mod_key = None;
->>>>>>> arismoko/main
                         }
                         Act::ResetModKey(i, k) => {
                             if let Some((id, mapping)) = mod_mapping(s, i, k) {
@@ -6815,16 +6268,8 @@ impl OptionsUi {
                                 events.push(Event::NativeSetting(i, j));
                             }
                         }
-<<<<<<< HEAD
-                        Act::NativeButton(i, b) => events.push(Event::NativeButton(i, b)),
                         Act::NativeGame(act) => events.push(Event::NativeGame(act)),
-                        Act::OpenModFolder => events.push(Event::OpenModFolder),
                         Act::OpenCatalog(shelf) => events.push(Event::OpenCatalog(shelf)),
-||||||| c98a51a664
-                        Act::NativeButton(i, b) => events.push(Event::NativeButton(i, b)),
-                        Act::OpenModFolder => events.push(Event::OpenModFolder),
-=======
->>>>>>> arismoko/main
                         Act::ModProject(i) => {
                             if let Some(listing) = self.mod_browser.listings.get(i) {
                                 self.mod_project = listing.id.clone();
@@ -7307,14 +6752,8 @@ impl OptionsUi {
                 self.pack_screen = Some(screen);
             }
         }
-<<<<<<< HEAD
         // Here, not when it's made: the menu's screen goes on as the game's (`offer_catalog`).
         let catalog = self.catalog_buttons && self.data_pack_dir.is_none();
-        let screen = self.pack_screen.as_mut().expect("made above");
-        screen.catalog = catalog;
-||||||| c98a51a664
-        self.pack_screen.as_mut().expect("made above")
-=======
         // The cards of packs with Polytone options carry their button (data packs have none).
         let with_options = if self.data_pack_dir.is_none() {
             self.pack_configs
@@ -7326,8 +6765,8 @@ impl OptionsUi {
             Default::default()
         };
         let screen = self.pack_screen.as_mut().expect("made above");
+        screen.catalog = catalog;
         screen.with_options = with_options;
->>>>>>> arismoko/main
         screen
     }
     /// Escape or Done: leave the current page, applying page results.
@@ -7623,26 +7062,16 @@ impl OptionsUi {
         let Some(name) = self.selected_key.take() else {
             return Vec::new();
         };
-<<<<<<< HEAD
         if name.starts_with("key.keypad.") {
             s.keypad.set(name, value);
             return vec![Event::Changed];
         }
-        if name == NATIVE_KEY {
-            let (i, k) = self.selected_native_key.take().unwrap_or_default();
-            let Some(m) = s.mods.installed.get(i) else {
-||||||| c98a51a664
-        if name == NATIVE_KEY {
-            let (i, k) = self.selected_native_key.take().unwrap_or_default();
-            let Some(m) = s.mods.installed.get(i) else {
-=======
         if name == pages::PAGE_KEY {
             return self.bind_page_key(value);
         }
         if name == MOD_KEY {
             let (i, k) = self.selected_mod_key.take().unwrap_or_default();
             let Some((id, mapping)) = mod_mapping(s, i, k) else {
->>>>>>> arismoko/main
                 return Vec::new();
             };
             // A modifier key bound on its own is the key, not a modifier held with itself.
@@ -8121,35 +7550,23 @@ impl OptionsUi {
                             events.push(Event::Changed);
                         }
                         Act::ResetKeys => {
-<<<<<<< HEAD
                             if s.keypad.enabled {
                                 s.keypad.bindings.clear();
                             } else {
                                 s.keys.reset_all();
+                              s.mods.keys.clear();
                             }
-||||||| c98a51a664
-                            s.keys.reset_all();
-=======
-                            s.keys.reset_all();
-                            s.mods.keys.clear();
->>>>>>> arismoko/main
                             events.push(Event::Changed);
                         }
-<<<<<<< HEAD
                         Act::ToggleMod(i) => {
                             s.mods.toggle(i);
                             events.push(Event::Changed);
                             events.push(Event::ModToggled(i));
-||||||| c98a51a664
-                        Act::ToggleMod(i) => {
-                            s.mods.toggle(i);
-                            events.push(Event::Changed);
-=======
+                        }
                         Act::ModKey(i, k) => {
                             self.selected_key = Some(MOD_KEY);
                             self.selected_mod_key = Some((i, k));
                             self.pending_mod_key = None;
->>>>>>> arismoko/main
                         }
                         Act::ResetModKey(i, k) => {
                             if let Some((id, mapping)) = mod_mapping(s, i, k) {
@@ -8170,16 +7587,8 @@ impl OptionsUi {
                                 events.push(Event::NativeSetting(i, j));
                             }
                         }
-<<<<<<< HEAD
-                        Act::NativeButton(i, b) => events.push(Event::NativeButton(i, b)),
                         Act::NativeGame(act) => events.push(Event::NativeGame(act)),
-                        Act::OpenModFolder => events.push(Event::OpenModFolder),
                         Act::OpenCatalog(shelf) => events.push(Event::OpenCatalog(shelf)),
-||||||| c98a51a664
-                        Act::NativeButton(i, b) => events.push(Event::NativeButton(i, b)),
-                        Act::OpenModFolder => events.push(Event::OpenModFolder),
-=======
->>>>>>> arismoko/main
                         Act::ModProject(i) => {
                             if let Some(listing) = self.mod_browser.listings.get(i) {
                                 self.mod_project = listing.id.clone();
@@ -8899,17 +8308,6 @@ mod tests {
             false,
             false,
         );
-<<<<<<< HEAD
-        assert!(events.contains(&Event::Changed));
-        // The game hears which: a native mod changes the next start's build.
-        assert!(events.contains(&Event::ModToggled(0)));
-        assert!(!s.mods.is_on(0));
-        assert!(s.mods.disabled.contains("no_settings"));
-||||||| c98a51a664
-        assert!(events.contains(&Event::Changed));
-        assert!(!s.mods.is_on(0));
-        assert!(s.mods.disabled.contains("no_settings"));
-=======
         assert!(events.contains(&Event::NativeSetting(0, 0)), "{events:?}");
         let page = |s: &Settings| s.mods.installed[0].native.clone().unwrap();
         assert_eq!(page(&s).settings[0].value, V::Toggle(false));
@@ -9191,11 +8589,10 @@ mod tests {
             assert_eq!(settings.mods.keys["sample"]["zoom"], expected);
             assert_eq!(ui.selected_key, None);
         }
->>>>>>> arismoko/main
     }
 
     #[test]
-    fn the_mods_page_says_which_game_runs_above_the_mods_and_its_buttons_act() {
+    fn the_native_game_page_says_which_game_runs_above_the_mods_and_its_buttons_act() {
         use crate::mod_list::{NativeGame, NativeGameAct};
         let atlas = atlas();
         let mut s = Settings::default();
@@ -9223,7 +8620,7 @@ mod tests {
             dev: false,
             native: Some(crate::mod_list::NativePage::default()),
         });
-        ui.show(Page::Mods);
+        ui.show(Page::NativeGame);
         let (widgets, ..) = ui.layout(&s, size.0, size.1);
         // Each line in pieces that fit a button's width, red for the build that no longer loads.
         let lines = |color: u32| -> Vec<String> {
@@ -9267,12 +8664,10 @@ mod tests {
             events.last(),
             Some(&Event::NativeGame(NativeGameAct::PlayWithout))
         );
-        // Above the mods. The mod is chosen and not in this game: its row is a ticked box, without
-        // "(Not built)" after it, and beside it a warning that presses nothing (Compile is the
-        // page's, at the top).
-        // The row's toggle (where, how wide, its label) and the button beside it, if any.
+        // The mod is chosen and not in this game: its row is a ticked box, without "(Not built)"
+        // after it.
         let row = |widgets: &[Widget]| {
-            let toggle = widgets
+            widgets
                 .iter()
                 .find_map(|w| match &w.kind {
                     WKind::Button {
@@ -9282,39 +8677,22 @@ mod tests {
                     } => Some(([w.x, w.y, w.w], label.plain())),
                     _ => None,
                 })
-                .expect("the mod's row");
-            let side = widgets.iter().find_map(|w| match &w.kind {
-                WKind::Button {
-                    act: Act::NativeButton(0, 0),
-                    ..
-                } => Some([w.x, w.y, w.w]),
-                _ => None,
-            });
-            (toggle, side)
+                .expect("the mod's row")
         };
-        let ((toggle, label), warning) = row(&widgets);
+        let (toggle, label) = row(&widgets);
         assert!(toggle[1] > without.y);
         assert!(label.starts_with('\u{2611}'), "{label}");
         assert!(
             !label.contains(&tr("horizon.mods.not_built").plain()),
             "{label}"
         );
-        let warning = warning.expect("the warning beside the row");
-        assert_eq!(
-            (toggle[2], warning[2], warning[1]),
-            (150.0, 150.0, toggle[1])
-        );
-        let (x, y) = (warning[0] + 1.0, warning[1] + 1.0);
-        let events = ui.click(&mut s, &atlas, x, y, size, [480, 400], false, false);
-        assert!(!events.contains(&Event::NativeButton(0, 0)), "{events:?}");
         // Not chosen, it has nothing to compile: the row is the box alone.
         let (x, y) = (toggle[0] + 1.0, toggle[1] + 1.0);
         ui.click(&mut s, &atlas, x, y, size, [480, 400], false, false);
         assert!(!s.mods.is_on(0));
         let (widgets, ..) = ui.layout(&s, size.0, size.1);
-        let ((toggle, label), warning) = row(&widgets);
+        let (toggle, label) = row(&widgets);
         assert!(label.starts_with('\u{2610}'), "{label}");
-        assert!(warning.is_none());
         assert_eq!(toggle[2], 310.0);
     }
 
@@ -9332,9 +8710,9 @@ mod tests {
             native: Some(crate::mod_list::NativePage::default()),
         });
         let mut tapped = OptionsUi::default();
-        tapped.show(Page::Mods);
+        tapped.show(Page::NativeGame);
         let mut never = OptionsUi::default();
-        never.show(Page::Mods);
+        never.show(Page::NativeGame);
         let (widgets, ..) = tapped.layout(&s, size.0, size.1);
         let toggle = widgets
             .iter()
@@ -11717,7 +11095,6 @@ mod tests {
     }
 
     #[test]
-<<<<<<< HEAD
     fn a_finger_scrolls_from_a_cycle_button_and_drags_a_slider() {
         let s = Settings::default();
         let mut ui = OptionsUi::default();
@@ -11779,31 +11156,6 @@ mod tests {
     }
 
     #[test]
-||||||| c98a51a664
-    fn the_graphics_screens_wheel_scrolls_even_over_a_slider_being_changed() {
-        use crate::graphics_ui::{H, Item};
-        use winit::keyboard::KeyCode as K;
-        let mut s = Settings::default();
-        let mut ui = OptionsUi::default();
-        ui.show(Page::Graphics);
-        ui.graphics.show(crate::graphics_ui::Page::Performance);
-        let size = (640.0, 360.0);
-        s.horizon.chunk_updates = 16;
-        let chunk_updates = Item::Horizon(H::ChunkUpdates);
-        // Tab onto it: the arrows change it.
-        while ui.graphics.focused_row() != Some(chunk_updates) {
-            shell::Hosted::key(&mut ui.graphics, &mut s, K::Tab, None, false, size);
-        }
-        assert!(ui.graphics.changes_value());
-        let before = ui.graphics.scroll_amount();
-        ui.wheel(&mut s, size, (320.0, 150.0), [1920, 1080], -1.0);
-        assert_eq!(s.horizon.chunk_updates, 16);
-        assert!(ui.graphics.scroll_amount() > before);
-    }
-
-    #[test]
-=======
->>>>>>> arismoko/main
     fn horizon_pages_slider_and_wheel_parity() {
         use winit::keyboard::KeyCode as K;
         let atlas = atlas();

@@ -233,7 +233,54 @@ fn native_screens(pack: &crate::shader_pack_list::Entry) -> Vec<PackScreen> {
         .collect()
 }
 
-<<<<<<< HEAD
+/// A screen's name in the page list and over its rows.
+fn screen_name(i: u16, screens: &[PackScreen]) -> String {
+    let screen = screens.get(usize::from(i));
+    screen.map_or_else(String::new, |s| s.title.clone())
+}
+
+/// A row as its name and its value; `None` makes it a button across the row.
+fn parts(item: Item, s: &Settings, screens: &[PackScreen]) -> (String, Option<String>) {
+    match item {
+        Item::Pack(i) => {
+            let pack = s.shader_packs.get(usize::from(i));
+            let name = pack.map_or_else(String::new, |p| p.title.clone());
+            (name, Some(String::new()))
+        }
+        Item::Folder => (lang::get("pack.openFolder"), None),
+        Item::Link(i) => (format!("{}...", screen_name(i, screens)), None),
+        Item::Reset => (lang::get("Reset all options"), None),
+        Item::ShadowCache => (lang::get("Shadow Cache"), Some(String::new())),
+        Item::Resolution => (lang::get("Resolution"), Some(resolution_value(s))),
+        Item::FpsLimit => {
+            let fps = match s.max_fps {
+                fps if fps >= 260 => lang::get("Off"),
+                fps => fps.to_string(),
+            };
+            (lang::get("FPS Limit"), Some(fps))
+        }
+        Item::PackProfile => (lang::get("Profile"), Some(pack_profile_value(s))),
+        Item::Profile => match classic(s) {
+            Some(o) => shell::name_and_value(&plain(o.profile_label())),
+            None => (String::new(), None),
+        },
+        Item::Option(i) => {
+            if let Some((_, pack)) = native(s) {
+                let i = usize::from(i);
+                let (Some(o), Some(v)) = (pack.options.get(i), pack.values.get(i)) else {
+                    return (String::new(), None);
+                };
+                let value = crate::shader_pack_list::show_value(&o.kind, *v);
+                return (o.name.clone(), Some(value));
+            }
+            match classic(s).and_then(|o| Some((o, option_name(o, i)?))) {
+                Some((o, name)) => (plain(o.option_name(name)), Some(plain(o.value_text(name)))),
+                None => (String::new(), None),
+            }
+        }
+    }
+}
+
 /// The resolution a pack runs at: Auto holds a heavy pack below what the player chose.
 fn resolution_value(s: &Settings) -> String {
     let scale = s.horizon.resolution_scale;
@@ -255,80 +302,6 @@ fn pack_profile_value(s: &Settings) -> String {
         "" => lang::get("Pack Default"),
         crate::graphics::AUTO_PROFILE => lang::get("Auto"),
         profile => profile.to_owned(),
-    }
-}
-
-/// What the options screen must do after an interaction here.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Action {
-    ButtonClick,
-    Changed,
-    SliderDrag,
-    /// Another pack was picked, or the pick turned off (`s.horizon.shader_pack` holds it now).
-    Picked,
-    OpenFolder,
-    /// Save the `shaders/` pack's changed options and load it again with them.
-    Apply,
-    /// The options of the Horizon pack `s.shader_packs[.0]` changed: save them.
-    NativeChanged(usize),
-    /// Load the picked pack again: what it runs with changed.
-    Reload,
-    /// The next of the picked pack's profiles, which the options screen keeps.
-    NextPackProfile,
-    Done,
-||||||| c98a51a664
-/// What the options screen must do after an interaction here.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Action {
-    ButtonClick,
-    Changed,
-    SliderDrag,
-    /// Another pack was picked, or the pick turned off (`s.horizon.shader_pack` holds it now).
-    Picked,
-    OpenFolder,
-    /// Save the `shaders/` pack's changed options and load it again with them.
-    Apply,
-    /// The options of the Horizon pack `s.shader_packs[.0]` changed: save them.
-    NativeChanged(usize),
-    Done,
-=======
-/// A screen's name in the page list and over its rows.
-fn screen_name(i: u16, screens: &[PackScreen]) -> String {
-    let screen = screens.get(usize::from(i));
-    screen.map_or_else(String::new, |s| s.title.clone())
->>>>>>> arismoko/main
-}
-
-/// A row as its name and its value; `None` makes it a button across the row.
-fn parts(item: Item, s: &Settings, screens: &[PackScreen]) -> (String, Option<String>) {
-    match item {
-        Item::Pack(i) => {
-            let pack = s.shader_packs.get(usize::from(i));
-            let name = pack.map_or_else(String::new, |p| p.title.clone());
-            (name, Some(String::new()))
-        }
-        Item::Folder => (lang::get("pack.openFolder"), None),
-        Item::Link(i) => (format!("{}...", screen_name(i, screens)), None),
-        Item::Reset => (lang::get("Reset all options"), None),
-        Item::ShadowCache => (lang::get("Shadow Cache"), Some(String::new())),
-        Item::Profile => match classic(s) {
-            Some(o) => shell::name_and_value(&plain(o.profile_label())),
-            None => (String::new(), None),
-        },
-        Item::Option(i) => {
-            if let Some((_, pack)) = native(s) {
-                let i = usize::from(i);
-                let (Some(o), Some(v)) = (pack.options.get(i), pack.values.get(i)) else {
-                    return (String::new(), None);
-                };
-                let value = crate::shader_pack_list::show_value(&o.kind, *v);
-                return (o.name.clone(), Some(value));
-            }
-            match classic(s).and_then(|o| Some((o, option_name(o, i)?))) {
-                Some((o, name)) => (plain(o.option_name(name)), Some(plain(o.value_text(name)))),
-                None => (String::new(), None),
-            }
-        }
     }
 }
 
@@ -412,11 +385,24 @@ fn description(item: Item, s: &Settings, screens: &[PackScreen]) -> String {
             });
             format!("{kind} {what} ({})", pack.file)
         }
-        Item::Folder => lang::get("Put shader pack .zip files or folders in it."),
+        Item::Folder => format!(
+            "{} {}",
+            lang::get("Put shader pack .zip files or folders in it."),
+            crate::options_ui::shader_folder_note()
+        ),
         Item::Reset => lang::get("Puts every option of this pack back to its default."),
         Item::ShadowCache => {
             lang::get("Reuses the pack shadow map when sun, view and world match. Off by default.")
         }
+        Item::Resolution => {
+            lang::get("Packs cost by the pixel: fewer run faster, and the world looks softer.")
+        }
+        Item::FpsLimit => lang::get(
+            "A pack heats a phone up: a limit it can hold stays smoother than one it can't.",
+        ),
+        Item::PackProfile => lang::get(
+            "Auto picks the pack's light settings for this device. Pack Default runs it as it comes.",
+        ),
         Item::Profile => classic(s)
             .and_then(|o| o.comment("profile"))
             .map(plain)
@@ -451,7 +437,16 @@ fn row(item: Item, s: &Settings, screens: &[PackScreen]) -> Row<Item> {
             steps: slider_steps(item, s),
             text,
         },
-        (Item::Option(_) | Item::Profile, None, None, Some(text)) => Value::Choice(text),
+        (
+            Item::Option(_)
+            | Item::Profile
+            | Item::Resolution
+            | Item::FpsLimit
+            | Item::PackProfile,
+            None,
+            None,
+            Some(text),
+        ) => Value::Choice(text),
         _ => Value::Press,
     };
     Row::new(item, name, value).about(description(item, s, screens))
@@ -466,16 +461,28 @@ fn pack_sheet(s: &Settings) -> Sheet<Tab, Item> {
     } else {
         PICK_A_PACK
     });
-    let groups = vec![
+    // What a pack costs is set only with a pack on; a profile only for a `shaders/` pack.
+    let mut built_in = vec![Item::ShadowCache];
+    if s.horizon.shader_choice().is_some() {
+        built_in.extend([Item::Resolution, Item::FpsLimit]);
+        if picked(s).is_some_and(|p| p.1 == Kind::Classic) {
+            built_in.push(Item::PackProfile);
+        }
+    }
+    let mut groups = vec![
         Group {
             name: INSTALLED,
             rows: installed.map(|item| row(item, s, &[])).collect(),
         },
         Group {
             name: BUILT_IN,
-            rows: vec![row(Item::ShadowCache, s, &[])],
+            rows: built_in.into_iter().map(|item| row(item, s, &[])).collect(),
         },
     ];
+    // On a phone what a pack costs goes above however many packs there are.
+    if cfg!(target_os = "android") {
+        groups.reverse();
+    }
     Sheet::new(Tab::Packs, lang::get(PACKS), about, groups)
 }
 
@@ -497,9 +504,44 @@ pub(crate) struct ShaderScreen {
     /// The values this screen saved to a `shaders/` pack's file (picking another pack, Apply),
     /// by pack: Undo puts back the ones the screen opened with over them.
     written: BTreeMap<String, BTreeMap<String, String>>,
+    /// The profiles the picked `shaders/` pack can run (`refresh_profiles`), for the Profile row.
+    profiles: Vec<String>,
 }
 
 impl ShaderScreen {
+    /// The profiles the picked pack lists, after Auto (on a phone) and the pack's defaults:
+    /// read again when a pack is picked or the options open.
+    pub(crate) fn refresh_profiles(&mut self, s: &Settings) {
+        let dir = std::env::current_dir()
+            .unwrap_or_default()
+            .join(crate::shader_pack_list::DIR);
+        self.profiles = vec![String::new()];
+        if cfg!(target_os = "android") {
+            self.profiles
+                .insert(0, crate::graphics::AUTO_PROFILE.to_owned());
+        }
+        if let Some((pack, _)) = s.horizon.shader_choice()
+            && let Ok(pack) = horizon_shaders::Pack::open(&dir.join(pack))
+        {
+            let text = pack.read_text("shaders.properties").unwrap_or_default();
+            let macros = horizon_shaders::Macros::standard();
+            let properties = horizon_shaders::Properties::parse(&text, &macros);
+            // Only the profiles that set a switch or a number: some packs list labels or
+            // single choices (a tonemap) under `profile.` and those pick nothing to run.
+            let ranked = horizon_shaders::Values::profiles_by_cost(
+                &properties,
+                &horizon_shaders::options(&pack),
+            );
+            self.profiles.extend(
+                properties
+                    .entries
+                    .iter()
+                    .filter_map(|e| e.key.strip_prefix("profile."))
+                    .filter(|name| ranked.iter().any(|(n, _)| n == name))
+                    .map(str::to_owned),
+            );
+        }
+    }
     /// The picked `shaders/` pack's options are saved: what Undo has to put back over.
     fn saving(&mut self, s: &Settings) {
         if let Some(o) = s.shader_options.as_ref() {
@@ -524,7 +566,15 @@ impl shell::Screen for ShaderScreen {
             .collect();
         let options = (s.shader_options.as_ref()).map(|o| (&o.pack, &o.chosen, o.changed));
         let h = &s.horizon;
-        shell::stamp_of(&(&h.shader_pack, h.shadow_cache, packs, options))
+        shell::stamp_of(&(
+            &h.shader_pack,
+            h.shadow_cache,
+            h.resolution_scale,
+            &h.shader_profile,
+            s.max_fps,
+            packs,
+            options,
+        ))
     }
     /// The pack list, then the picked pack's screens under its name: those the main screen links
     /// to in the page list, the ones farther in opened by their links.
@@ -554,1122 +604,14 @@ impl shell::Screen for ShaderScreen {
     }
     fn link(&self, item: Item) -> Option<Tab> {
         match item {
-<<<<<<< HEAD
-            Item::Pack(i) => {
-                let pack = s.shader_packs.get(usize::from(i));
-                let name = pack.map_or_else(String::new, |p| p.title.clone());
-                (name, Some(String::new()))
-            }
-            Item::Folder => (lang::get("pack.openFolder"), None),
-            Item::Link(i) => (
-                format!("{}...", Self::tab_name(Tab::Screen(i), screens)),
-                None,
-            ),
-            Item::Reset => (lang::get("Reset all options"), None),
-            Item::ShadowCache => (lang::get("Shadow Cache"), Some(String::new())),
-            Item::Resolution => (lang::get("Resolution"), Some(resolution_value(s))),
-            Item::FpsLimit => {
-                let fps = match s.max_fps {
-                    fps if fps >= 260 => lang::get("Off"),
-                    fps => fps.to_string(),
-                };
-                (lang::get("FPS Limit"), Some(fps))
-            }
-            Item::PackProfile => (lang::get("Profile"), Some(pack_profile_value(s))),
-            Item::Profile => match classic(s) {
-                Some(o) => shell::name_and_value(&plain(o.profile_label())),
-                None => (String::new(), None),
-            },
-            Item::Option(i) => {
-                if let Some(pack) = native {
-                    let i = usize::from(i);
-                    let (Some(o), Some(v)) = (pack.options.get(i), pack.values.get(i)) else {
-                        return (String::new(), None);
-                    };
-                    let value = crate::shader_pack_list::show_value(&o.kind, *v);
-                    return (o.name.clone(), Some(value));
-                }
-                match classic(s).and_then(|o| Some((o, option_name(o, i)?))) {
-                    Some((o, name)) => {
-                        (plain(o.option_name(name)), Some(plain(o.value_text(name))))
-                    }
-                    None => (String::new(), None),
-                }
-            }
-        }
-    }
-    /// A tick box's state, for a pack (picked) or an on/off option.
-    fn switch(item: Item, s: &Settings) -> Option<bool> {
-        match item {
-            Item::ShadowCache => Some(s.horizon.shadow_cache),
-            Item::Pack(i) => Some(
-                s.shader_packs
-                    .get(usize::from(i))
-                    .is_some_and(|p| p.key == s.horizon.shader_pack),
-            ),
-            Item::Option(i) => match picked(s)? {
-                (p, Kind::Horizon) => {
-                    let pack = &s.shader_packs[p];
-                    let i = usize::from(i);
-                    match pack.options.get(i)?.kind {
-                        OptionKind::Bool { .. } => Some(*pack.values.get(i)? != 0.0),
-                        _ => None,
-                    }
-                }
-                (_, Kind::Classic) => {
-                    let o = classic(s)?;
-                    let name = option_name(o, i)?;
-                    o.options[name]
-                        .switch
-                        .then(|| o.value(name) == Some("true"))
-                }
-            },
-||||||| c98a51a664
-            Item::Pack(i) => {
-                let pack = s.shader_packs.get(usize::from(i));
-                let name = pack.map_or_else(String::new, |p| p.title.clone());
-                (name, Some(String::new()))
-            }
-            Item::Folder => (lang::get("pack.openFolder"), None),
-            Item::Link(i) => (
-                format!("{}...", Self::tab_name(Tab::Screen(i), screens)),
-                None,
-            ),
-            Item::Reset => (lang::get("Reset all options"), None),
-            Item::ShadowCache => (lang::get("Shadow Cache"), Some(String::new())),
-            Item::Profile => match classic(s) {
-                Some(o) => shell::name_and_value(&plain(o.profile_label())),
-                None => (String::new(), None),
-            },
-            Item::Option(i) => {
-                if let Some(pack) = native {
-                    let i = usize::from(i);
-                    let (Some(o), Some(v)) = (pack.options.get(i), pack.values.get(i)) else {
-                        return (String::new(), None);
-                    };
-                    let value = crate::shader_pack_list::show_value(&o.kind, *v);
-                    return (o.name.clone(), Some(value));
-                }
-                match classic(s).and_then(|o| Some((o, option_name(o, i)?))) {
-                    Some((o, name)) => {
-                        (plain(o.option_name(name)), Some(plain(o.value_text(name))))
-                    }
-                    None => (String::new(), None),
-                }
-            }
-        }
-    }
-    /// A tick box's state, for a pack (picked) or an on/off option.
-    fn switch(item: Item, s: &Settings) -> Option<bool> {
-        match item {
-            Item::ShadowCache => Some(s.horizon.shadow_cache),
-            Item::Pack(i) => Some(
-                s.shader_packs
-                    .get(usize::from(i))
-                    .is_some_and(|p| p.key == s.horizon.shader_pack),
-            ),
-            Item::Option(i) => match picked(s)? {
-                (p, Kind::Horizon) => {
-                    let pack = &s.shader_packs[p];
-                    let i = usize::from(i);
-                    match pack.options.get(i)?.kind {
-                        OptionKind::Bool { .. } => Some(*pack.values.get(i)? != 0.0),
-                        _ => None,
-                    }
-                }
-                (_, Kind::Classic) => {
-                    let o = classic(s)?;
-                    let name = option_name(o, i)?;
-                    o.options[name]
-                        .switch
-                        .then(|| o.value(name) == Some("true"))
-                }
-            },
-=======
             Item::Link(i) => Some(Tab::Screen(i)),
->>>>>>> arismoko/main
             _ => None,
         }
     }
-<<<<<<< HEAD
-    fn slider(item: Item, s: &Settings) -> Option<f32> {
-        let Item::Option(i) = item else { return None };
-        match picked(s)? {
-            (p, Kind::Horizon) => s.shader_packs[p].slider_position(usize::from(i)),
-            (_, Kind::Classic) => {
-                let o = classic(s)?;
-                o.slider_position(option_name(o, i)?)
-            }
-        }
-    }
-    /// What a row does, or says of itself, for the strip.
-    fn description(item: Item, s: &Settings, screens: &[Screen]) -> String {
-        let native = picked(s)
-            .filter(|p| p.1 == Kind::Horizon)
-            .map(|p| &s.shader_packs[p.0]);
-        match item {
-            Item::Pack(i) => {
-                let Some(pack) = s.shader_packs.get(usize::from(i)) else {
-                    return String::new();
-                };
-                let kind = lang::get(match pack.kind {
-                    Kind::Horizon => "A Horizon shader pack.",
-                    Kind::Classic => "An OptiFine or Iris shader pack.",
-                });
-                let what = lang::get(if pack.key == s.horizon.shader_pack {
-                    "In use: press to turn shaders off."
-                } else {
-                    "Press to use it."
-                });
-                format!("{kind} {what} ({})", pack.file)
-            }
-            Item::Folder => format!(
-                "{} {}",
-                lang::get("Put shader pack .zip files or folders in it."),
-                crate::options_ui::shader_folder_note()
-            ),
-            Item::Reset => lang::get("Puts every option of this pack back to its default."),
-            Item::ShadowCache => lang::get(
-                "Reuses the pack shadow map when sun, view and world match. Off by default.",
-            ),
-            Item::Resolution => {
-                lang::get("Packs cost by the pixel: fewer run faster, and the world looks softer.")
-            }
-            Item::FpsLimit => lang::get(
-                "A pack heats a phone up: a limit it can hold stays smoother than one it can't.",
-            ),
-            Item::PackProfile => lang::get(
-                "Auto picks the pack's light settings for this device. Pack Default runs it as it comes.",
-            ),
-            Item::Profile => classic(s)
-                .and_then(|o| o.comment("profile"))
-                .map(plain)
-                .unwrap_or_else(|| {
-                    lang::get("Sets many options at once, as the pack groups them.")
-                }),
-            Item::Link(i) => screens
-                .get(usize::from(i))
-                .map(|s| s.about.clone())
-                .unwrap_or_default(),
-            Item::Option(i) => match native {
-                Some(pack) => pack
-                    .options
-                    .get(usize::from(i))
-                    .map(|o| o.description.clone())
-                    .unwrap_or_default(),
-                None => classic(s)
-                    .and_then(|o| o.comment(&format!("option.{}", option_name(o, i)?)))
-                    .map(plain)
-                    .unwrap_or_default(),
-            },
-        }
-    }
-    /// The rows of a tab.
-    fn items(tab: Tab, s: &Settings, screens: &[Screen]) -> Vec<Item> {
-        match tab {
-            Tab::Packs => {
-                let mut rows: Vec<Item> = (0..s.shader_packs.len())
-                    .map(|i| Item::Pack(i as u16))
-                    .chain([Item::Folder, Item::ShadowCache])
-                    .collect();
-                if s.horizon.shader_choice().is_some() {
-                    rows.extend([Item::Resolution, Item::FpsLimit]);
-                    if picked(s).is_some_and(|p| p.1 == Kind::Classic) {
-                        rows.push(Item::PackProfile);
-                    }
-                }
-                rows
-            }
-            Tab::Screen(i) => screens
-                .get(usize::from(i))
-                .map(|s| s.items.clone())
-                .unwrap_or_default(),
-        }
-    }
-    /// The list's lines and its content height: the open page or, while searching, every page's
-    /// rows whose name or description has the search in it.
-    fn lines(&self, s: &Settings, screens: &[Screen]) -> (Vec<Line>, f32) {
-        let query = self.query();
-        let mut lines = shell::Lines::new();
-        let tabs =
-            std::iter::once(Tab::Packs).chain((0..screens.len()).map(|i| Tab::Screen(i as u16)));
-        for tab in tabs {
-            if query.is_empty() && tab != self.tab {
-                continue;
-            }
-            let rows: Vec<Item> = Self::items(tab, s, screens)
-                .into_iter()
-                .filter(|&item| {
-                    query.is_empty()
-                        || self.focus == Some(Target::Item(item))
-                        || self.dragging == Some(item)
-                        || (!matches!(item, Item::Link(_) | Item::Reset)
-                            && (Self::parts(item, s, screens)
-                                .0
-                                .to_lowercase()
-                                .contains(&query)
-                                || Self::description(item, s, screens)
-                                    .to_lowercase()
-                                    .contains(&query)))
-                })
-                .collect();
-            if rows.is_empty() {
-                continue;
-            }
-            // The plate's heading names the open page; results go under their page's name.
-            // Horizon's own settings stand apart from the packs, and the packs' from Horizon's.
-            let (built_in, rows): (Vec<Item>, Vec<Item>) = rows.into_iter().partition(|&i| {
-                matches!(
-                    i,
-                    Item::ShadowCache | Item::Resolution | Item::FpsLimit | Item::PackProfile
-                )
-            });
-            // On a phone what a pack costs goes above however many packs there are.
-            let first = cfg!(target_os = "android");
-            if first && !built_in.is_empty() {
-                lines.group(tab, "Built-in settings", built_in.clone());
-            }
-            match (query.is_empty(), tab) {
-                (true, Tab::Packs) => lines.group(tab, "Installed", rows),
-                (true, Tab::Screen(_)) => lines.group(tab, "Pack settings", rows),
-                (false, _) if !rows.is_empty() => lines.titled(tab, rows),
-                (false, _) => {}
-            }
-            if !first && !built_in.is_empty() {
-                lines.group(tab, "Built-in settings", built_in);
-            }
-        }
-        lines.finish()
-    }
-    fn layout(&mut self, s: &Settings, w: f32, h: f32) -> (Columns, Vec<Screen>, Vec<Line>, f32) {
-        let cols = Columns::of(w, h);
-        let screens = screens(s);
-        if let Tab::Screen(i) = self.tab
-            && usize::from(i) >= screens.len()
-        {
-            self.tab = Tab::Packs;
-            self.path.clear();
-        }
-        let (lines, content) = self.lines(s, &screens);
-        self.scroll.clamp(cols.top, cols.bottom, content);
-        (cols, screens, lines, content)
-    }
-    /// Open `tab` from the page list: the plate shows it or, while searching, scrolls to it.
-    fn pick(&mut self, tab: Tab, lines: &[Line], cols: &Columns, content: f32) {
-        self.tab = tab;
-        self.path.clear();
-        self.scroll.amount = 0.0;
-        if self.query().is_empty() {
-            return;
-        }
-        if let Some(line) = lines.iter().find(|l| l.page == tab) {
-            self.scroll.amount = line.y;
-            self.scroll.clamp(cols.top, cols.bottom, content);
-            self.picked = Some(tab);
-        }
-    }
-    fn has(&self, tab: Tab, lines: &[Line]) -> bool {
-        self.query().is_empty() || lines.iter().any(|l| l.page == tab)
-    }
-    /// The page the plate shows: the open one or, while searching, the one picked, else the
-    /// topmost line's.
-    fn current(&self, lines: &[Line]) -> Option<Tab> {
-        if self.query().is_empty() {
-            return Some(self.tab);
-        }
-        self.picked.or_else(|| {
-            lines
-                .iter()
-                .find(|l| l.y + l.h() > self.scroll.amount)
-                .map(|l| l.page)
-        })
-    }
-    /// The page list's tab that holds `tab`: a screen deeper than the list shows lights the one
-    /// its links were followed from.
-    fn lit(&self, tab: Option<Tab>, side: &[Tab]) -> Option<Tab> {
-        let tab = tab?;
-        if side.contains(&tab) {
-            return Some(tab);
-        }
-        self.path
-            .iter()
-            .rev()
-            .map(|&i| Tab::Screen(i))
-            .find(|t| side.contains(t))
-    }
-    fn row_y(&self, cols: &Columns, line: &Line) -> f32 {
-        cols.top + line.y - self.scroll.amount
-    }
-
-    pub fn draw(
-        &mut self,
-        s: &Settings,
-        batch: &mut HudBatch,
-        atlas: &HudAtlas,
-        cursor: (f32, f32),
-        in_world: bool,
-    ) {
-        let (w, h) = (batch.width, batch.height);
-        let (cols, screens, lines, content) = self.layout(s, w, h);
-        shell::backdrop(batch, atlas, in_world);
-        let current = self.current(&lines);
-        let side = Self::side_tabs(&screens, &cols);
-        shell::mark(batch, atlas, &cols, &lang::get("Shaders"));
-        let lit = self.lit(current, &side);
-        for (i, &tab) in side.iter().enumerate() {
-            let name = Self::tab_name(tab, &screens);
-            let name = style::fit(atlas, &name, style::CONTROL_W - 16.0);
-            let flags = (
-                self.has(tab, &lines),
-                lit == Some(tab),
-                self.focus == Some(Target::Tab(tab)),
-            );
-            shell::page_tab(batch, atlas, Self::tab_rect(&cols, i), &name, flags, cursor);
-        }
-        // The picked pack's own screens go under its name, apart from Horizon's pack list.
-        if side.len() > 1 {
-            let [x, y, w, _] = cols.page(1);
-            let pack = match picked(s) {
-                Some((i, Kind::Horizon)) => s.shader_packs[i].title.as_str(),
-                _ => s
-                    .horizon
-                    .shader_pack
-                    .strip_suffix(".zip")
-                    .unwrap_or(&s.horizon.shader_pack),
-            };
-            let caption = lang::tr("%s settings", &[&pack]);
-            let rect = [x + 2.0, y + 6.0, w - 4.0, 8.0];
-            crate::widgets::record(&caption, rect, false);
-            let caption = Text::literal(style::fit(atlas, &caption, w - 4.0));
-            batch.text_styled(atlas, &caption, rect[0], rect[1], style::MUTED, true);
-        }
-        let focused = self.focus == Some(Target::Search);
-        shell::search_field(&mut self.search, batch, atlas, &cols, cursor, focused);
-
-        let query = self.search.value.trim();
-        let heading = if query.is_empty() {
-            Self::tab_name(current.unwrap_or(self.tab), &screens)
-        } else {
-            lang::get("Results for \"%s\"").replace("%s", query)
-        };
-        shell::plate(batch, atlas, &cols, &heading);
-
-        let over_list = cursor.1 >= cols.top && cursor.1 < cols.bottom;
-        let mut described = None;
-        shell::list(
-            batch,
-            atlas,
-            &cols,
-            &lines,
-            self.scroll.amount,
-            |tab| Self::tab_name(tab, &screens),
-            |batch, item: Item, y| {
-                let [rx, ry, rw, rh] = cols.row(y);
-                let hover = over_list && ui::hovered(cursor, rx, ry, rw, rh);
-                let focused = self.focus == Some(Target::Item(item));
-                if hover || self.dragging == Some(item) || (focused && described.is_none()) {
-                    described = Some(item);
-                }
-                let (name, value) = Self::parts(item, s, &screens);
-                let label = match &value {
-                    Some(v) if !v.is_empty() => format!("{name}: {v}"),
-                    _ => name.clone(),
-                };
-                let view = shell::RowView {
-                    label: &label,
-                    name: &name,
-                    value: value.as_deref(),
-                    switch: Self::switch(item, s),
-                    slider: Self::slider(item, s),
-                    live: true,
-                    hover,
-                    focused,
-                    held: self.dragging == Some(item),
-                    key: None,
-                };
-                shell::row(batch, atlas, &cols, y, &view);
-            },
-        );
-        shell::scroller(batch, atlas, &cols, content, self.scroll.amount);
-
-        // The strip: the pointed-at row, else what the page holds.
-        let [x, y, ..] = cols.dock;
-        style::panel(batch, atlas, cols.dock);
-        let (name, text) = match described {
-            Some(item) => (
-                Self::parts(item, s, &screens).0,
-                Self::description(item, s, &screens),
-            ),
-            None => match current {
-                Some(Tab::Packs) | None => (
-                    lang::get("Shader packs"),
-                    lang::get(if s.shader_packs.is_empty() {
-                        "No shader packs yet: open the pack folder and put some in it."
-                    } else {
-                        "Pick a shader pack. Picking the one in use turns shaders off."
-                    }),
-                ),
-                Some(tab) => {
-                    let about = match tab {
-                        Tab::Screen(i) => screens[usize::from(i)].about.clone(),
-                        Tab::Packs => String::new(),
-                    };
-                    let about = if Self::pending(s) {
-                        lang::get("Changed options apply with Apply, or when you leave.")
-                    } else {
-                        about
-                    };
-                    (Self::tab_name(tab, &screens), about)
-                }
-            },
-        };
-        batch.text_styled(
-            atlas,
-            &Text::literal(name),
-            x + 12.0,
-            y + 8.0,
-            style::WHITE,
-            true,
-        );
-        shell::dock_note(batch, atlas, &cols, text, style::GREY);
-
-        let mut foot = vec![(cols.button(0), "gui.done", Target::Done, Declared::Done)];
-        if Self::pending(s) {
-            foot.push((cols.button(1), "Apply", Target::Apply, Declared::Apply));
-        }
-        for (rect, label, target, declared) in foot {
-            let label = Text::literal(lang::get(label));
-            let focused = self.focus == Some(target);
-            crate::widgets::declare_action(declared, rect, true);
-            shell::foot_button(batch, atlas, rect, &label, cursor, (focused, true));
-        }
-    }
-
-    /// A press (or a drag with `drag`) at `(x, y)`.
-    pub fn click(
-        &mut self,
-        s: &mut Settings,
-        (x, y): (f32, f32),
-        (w, h): (f32, f32),
-        drag: bool,
-        right: bool,
-        shift: bool,
-    ) -> Vec<Action> {
-        let (cols, screens, lines, content) = self.layout(s, w, h);
-        let at = |[rx, ry, rw, rh]: [f32; 4]| ui::hovered((x, y), rx, ry, rw, rh);
-        if drag {
-            if self.scroll.held() {
-                self.picked = None;
-                self.scroll.drag(y, cols.top, cols.bottom, content);
-                return Vec::new();
-            }
-            if let Some(item) = self.dragging {
-                let actions = Self::set_slider(s, item, cols.slider_at(x));
-                return self.hold(actions);
-            }
-            return Vec::new();
-        }
-        if cols.scrolls()
-            && self
-                .scroll
-                .press((x, y), cols.bar_x(), cols.top, cols.bottom, content)
-        {
-            return Vec::new();
-        }
-        if at(cols.search()) {
-            if !self.search.value.is_empty() && at(cols.clear()) {
-                self.search.set_value("");
-                self.searched();
-                return vec![Action::ButtonClick];
-            }
-            self.focus = Some(Target::Search);
-            self.search.reset_blink();
-            self.search.move_cursor_to_end(false);
-            return Vec::new();
-        }
-        if self.focus == Some(Target::Search) {
-            self.focus = None;
-        }
-        if at(cols.button(0)) {
-            self.focus = Some(Target::Done);
-            return vec![Action::ButtonClick, Action::Done];
-        }
-        if Self::pending(s) && at(cols.button(1)) {
-            self.focus = None;
-            return vec![Action::ButtonClick, Action::Apply];
-        }
-        for (i, tab) in Self::side_tabs(&screens, &cols).into_iter().enumerate() {
-            if at(Self::tab_rect(&cols, i)) && self.has(tab, &lines) {
-                self.focus = Some(Target::Tab(tab));
-                self.pick(tab, &lines, &cols, content);
-                return vec![Action::ButtonClick];
-            }
-        }
-        if y < cols.top || y >= cols.bottom {
-            return Vec::new();
-        }
-        let Some(item) = lines.iter().find_map(|line| {
-            let item = line.setting?;
-            at(cols.row(self.row_y(&cols, line))).then_some(item)
-        }) else {
-            return Vec::new();
-        };
-        self.focus = Some(Target::Item(item));
-        self.activate(s, item, right || shift, Some((x, &cols)))
-    }
-    /// Option `item`'s slider at `at` (0 to 1).
-    fn set_slider(s: &mut Settings, item: Item, at: f32) -> Vec<Action> {
-        let Item::Option(i) = item else {
-            return Vec::new();
-        };
-        match picked(s) {
-            Some((p, Kind::Horizon)) => {
-                if s.shader_packs[p].set_slider_position(usize::from(i), at) {
-                    return vec![Action::SliderDrag, Action::NativeChanged(p)];
-                }
-            }
-            Some((_, Kind::Classic)) => {
-                let pack = s.horizon.shader_pack.clone();
-                if let Some(o) = s.shader_options.as_mut().filter(|o| o.pack == pack)
-                    && let Some(name) = option_name(o, i).map(str::to_owned)
-                {
-                    o.set_position(&name, at);
-                    return vec![Action::SliderDrag];
-                }
-            }
-            None => {}
-        }
-        Vec::new()
-    }
-    /// Option `item`'s slider one of its own steps on (back with `!forward`), stopping at its ends.
-    fn step_slider(s: &mut Settings, item: Item, forward: bool) -> Vec<Action> {
-        let Item::Option(i) = item else {
-            return Vec::new();
-        };
-        match picked(s) {
-            Some((p, Kind::Horizon)) => {
-                if s.shader_packs[p].nudge_option(usize::from(i), !forward) {
-                    return vec![Action::SliderDrag, Action::NativeChanged(p)];
-                }
-                Vec::new()
-            }
-            Some((_, Kind::Classic)) => {
-                let Some(o) = classic(s) else {
-                    return Vec::new();
-                };
-                let Some(name) = option_name(o, i) else {
-                    return Vec::new();
-                };
-                let n = o.options[name].values.len().saturating_sub(1).max(1) as f32;
-                let Some(pos) = o.slider_position(name) else {
-                    return Vec::new();
-                };
-                let next = ((pos * n).round() + if forward { 1.0 } else { -1.0 }) / n;
-                if !(0.0..=1.0).contains(&next) {
-                    return Vec::new();
-                }
-                Self::set_slider(s, item, next)
-            }
-            None => Vec::new(),
-        }
-    }
-    /// Press `item`: `at` is where on its row and its slider's track (`None` from the keyboard).
-    fn activate(
-        &mut self,
-        s: &mut Settings,
-        item: Item,
-        back: bool,
-        at: Option<(f32, &Columns)>,
-    ) -> Vec<Action> {
-        if Self::slider(item, s).is_some() {
-            self.can_change_value = true;
-            return match at {
-                Some((x, cols)) if x >= cols.track().0 => {
-                    self.dragging = Some(item);
-                    let actions = Self::set_slider(s, item, cols.slider_at(x));
-                    self.hold(actions)
-                }
-                _ => Vec::new(),
-            };
-        }
-        self.can_change_value = false;
-||||||| c98a51a664
-    fn slider(item: Item, s: &Settings) -> Option<f32> {
-        let Item::Option(i) = item else { return None };
-        match picked(s)? {
-            (p, Kind::Horizon) => s.shader_packs[p].slider_position(usize::from(i)),
-            (_, Kind::Classic) => {
-                let o = classic(s)?;
-                o.slider_position(option_name(o, i)?)
-            }
-        }
-    }
-    /// What a row does, or says of itself, for the strip.
-    fn description(item: Item, s: &Settings, screens: &[Screen]) -> String {
-        let native = picked(s)
-            .filter(|p| p.1 == Kind::Horizon)
-            .map(|p| &s.shader_packs[p.0]);
-        match item {
-            Item::Pack(i) => {
-                let Some(pack) = s.shader_packs.get(usize::from(i)) else {
-                    return String::new();
-                };
-                let kind = lang::get(match pack.kind {
-                    Kind::Horizon => "A Horizon shader pack.",
-                    Kind::Classic => "An OptiFine or Iris shader pack.",
-                });
-                let what = lang::get(if pack.key == s.horizon.shader_pack {
-                    "In use: press to turn shaders off."
-                } else {
-                    "Press to use it."
-                });
-                format!("{kind} {what} ({})", pack.file)
-            }
-            Item::Folder => lang::get("Put shader pack .zip files or folders in it."),
-            Item::Reset => lang::get("Puts every option of this pack back to its default."),
-            Item::ShadowCache => lang::get(
-                "Reuses the pack shadow map when sun, view and world match. Off by default.",
-            ),
-            Item::Profile => classic(s)
-                .and_then(|o| o.comment("profile"))
-                .map(plain)
-                .unwrap_or_else(|| {
-                    lang::get("Sets many options at once, as the pack groups them.")
-                }),
-            Item::Link(i) => screens
-                .get(usize::from(i))
-                .map(|s| s.about.clone())
-                .unwrap_or_default(),
-            Item::Option(i) => match native {
-                Some(pack) => pack
-                    .options
-                    .get(usize::from(i))
-                    .map(|o| o.description.clone())
-                    .unwrap_or_default(),
-                None => classic(s)
-                    .and_then(|o| o.comment(&format!("option.{}", option_name(o, i)?)))
-                    .map(plain)
-                    .unwrap_or_default(),
-            },
-        }
-    }
-    /// The rows of a tab.
-    fn items(tab: Tab, s: &Settings, screens: &[Screen]) -> Vec<Item> {
-        match tab {
-            Tab::Packs => (0..s.shader_packs.len())
-                .map(|i| Item::Pack(i as u16))
-                .chain([Item::Folder, Item::ShadowCache])
-                .collect(),
-            Tab::Screen(i) => screens
-                .get(usize::from(i))
-                .map(|s| s.items.clone())
-                .unwrap_or_default(),
-        }
-    }
-    /// The list's lines and its content height: the open page or, while searching, every page's
-    /// rows whose name or description has the search in it.
-    fn lines(&self, s: &Settings, screens: &[Screen]) -> (Vec<Line>, f32) {
-        let query = self.query();
-        let mut lines = shell::Lines::new();
-        let tabs =
-            std::iter::once(Tab::Packs).chain((0..screens.len()).map(|i| Tab::Screen(i as u16)));
-        for tab in tabs {
-            if query.is_empty() && tab != self.tab {
-                continue;
-            }
-            let rows: Vec<Item> = Self::items(tab, s, screens)
-                .into_iter()
-                .filter(|&item| {
-                    query.is_empty()
-                        || self.focus == Some(Target::Item(item))
-                        || self.dragging == Some(item)
-                        || (!matches!(item, Item::Link(_) | Item::Reset)
-                            && (Self::parts(item, s, screens)
-                                .0
-                                .to_lowercase()
-                                .contains(&query)
-                                || Self::description(item, s, screens)
-                                    .to_lowercase()
-                                    .contains(&query)))
-                })
-                .collect();
-            if rows.is_empty() {
-                continue;
-            }
-            // The plate's heading names the open page; results go under their page's name.
-            // Horizon's own settings stand apart from the packs, and the packs' from Horizon's.
-            let (built_in, rows): (Vec<Item>, Vec<Item>) =
-                rows.into_iter().partition(|&i| i == Item::ShadowCache);
-            match (query.is_empty(), tab) {
-                (true, Tab::Packs) => lines.group(tab, "Installed", rows),
-                (true, Tab::Screen(_)) => lines.group(tab, "Pack settings", rows),
-                (false, _) if !rows.is_empty() => lines.titled(tab, rows),
-                (false, _) => {}
-            }
-            if !built_in.is_empty() {
-                lines.group(tab, "Built-in settings", built_in);
-            }
-        }
-        lines.finish()
-    }
-    fn layout(&mut self, s: &Settings, w: f32, h: f32) -> (Columns, Vec<Screen>, Vec<Line>, f32) {
-        let cols = Columns::of(w, h);
-        let screens = screens(s);
-        if let Tab::Screen(i) = self.tab
-            && usize::from(i) >= screens.len()
-        {
-            self.tab = Tab::Packs;
-            self.path.clear();
-        }
-        let (lines, content) = self.lines(s, &screens);
-        self.scroll.clamp(cols.top, cols.bottom, content);
-        (cols, screens, lines, content)
-    }
-    /// Open `tab` from the page list: the plate shows it or, while searching, scrolls to it.
-    fn pick(&mut self, tab: Tab, lines: &[Line], cols: &Columns, content: f32) {
-        self.tab = tab;
-        self.path.clear();
-        self.scroll.amount = 0.0;
-        if self.query().is_empty() {
-            return;
-        }
-        if let Some(line) = lines.iter().find(|l| l.page == tab) {
-            self.scroll.amount = line.y;
-            self.scroll.clamp(cols.top, cols.bottom, content);
-            self.picked = Some(tab);
-        }
-    }
-    fn has(&self, tab: Tab, lines: &[Line]) -> bool {
-        self.query().is_empty() || lines.iter().any(|l| l.page == tab)
-    }
-    /// The page the plate shows: the open one or, while searching, the one picked, else the
-    /// topmost line's.
-    fn current(&self, lines: &[Line]) -> Option<Tab> {
-        if self.query().is_empty() {
-            return Some(self.tab);
-        }
-        self.picked.or_else(|| {
-            lines
-                .iter()
-                .find(|l| l.y + l.h() > self.scroll.amount)
-                .map(|l| l.page)
-        })
-    }
-    /// The page list's tab that holds `tab`: a screen deeper than the list shows lights the one
-    /// its links were followed from.
-    fn lit(&self, tab: Option<Tab>, side: &[Tab]) -> Option<Tab> {
-        let tab = tab?;
-        if side.contains(&tab) {
-            return Some(tab);
-        }
-        self.path
-            .iter()
-            .rev()
-            .map(|&i| Tab::Screen(i))
-            .find(|t| side.contains(t))
-    }
-    fn row_y(&self, cols: &Columns, line: &Line) -> f32 {
-        cols.top + line.y - self.scroll.amount
-    }
-
-    pub fn draw(
-        &mut self,
-        s: &Settings,
-        batch: &mut HudBatch,
-        atlas: &HudAtlas,
-        cursor: (f32, f32),
-        in_world: bool,
-    ) {
-        let (w, h) = (batch.width, batch.height);
-        let (cols, screens, lines, content) = self.layout(s, w, h);
-        shell::backdrop(batch, atlas, in_world);
-        let current = self.current(&lines);
-        let side = Self::side_tabs(&screens, &cols);
-        shell::mark(batch, atlas, &cols, &lang::get("Shaders"));
-        let lit = self.lit(current, &side);
-        for (i, &tab) in side.iter().enumerate() {
-            let name = Self::tab_name(tab, &screens);
-            let name = style::fit(atlas, &name, style::CONTROL_W - 16.0);
-            let flags = (
-                self.has(tab, &lines),
-                lit == Some(tab),
-                self.focus == Some(Target::Tab(tab)),
-            );
-            shell::page_tab(batch, atlas, Self::tab_rect(&cols, i), &name, flags, cursor);
-        }
-        // The picked pack's own screens go under its name, apart from Horizon's pack list.
-        if side.len() > 1 {
-            let [x, y, w, _] = cols.page(1);
-            let pack = match picked(s) {
-                Some((i, Kind::Horizon)) => s.shader_packs[i].title.as_str(),
-                _ => s
-                    .horizon
-                    .shader_pack
-                    .strip_suffix(".zip")
-                    .unwrap_or(&s.horizon.shader_pack),
-            };
-            let caption = lang::tr("%s settings", &[&pack]);
-            let rect = [x + 2.0, y + 6.0, w - 4.0, 8.0];
-            crate::widgets::record(&caption, rect, false);
-            let caption = Text::literal(style::fit(atlas, &caption, w - 4.0));
-            batch.text_styled(atlas, &caption, rect[0], rect[1], style::MUTED, true);
-        }
-        let focused = self.focus == Some(Target::Search);
-        shell::search_field(&mut self.search, batch, atlas, &cols, cursor, focused);
-
-        let query = self.search.value.trim();
-        let heading = if query.is_empty() {
-            Self::tab_name(current.unwrap_or(self.tab), &screens)
-        } else {
-            lang::get("Results for \"%s\"").replace("%s", query)
-        };
-        shell::plate(batch, atlas, &cols, &heading);
-
-        let over_list = cursor.1 >= cols.top && cursor.1 < cols.bottom;
-        let mut described = None;
-        shell::list(
-            batch,
-            atlas,
-            &cols,
-            &lines,
-            self.scroll.amount,
-            |tab| Self::tab_name(tab, &screens),
-            |batch, item: Item, y| {
-                let [rx, ry, rw, rh] = cols.row(y);
-                let hover = over_list && ui::hovered(cursor, rx, ry, rw, rh);
-                let focused = self.focus == Some(Target::Item(item));
-                if hover || self.dragging == Some(item) || (focused && described.is_none()) {
-                    described = Some(item);
-                }
-                let (name, value) = Self::parts(item, s, &screens);
-                let label = match &value {
-                    Some(v) if !v.is_empty() => format!("{name}: {v}"),
-                    _ => name.clone(),
-                };
-                let view = shell::RowView {
-                    label: &label,
-                    name: &name,
-                    value: value.as_deref(),
-                    switch: Self::switch(item, s),
-                    slider: Self::slider(item, s),
-                    live: true,
-                    hover,
-                    focused,
-                    held: self.dragging == Some(item),
-                    key: None,
-                };
-                shell::row(batch, atlas, &cols, y, &view);
-            },
-        );
-        shell::scroller(batch, atlas, &cols, content, self.scroll.amount);
-
-        // The strip: the pointed-at row, else what the page holds.
-        let [x, y, ..] = cols.dock;
-        style::panel(batch, atlas, cols.dock);
-        let (name, text) = match described {
-            Some(item) => (
-                Self::parts(item, s, &screens).0,
-                Self::description(item, s, &screens),
-            ),
-            None => match current {
-                Some(Tab::Packs) | None => (
-                    lang::get("Shader packs"),
-                    lang::get(if s.shader_packs.is_empty() {
-                        "No shader packs yet: open the pack folder and put some in it."
-                    } else {
-                        "Pick a shader pack. Picking the one in use turns shaders off."
-                    }),
-                ),
-                Some(tab) => {
-                    let about = match tab {
-                        Tab::Screen(i) => screens[usize::from(i)].about.clone(),
-                        Tab::Packs => String::new(),
-                    };
-                    let about = if Self::pending(s) {
-                        lang::get("Changed options apply with Apply, or when you leave.")
-                    } else {
-                        about
-                    };
-                    (Self::tab_name(tab, &screens), about)
-                }
-            },
-        };
-        batch.text_styled(
-            atlas,
-            &Text::literal(name),
-            x + 12.0,
-            y + 8.0,
-            style::WHITE,
-            true,
-        );
-        shell::dock_note(batch, atlas, &cols, text, style::GREY);
-
-        let mut foot = vec![(cols.button(0), "gui.done", Target::Done, Declared::Done)];
-        if Self::pending(s) {
-            foot.push((cols.button(1), "Apply", Target::Apply, Declared::Apply));
-        }
-        for (rect, label, target, declared) in foot {
-            let label = Text::literal(lang::get(label));
-            let focused = self.focus == Some(target);
-            crate::widgets::declare_action(declared, rect, true);
-            shell::foot_button(batch, atlas, rect, &label, cursor, (focused, true));
-        }
-    }
-
-    /// A press (or a drag with `drag`) at `(x, y)`.
-    pub fn click(
-        &mut self,
-        s: &mut Settings,
-        (x, y): (f32, f32),
-        (w, h): (f32, f32),
-        drag: bool,
-        right: bool,
-        shift: bool,
-    ) -> Vec<Action> {
-        let (cols, screens, lines, content) = self.layout(s, w, h);
-        let at = |[rx, ry, rw, rh]: [f32; 4]| ui::hovered((x, y), rx, ry, rw, rh);
-        if drag {
-            if self.scroll.held() {
-                self.picked = None;
-                self.scroll.drag(y, cols.top, cols.bottom, content);
-                return Vec::new();
-            }
-            if let Some(item) = self.dragging {
-                let actions = Self::set_slider(s, item, cols.slider_at(x));
-                return self.hold(actions);
-            }
-            return Vec::new();
-        }
-        if cols.scrolls()
-            && self
-                .scroll
-                .press((x, y), cols.bar_x(), cols.top, cols.bottom, content)
-        {
-            return Vec::new();
-        }
-        if at(cols.search()) {
-            if !self.search.value.is_empty() && at(cols.clear()) {
-                self.search.set_value("");
-                self.searched();
-                return vec![Action::ButtonClick];
-            }
-            self.focus = Some(Target::Search);
-            self.search.reset_blink();
-            self.search.move_cursor_to_end(false);
-            return Vec::new();
-        }
-        if self.focus == Some(Target::Search) {
-            self.focus = None;
-        }
-        if at(cols.button(0)) {
-            self.focus = Some(Target::Done);
-            return vec![Action::ButtonClick, Action::Done];
-        }
-        if Self::pending(s) && at(cols.button(1)) {
-            self.focus = None;
-            return vec![Action::ButtonClick, Action::Apply];
-        }
-        for (i, tab) in Self::side_tabs(&screens, &cols).into_iter().enumerate() {
-            if at(Self::tab_rect(&cols, i)) && self.has(tab, &lines) {
-                self.focus = Some(Target::Tab(tab));
-                self.pick(tab, &lines, &cols, content);
-                return vec![Action::ButtonClick];
-            }
-        }
-        if y < cols.top || y >= cols.bottom {
-            return Vec::new();
-        }
-        let Some(item) = lines.iter().find_map(|line| {
-            let item = line.setting?;
-            at(cols.row(self.row_y(&cols, line))).then_some(item)
-        }) else {
-            return Vec::new();
-        };
-        self.focus = Some(Target::Item(item));
-        self.activate(s, item, right || shift, Some((x, &cols)))
-    }
-    /// Option `item`'s slider at `at` (0 to 1).
-    fn set_slider(s: &mut Settings, item: Item, at: f32) -> Vec<Action> {
-        let Item::Option(i) = item else {
-            return Vec::new();
-        };
-        match picked(s) {
-            Some((p, Kind::Horizon)) => {
-                if s.shader_packs[p].set_slider_position(usize::from(i), at) {
-                    return vec![Action::SliderDrag, Action::NativeChanged(p)];
-                }
-            }
-            Some((_, Kind::Classic)) => {
-                let pack = s.horizon.shader_pack.clone();
-                if let Some(o) = s.shader_options.as_mut().filter(|o| o.pack == pack)
-                    && let Some(name) = option_name(o, i).map(str::to_owned)
-                {
-                    o.set_position(&name, at);
-                    return vec![Action::SliderDrag];
-                }
-            }
-            None => {}
-        }
-        Vec::new()
-    }
-    /// Option `item`'s slider one of its own steps on (back with `!forward`), stopping at its ends.
-    fn step_slider(s: &mut Settings, item: Item, forward: bool) -> Vec<Action> {
-        let Item::Option(i) = item else {
-            return Vec::new();
-        };
-        match picked(s) {
-            Some((p, Kind::Horizon)) => {
-                if s.shader_packs[p].nudge_option(usize::from(i), !forward) {
-                    return vec![Action::SliderDrag, Action::NativeChanged(p)];
-                }
-                Vec::new()
-            }
-            Some((_, Kind::Classic)) => {
-                let Some(o) = classic(s) else {
-                    return Vec::new();
-                };
-                let Some(name) = option_name(o, i) else {
-                    return Vec::new();
-                };
-                let n = o.options[name].values.len().saturating_sub(1).max(1) as f32;
-                let Some(pos) = o.slider_position(name) else {
-                    return Vec::new();
-                };
-                let next = ((pos * n).round() + if forward { 1.0 } else { -1.0 }) / n;
-                if !(0.0..=1.0).contains(&next) {
-                    return Vec::new();
-                }
-                Self::set_slider(s, item, next)
-            }
-            None => Vec::new(),
-        }
-    }
-    /// Press `item`: `at` is where on its row and its slider's track (`None` from the keyboard).
-    fn activate(
-        &mut self,
-        s: &mut Settings,
-        item: Item,
-        back: bool,
-        at: Option<(f32, &Columns)>,
-    ) -> Vec<Action> {
-        if Self::slider(item, s).is_some() {
-            self.can_change_value = true;
-            return match at {
-                Some((x, cols)) if x >= cols.track().0 => {
-                    self.dragging = Some(item);
-                    let actions = Self::set_slider(s, item, cols.slider_at(x));
-                    self.hold(actions)
-                }
-                _ => Vec::new(),
-            };
-        }
-        self.can_change_value = false;
-=======
     /// A pack is picked (or turned off) and saved, the last pack's changed options first; an
     /// option steps (back with Shift); the folder opens.
     fn press(&mut self, s: &mut Settings, item: Item, back: bool) -> Vec<Output> {
         let changed = vec![Output::Event(Event::Changed)];
->>>>>>> arismoko/main
         let pack = s.horizon.shader_pack.clone();
         let native = native(s).map(|p| p.0);
         match item {
@@ -1682,6 +624,9 @@ impl shell::Screen for ShaderScreen {
                 } else {
                     p.key.clone()
                 };
+                // A pack starts on Auto (the empty profile) and lists its own profiles.
+                s.horizon.shader_profile.clear();
+                self.refresh_profiles(s);
                 let mut outputs = Vec::new();
                 // The last pack's changed options are kept before the next one's are read.
                 if s.shader_options.as_ref().is_some_and(|o| o.changed) {
@@ -1693,17 +638,16 @@ impl shell::Screen for ShaderScreen {
                 outputs
             }
             Item::Folder => vec![Output::Event(Event::OpenShaderPackFolder)],
-            Item::ShadowCache => {
-                s.horizon.shadow_cache = !s.horizon.shadow_cache;
-                changed
-            }
-<<<<<<< HEAD
             Item::Resolution => {
                 const STEPS: [u32; 6] = [100, 75, 50, 40, 30, 25];
                 let now = s.horizon.resolution_scale;
                 let next = STEPS.iter().position(|&v| v == now).map_or(2, |i| i + 1);
                 s.horizon.resolution_scale = STEPS[next % STEPS.len()];
-                vec![Action::ButtonClick, Action::Reload, Action::Changed]
+                // A `shaders/` pack starts again at the new resolution.
+                vec![
+                    Output::Event(Event::ShaderPack),
+                    Output::Event(Event::Changed),
+                ]
             }
             Item::FpsLimit => {
                 const STEPS: [u32; 4] = [30, 40, 60, 260];
@@ -1714,37 +658,30 @@ impl shell::Screen for ShaderScreen {
                 s.max_fps = STEPS[next % STEPS.len()];
                 changed
             }
-            Item::PackProfile => vec![Action::ButtonClick, Action::NextPackProfile],
-            Item::Link(i) => {
-                if let Tab::Screen(from) = self.tab {
-                    self.path.push(from);
+            Item::PackProfile => {
+                if self.profiles.is_empty() {
+                    self.refresh_profiles(s);
                 }
-                self.tab = Tab::Screen(i);
-                self.scroll.amount = 0.0;
-                self.search.set_value("");
-                self.picked = None;
-                self.focus = None;
-                vec![Action::ButtonClick]
-            }
-            Item::Profile => match options {
-||||||| c98a51a664
-            Item::Link(i) => {
-                if let Tab::Screen(from) = self.tab {
-                    self.path.push(from);
+                let now = s.horizon.shader_choice().map(|c| c.1).unwrap_or_default();
+                let at = self.profiles.iter().position(|p| *p == now).unwrap_or(0);
+                if let Some(next) = self.profiles.get((at + 1) % self.profiles.len().max(1)) {
+                    // Empty would fall back to the variable's: the pack's own defaults are
+                    // `default`, and empty is what means Auto.
+                    s.horizon.shader_profile = match next.as_str() {
+                        "" => "default".into(),
+                        crate::graphics::AUTO_PROFILE => String::new(),
+                        next => next.to_owned(),
+                    };
                 }
-                self.tab = Tab::Screen(i);
-                self.scroll.amount = 0.0;
-                self.search.set_value("");
-                self.picked = None;
-                self.focus = None;
-                vec![Action::ButtonClick]
+                vec![Output::Event(Event::ShaderPack)]
             }
-            Item::Profile => match options {
-=======
+            Item::ShadowCache => {
+                s.horizon.shadow_cache = !s.horizon.shadow_cache;
+                changed
+            }
             // The shell follows a link (`link`).
             Item::Link(_) => Vec::new(),
             Item::Profile => match s.shader_options.as_mut().filter(|o| o.pack == pack) {
->>>>>>> arismoko/main
                 Some(o) => {
                     o.next_profile();
                     changed
@@ -2192,38 +1129,16 @@ mod tests {
                 seen.push(item);
             }
         }
-<<<<<<< HEAD
-        assert_eq!(
-            seen,
-            [
-                Item::Pack(0),
-                Item::Pack(1),
-                Item::Folder,
-                Item::ShadowCache,
-                Item::Resolution,
-                Item::FpsLimit,
-                Item::PackProfile
-            ]
-        );
-||||||| c98a51a664
-        assert_eq!(
-            seen,
-            [
-                Item::Pack(0),
-                Item::Pack(1),
-                Item::Folder,
-                Item::ShadowCache
-            ]
-        );
-=======
         let all = [
             Item::Pack(0),
             Item::Pack(1),
             Item::Folder,
             Item::ShadowCache,
+            Item::Resolution,
+            Item::FpsLimit,
+            Item::PackProfile,
         ];
         assert_eq!(seen, all);
->>>>>>> arismoko/main
     }
 
     /// A Horizon pack picked, with a float option from 0 to 1 in steps of 0.1 at 0.5.
@@ -2330,101 +1245,16 @@ mod tests {
     }
 
     #[test]
-    fn what_a_pack_costs_is_set_only_with_a_pack_on() {
-        let mut s = settings();
-        s.horizon.resolution_scale = 50;
-        s.max_fps = 60;
-        let mut ui = ShaderUi::default();
-        let packs = |s: &Settings| ShaderUi::items(Tab::Packs, s, &screens(s));
-        assert!(packs(&s).contains(&Item::PackProfile));
-
-        // A `shaders/` pack starts again at the new resolution; a frame limit needs no start.
-        assert_eq!(
-            ui.activate(&mut s, Item::Resolution, false, None),
-            [Action::ButtonClick, Action::Reload, Action::Changed]
-        );
-        assert_eq!(s.horizon.resolution_scale, 40);
-        assert_eq!(
-            ui.activate(&mut s, Item::FpsLimit, false, None),
-            [Action::ButtonClick, Action::Changed]
-        );
-        assert_eq!(s.max_fps, 260);
-        assert_eq!(
-            ui.activate(&mut s, Item::FpsLimit, false, None),
-            [Action::ButtonClick, Action::Changed]
-        );
-        assert_eq!(s.max_fps, 30);
-
-        // A Horizon pack has no profiles, and with no pack there is nothing to set.
-        s.shader_packs[0].kind = Kind::Horizon;
-        assert!(!packs(&s).contains(&Item::PackProfile));
-        assert!(packs(&s).contains(&Item::Resolution));
-        s.horizon.shader_pack.clear();
-        assert!(!packs(&s).contains(&Item::Resolution));
-    }
-
-    #[test]
     fn every_text_is_in_the_language_table() {
         let mut s = settings();
         let (_, mut missed) = lang::scoped(lang::Language::load(&[], "de_de"), || {
             let screen = ShaderScreen::default();
             screen.sheets(&s);
             s.shader_packs[0].kind = Kind::Horizon;
-<<<<<<< HEAD
-            ShaderUi::description(Item::Pack(0), &s, &screens);
-            for text in [
-                "Shaders",
-                "Shader packs",
-                "Installed",
-                "General",
-                "Pack settings",
-                "Built-in settings",
-                "%s settings",
-                PACK_SETTINGS,
-                "Shadow Cache",
-                "Reuses the pack shadow map when sun, view and world match. Off by default.",
-                "Apply",
-                "Search options",
-                "Results for \"%s\"",
-                "No shader packs yet: open the pack folder and put some in it.",
-                "Pick a shader pack. Picking the one in use turns shaders off.",
-                "Changed options apply with Apply, or when you leave.",
-                "Resolution",
-                "FPS Limit",
-                "Profile",
-                "Pack Default",
-                "Auto",
-                "Off",
-                "Packs cost by the pixel: fewer run faster, and the world looks softer.",
-                "A pack heats a phone up: a limit it can hold stays smoother than one it can't.",
-                "Auto picks the pack's light settings for this device. Pack Default runs it as it comes.",
-            ] {
-||||||| c98a51a664
-            ShaderUi::description(Item::Pack(0), &s, &screens);
-            for text in [
-                "Shaders",
-                "Shader packs",
-                "Installed",
-                "General",
-                "Pack settings",
-                "Built-in settings",
-                "%s settings",
-                PACK_SETTINGS,
-                "Shadow Cache",
-                "Reuses the pack shadow map when sun, view and world match. Off by default.",
-                "Apply",
-                "Search options",
-                "Results for \"%s\"",
-                "No shader packs yet: open the pack folder and put some in it.",
-                "Pick a shader pack. Picking the one in use turns shaders off.",
-                "Changed options apply with Apply, or when you leave.",
-            ] {
-=======
             screen.sheets(&s);
             s.shader_packs.clear();
             screen.sheets(&s);
-            for text in [TITLE, PENDING, "Apply", "Undo", "Search options"] {
->>>>>>> arismoko/main
+            for text in [TITLE, PENDING, "Apply", "Undo", "Search options", "Off"] {
                 lang::get(text);
             }
         });

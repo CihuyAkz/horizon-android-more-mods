@@ -697,23 +697,11 @@ fn terrain_vertex(position: vec3<f32>, uv: vec2<f32>, layer: u32, color: vec4<f3
     out.cylindrical = max(length(eye.xz), abs(eye.y));
     out.fade = fade_code(w);
     const CHUNK_FULLY_VISIBLE_RANGE: f32 = 16.0;
-<<<<<<< HEAD
     out.visibility = 1.0;
     if !SETTLED_TERRAIN {
         out.visibility = mix(1.0, instance_visibility(w),
             clamp((length(pos) - CHUNK_FULLY_VISIBLE_RANGE) / CHUNK_FULLY_VISIBLE_RANGE, 0.0, 1.0));
     }
-    // [world warp out]
-    // [end world warp out]
-||||||| c98a51a664
-    out.visibility = mix(1.0, instance_visibility(w),
-        clamp((length(pos) - CHUNK_FULLY_VISIBLE_RANGE) / CHUNK_FULLY_VISIBLE_RANGE, 0.0, 1.0));
-    // [world warp out]
-    // [end world warp out]
-=======
-    out.visibility = mix(1.0, instance_visibility(w),
-        clamp((length(pos) - CHUNK_FULLY_VISIBLE_RANGE) / CHUNK_FULLY_VISIBLE_RANGE, 0.0, 1.0));
->>>>>>> arismoko/main
     return out;
 }
 fn linear_fog(d: f32, start: f32, end: f32) -> f32 {
