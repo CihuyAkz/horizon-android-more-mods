@@ -180,11 +180,13 @@ impl Gpu {
                 entries: &[storage(0), storage(1)],
             })
         });
-        let source = terrain_source::terrain_shader(false);
+        // As the renderer builds it: the HDR prelude (`HDR_WRITE_LIGHT`) in front.
+        let source = include_str!("../../hdr_light.wgsl").to_owned()
+            + &terrain_source::terrain_shader(false);
         let globals = naga::front::wgsl::parse_str(&source).unwrap();
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Solid paths"),
-            source: wgpu::ShaderSource::Wgsl(source),
+            source: wgpu::ShaderSource::Wgsl(source.into()),
         });
         Some(Self {
             device,

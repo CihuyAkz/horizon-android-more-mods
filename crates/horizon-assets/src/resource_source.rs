@@ -365,6 +365,18 @@ impl ResourceSource {
                 .read(),
         }
     }
+    /// [`Self::read`], but a folder's file from its disk too when the folder's prepared data
+    /// file lacks it: one put there after preparing (Starling's downloaded touch controls),
+    /// which `read` reports missing without asking the disk.
+    pub fn read_loose(&self, name: &str) -> io::Result<Vec<u8>> {
+        match self.0.as_ref() {
+            Storage::Directory(root) if stays_inside(name) => match self.read(name) {
+                Err(error) if error.kind() == io::ErrorKind::NotFound => fs::read(root.join(name)),
+                read => read,
+            },
+            _ => self.read(name),
+        }
+    }
     /// Copy a resource under a shared output budget, streaming archive entries.
     pub fn copy_to(
         &self,

@@ -271,6 +271,7 @@ impl ArmorStandAssets {
     /// Trim data and equipment of reloaded resources (the models stay).
     pub fn apply_resources(&mut self, fresh: Self) {
         self.equipment = fresh.equipment;
+        self.equipment_layers = fresh.equipment_layers;
         self.trim_overrides = fresh.trim_overrides;
         self.atlases = fresh.atlases;
         self.trims = fresh.trims;

@@ -1073,6 +1073,10 @@ mod tests {
     #[test]
     fn a_text_received_whole_has_the_spans_its_parts_would() {
         use serde_json::json;
+        // Its keybind reads the bindings the rebinding test changes meanwhile.
+        let _guard = crate::key_display::TEST_BINDINGS
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
         for v in [
             json!(""),
             json!(7),

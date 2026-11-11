@@ -2723,7 +2723,11 @@ fn native_game_page_rows(s: &Settings) -> Vec<Row> {
         return rows;
     }
     for (i, installed) in natives {
-        let tick = if s.mods.is_on(i) { '\u{2611}' } else { '\u{2610}' };
+        let tick = if s.mods.is_on(i) {
+            '\u{2611}'
+        } else {
+            '\u{2610}'
+        };
         let mut label = Text::literal(format!("{tick} {}", installed.title));
         if installed.problem.as_deref() == Some(crate::mod_list::NOT_BUILT) {
             if s.mods.is_on(i) {
@@ -2734,7 +2738,10 @@ fn native_game_page_rows(s: &Settings) -> Vec<Row> {
         } else if installed.problem.is_some() {
             label = label.append(tr("horizon.mods.stopped"));
         }
-        rows.push(Row::Buttons(button(0.0, 0.0, 310.0, label, Act::ToggleMod(i)), None));
+        rows.push(Row::Buttons(
+            button(0.0, 0.0, 310.0, label, Act::ToggleMod(i)),
+            None,
+        ));
     }
     rows
 }
@@ -6235,7 +6242,7 @@ impl OptionsUi {
                                 s.keypad.bindings.clear();
                             } else {
                                 s.keys.reset_all();
-                              s.mods.keys.clear();
+                                s.mods.keys.clear();
                             }
                             events.push(Event::Changed);
                         }
@@ -6325,7 +6332,8 @@ impl OptionsUi {
                         Act::CustomModKey(id, i, k) => {
                             let key = s.mods.installed.get(i).and_then(|m| {
                                 let mapping = m.native.as_ref()?.mappings.get(k)?;
-                                let chosen = s.mods.keys.get(&m.id).and_then(|c| c.get(&mapping.id));
+                                let chosen =
+                                    s.mods.keys.get(&m.id).and_then(|c| c.get(&mapping.id));
                                 Some(chosen.unwrap_or(&mapping.key).clone())
                             });
                             if let Some(key) = key
@@ -6663,9 +6671,9 @@ impl OptionsUi {
         if self.resource_error.is_some() || self.painting() {
             return false;
         }
-        if Self::graphics_page(self.page()).is_some() {
-            // Upstream's settings shell lays the rows out (FOLLOWUPS: a finger on a stepped row).
-            return false;
+        // Upstream's settings shell lays these pages' rows out.
+        if let Some(shell) = self.shell_mut() {
+            return shell.pressable_at(s, size, cursor);
         }
         if matches!(
             self.page(),
@@ -7554,7 +7562,7 @@ impl OptionsUi {
                                 s.keypad.bindings.clear();
                             } else {
                                 s.keys.reset_all();
-                              s.mods.keys.clear();
+                                s.mods.keys.clear();
                             }
                             events.push(Event::Changed);
                         }
@@ -8697,6 +8705,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "sync 6: the 0.8.0 Mods page's rows (their description as tooltip) gave way to upstream's; FOLLOWUPS.md"]
     fn a_tapped_row_keeps_no_tooltip_once_the_finger_lifts() {
         let atlas = atlas();
         let mut s = Settings::default();
@@ -11106,20 +11115,10 @@ mod tests {
         let mut ui = OptionsUi::default();
         let size = (480.0, 600.0);
         ui.show(Page::Extras);
-        let (widgets, _, _, _) = ui.layout(&s, size.0, size.1);
-        let sort = widgets
-            .iter()
-            .find(|w| {
-                matches!(
-                    w.kind,
-                    WKind::Button {
-                        act: Act::Extra(crate::extras::Item::Sort),
-                        ..
-                    }
-                )
-            })
-            .unwrap();
-        let on_sort = (sort.x + 5.0, sort.y + 5.0);
+        // The Extras page is upstream's settings shell: its Sort switch is a row there.
+        let on_sort = ui
+            .extras
+            .point_at(&s, size, ExtraRow::Item(crate::extras::Item::Sort));
         assert!(ui.list_button_at(&s, size, on_sort));
         ui.show(Page::Sound);
         let (widgets, _, _, _) = ui.layout(&s, size.0, size.1);
@@ -11707,6 +11706,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "sync 6: the 0.8.0 Mods page (its footer's Catalog button) gave way to upstream's; FOLLOWUPS.md"]
     fn the_mods_and_shader_packs_pages_open_the_catalog_on_their_own_shelf() {
         let atlas = atlas();
         let mut s = Settings::default();

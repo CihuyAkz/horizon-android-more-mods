@@ -2017,8 +2017,9 @@ impl HudAtlas {
                         continue;
                     };
                     let name = format!("{prefix}/{stem}");
+                    // From the disk: downloaded after the folder's data file was written.
                     if !existing.contains(&name)
-                        && let Ok(bytes) = base.read(&file)
+                        && let Ok(bytes) = base.read_loose(&file)
                         && let Ok((w, h, pixels)) = decode_bytes(&bytes)
                     {
                         existing.insert(name.clone());

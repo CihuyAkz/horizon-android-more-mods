@@ -1469,6 +1469,10 @@ pub(crate) trait Hosted {
     /// The clicks until it is set back are a controller's Left or Right: on a choice they step
     /// it, as the arrow keys do, rather than press it.
     fn clicks_step(&mut self, on: bool);
+    /// Starling: whether a finger at `at` is on a row a press acts on, other than a slider (whose
+    /// track a moving finger drags): such a finger scrolls the list once it moves, as on the
+    /// menus' other lists (`OptionsUi::list_button_at`).
+    fn pressable_at(&mut self, s: &Settings, size: (f32, f32), at: (f32, f32)) -> bool;
     /// `waiting`: the binding the host waits on.
     fn draw(
         &mut self,
@@ -2300,6 +2304,15 @@ impl<S: Screen> Shell<S> {
 impl<S: Screen + Default> Hosted for Shell<S> {
     fn open(&mut self) {
         *self = Self::default();
+    }
+    fn pressable_at(&mut self, s: &Settings, size: (f32, f32), at: (f32, f32)) -> bool {
+        let view = self.view(s, size);
+        self.row_at(&view, at).is_some_and(|(row, _)| {
+            !matches!(
+                row.value,
+                Value::Slider { .. } | Value::Note | Value::Read(_)
+            )
+        })
     }
     fn draw(
         &mut self,

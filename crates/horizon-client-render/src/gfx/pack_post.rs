@@ -2012,8 +2012,10 @@ fn build_pass(
         targets.pop();
     }
     // A program that only writes images draws into a sink that keeps nothing; one drawing
-    // geometry has the depth buffer, and draws with no colour target at all (a shadow pass that
-    // only wants the shadow map: Pixel Perfect's `/* DRAWBUFFERS: */`).
+    // geometry has the depth buffer, and draws with no colour target at all. Of the geometry
+    // programs that write no buffer, only the shadow pass's draws (one that only wants the shadow
+    // map: Pixel Perfect's `/* DRAWBUFFERS: */`); any other is skipped, as upstream does, so a
+    // terrain part that writes nothing takes the other part with it (`terrain_parts_tests`).
     let sink = !final_pass && writes.is_empty() && !program.interface.images.is_empty();
     if sink && geometry.is_none() {
         targets = vec![Some(wgpu::ColorTargetState {
@@ -2021,7 +2023,11 @@ fn build_pass(
             blend: None,
             write_mask: wgpu::ColorWrites::empty(),
         })];
-    } else if !final_pass && writes.is_empty() && !sink && geometry.is_none() {
+    } else if !final_pass
+        && writes.is_empty()
+        && !sink
+        && (geometry.is_none() || p.group != Group::Shadow)
+    {
         notes.push(format!("{}: writes no buffer; skipped", p.name));
         return None;
     }

@@ -50,7 +50,12 @@ fn the_late_sky_draws_the_usual_pixels() {
     let kept = reuse.on(&device);
     let terrain_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("Late sky terrain"),
-        source: wgpu::ShaderSource::Wgsl(terrain_source::terrain_shader(false)),
+        // As the renderer builds it: the HDR prelude (`HDR_WRITE_LIGHT`) in front.
+        source: wgpu::ShaderSource::Wgsl(
+            (include_str!("../../hdr_light.wgsl").to_owned()
+                + &terrain_source::terrain_shader(false))
+                .into(),
+        ),
     });
     let bindings = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
         label: None,

@@ -42,7 +42,11 @@ fn gles_source(source: &str) -> String {
     let rgss = source
         .find("fn rotated_grid(")
         .expect("terrain rotated grid function");
-    let rgss_end = rgss + source[rgss..].find("\n}\n").expect("terrain rotated grid end") + 3;
+    let rgss_end = rgss
+        + source[rgss..]
+            .find("\n}\n")
+            .expect("terrain rotated grid end")
+        + 3;
     let mut output = String::with_capacity(source.len());
     output.push_str(&source[..start]);
     output.push_str(include_str!("terrain_gles.wgsl.inc"));
@@ -113,7 +117,10 @@ mod tests {
         assert!(source.contains("fn rotated_grid("));
         assert!(!source.contains("emissive_layers[i]"));
         assert!(source.contains("out.emissive_layer = legacy_emissive_layer(sprite_layer);"));
-        let module = naga::front::wgsl::parse_str(&source).unwrap();
+        // The renderer puts the HDR prelude (`HDR_WRITE_LIGHT`) in front, as gfx.rs does.
+        let module =
+            naga::front::wgsl::parse_str(&(include_str!("../hdr_light.wgsl").to_owned() + &source))
+                .unwrap();
         naga::valid::Validator::new(
             naga::valid::ValidationFlags::all(),
             naga::valid::Capabilities::all(),
