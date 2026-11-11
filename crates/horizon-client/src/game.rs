@@ -20733,6 +20733,15 @@ fn build_renderer(
         "renderer_init",
         || serde_json::json!({"api":format!("{:?}",api)}),
     );
+    // A driver that dies while the first renderer starts leaves this marker behind, and the
+    // next start opens with OpenGL ES (`graphics::RENDERER_MARKER`). A rebuild runs on a
+    // driver that has already shown frames.
+    #[cfg(target_os = "android")]
+    let start_marker = previous.is_none().then(|| {
+        let marker = Game::options_path().with_file_name(horizon_client::graphics::RENDERER_MARKER);
+        let _ = std::fs::write(&marker, "the renderer was starting\n");
+        marker
+    });
     let mut renderer = pollster::block_on(Renderer::new(
         window,
         offscreen,
@@ -20757,6 +20766,10 @@ fn build_renderer(
         translucent_batching,
         shader_pack,
     ))?;
+    #[cfg(target_os = "android")]
+    if let Some(marker) = start_marker {
+        renderer.forget_start_marker(marker);
+    }
     renderer.hud.sprite_animations = atlas
         .sprite_animations
         .iter()

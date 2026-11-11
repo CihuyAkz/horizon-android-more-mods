@@ -1148,6 +1148,9 @@ pub struct Renderer {
     /// The marker file of an HDR output that has not presented a frame yet
     /// (`graphics::HDR_MARKER`).
     hdr_marker: Option<std::path::PathBuf>,
+    /// The marker file of a renderer start that has not presented a frame yet
+    /// (`graphics::RENDERER_MARKER`), removed with the first frame.
+    start_marker: Option<std::path::PathBuf>,
     /// The shader pack's post-processing, and the dimension (legacy id) it was loaded for.
     pack_post: Option<(i32, Option<pack_post::PackPost>)>,
     /// The post passes of one of Horizon's own shader packs; never beside `pack_post`'s.
@@ -4318,6 +4321,7 @@ impl Renderer {
             emission_stats,
             hdr_output,
             hdr_marker: None,
+            start_marker: None,
             pack_post: None,
             native: None,
             pass_timing: pack_timing::PassTiming::logging(),
@@ -5599,6 +5603,11 @@ impl Renderer {
             ),
             None => "HDR: not offered by this display".into(),
         }
+    }
+    /// Removes `marker` (`graphics::RENDERER_MARKER`, written before this renderer opened its
+    /// device) once a frame has been presented: the start went through.
+    pub fn forget_start_marker(&mut self, marker: std::path::PathBuf) {
+        self.start_marker = Some(marker);
     }
     /// HDR output (Horizon setting): HDR10 or scRGB at `paper_white` nits, the world's
     /// highlights expanded up to `peak` nits. Off where the surface can't present it.
@@ -9502,6 +9511,9 @@ impl Renderer {
             {
                 let _ = std::fs::remove_file(marker);
                 log::info!("Horizon renderer: HDR output presented its first frame");
+            }
+            if let Some(marker) = self.start_marker.take() {
+                let _ = std::fs::remove_file(marker);
             }
             if reconfigure {
                 self.configure_surface();
