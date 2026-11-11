@@ -407,7 +407,20 @@ pub fn renamed_assets(v: &mut Value) -> bool {
                     t.entry("bottom").or_insert(dirt);
                 }
             }
-            o.values_mut().fold(farmland, |c, x| renamed_assets(x) | c)
+            // A block state variant: 1.21.1's Gson read `"true"` and `"90"`, 26.3's codec does not.
+            let mut typed = false;
+            if o.contains_key("model") {
+                for (key, v) in o.iter_mut() {
+                    let new = match (key.as_str(), v.as_str()) {
+                        ("uvlock", Some(s)) => s.parse::<bool>().ok().map(Value::from),
+                        ("x" | "y" | "weight", Some(s)) => s.parse::<i64>().ok().map(Value::from),
+                        _ => None,
+                    };
+                    typed |= new.map(|new| *v = new).is_some();
+                }
+            }
+            o.values_mut()
+                .fold(farmland | typed, |c, x| renamed_assets(x) | c)
         }
         _ => false,
     }
@@ -859,7 +872,7 @@ fn contains(haystack: &[u8], needle: &[u8]) -> bool {
 /// file that does not parse); Horizon's content loader refuses the whole
 /// set, so they stay out of the carry.
 fn unreadable(name: &str, bytes: &mut Vec<u8>) -> Option<String> {
-    if let Err(e) = horizon_mods::content::check_path(name) {
+    if let Err(e) = horizon_mod_package::content::check_path(name) {
         return Some(e);
     }
     if !(name.ends_with(".json") || name.ends_with(".mcmeta")) {
@@ -882,7 +895,7 @@ fn unreadable(name: &str, bytes: &mut Vec<u8>) -> Option<String> {
         },
     };
     // A vanilla or convention tag that replaces is kept: the game honours it
-    // as a data pack's, with a warning (docs/mods.md). A tag of the mod's own
+    // as a data pack's, with a warning (docs/modding/src/how-to/content-mods.md). A tag of the mod's own
     // that replaces: no pack before it defines the tag, so it is the same tag
     // added to (Towns and Towers' biome tags).
     let shared_tag = name.starts_with("data/minecraft/tags/") || name.starts_with("data/c/tags/");
@@ -1151,9 +1164,15 @@ pub fn carry(
                 // Additions to other sets and pools, as files the game merges.
                 let modifier = serde_json::from_slice::<Value>(&bytes).ok();
                 let types = &mut report.worldgen_types;
-                if let Some((kind, mut added)) =
-                    modifier.and_then(|v| crate::lithostitched::modifier(&v, loaded, types))
-                {
+                let modifier =
+                    modifier.and_then(|v| crate::lithostitched::modifier(&v, loaded, types));
+                if let Some(("biome_modifier", file)) = &modifier {
+                    let to = format!("data/{id}/neoforge/biome_modifier/lithostitched/{path}");
+                    write(
+                        &inside.join(to),
+                        &serde_json::to_vec_pretty(file).unwrap_or_default(),
+                    )?;
+                } else if let Some((kind, mut added)) = modifier {
                     crate::processors::carry(
                         kind,
                         &mut added,
@@ -2566,8 +2585,8 @@ mod tests {
         );
 
         // Horizon's own reader accepts it: blocks and items declared, files fenced.
-        let package = horizon_mods::Package::read(&carried).unwrap();
-        let content = horizon_mods::Content::read(&carried, &package.manifest).unwrap();
+        let package = horizon_mod_package::Package::read(&carried).unwrap();
+        let content = horizon_mod_package::Content::read(&carried, &package.manifest).unwrap();
         let blocks: Vec<&str> = content.blocks.iter().map(|b| b.id.as_str()).collect();
         assert_eq!(blocks, ["gem:gem_block", "gem:gem_door"]);
         assert_eq!(content.items.len(), 1);
@@ -2700,9 +2719,9 @@ mod tests {
         // No block is declared from another namespace's blockstate.
         assert!(report.blocks.is_empty());
         let carried = out.join("carry");
-        let package = horizon_mods::Package::read(&carried).unwrap();
+        let package = horizon_mod_package::Package::read(&carried).unwrap();
         assert_eq!(package.manifest.namespaces, ["kaisyn", "towers_wg"]);
-        let content = horizon_mods::Content::read(&carried, &package.manifest).unwrap();
+        let content = horizon_mod_package::Content::read(&carried, &package.manifest).unwrap();
         assert!(
             content
                 .files
@@ -2800,8 +2819,8 @@ mod tests {
         fs::remove_dir_all(&dir).unwrap();
     }
 
-    /// NeoForge loads a recipe only when its `neoforge:conditions` pass. The oracle's recipes are the ones
-    /// that did: those are upgraded like any vanilla recipe, the others stay outside, as NeoForge left them out.
+    /// The oracle's recipes that passed `neoforge:conditions` are upgraded like any vanilla recipe;
+    /// recipes absent from the oracle stay outside.
     #[test]
     fn conditional_recipes_are_the_ones_neoforge_loaded() {
         let dir = std::env::temp_dir().join(format!(
@@ -2938,14 +2957,14 @@ mod tests {
             ["lost_seeds"]
         );
         let carried = out.join("carry");
-        let package = horizon_mods::Package::read(&carried).unwrap();
-        let content = horizon_mods::Content::read(&carried, &package.manifest).unwrap();
+        let package = horizon_mod_package::Package::read(&carried).unwrap();
+        let content = horizon_mod_package::Content::read(&carried, &package.manifest).unwrap();
         let item = content
             .items
             .iter()
             .find(|i| i.id == "gem:cabbage_seeds")
             .unwrap();
-        assert_eq!(item.place_block.as_deref(), Some("gem:cabbages"));
+        assert_eq!(item.block.as_deref(), Some("gem:cabbages"));
         fs::remove_dir_all(&dir).unwrap();
     }
 
@@ -3029,6 +3048,22 @@ mod tests {
                 "2": "pulley:block/chain", "3": "minecraft:block/chain_command_block_back"}})
         );
         fs::remove_dir_all(&dir).unwrap();
+    }
+
+    /// Tom's Simple Storage writes `"uvlock": "true"`: 1.21.1 read a block state variant with Gson, which
+    /// took strings for booleans and numbers; 26.3's codec does not, and the whole block state failed.
+    #[test]
+    fn block_state_variants_take_strings_as_their_booleans_and_numbers() {
+        let mut state = json!({"multipart": [{"apply": {"uvlock": "true", "x": "90",
+            "model": "t:block/cable"}, "when": {"x": "1", "down": "false"}}],
+            "variants": {"": [{"model": "t:a", "y": 180, "weight": "3"}]}});
+        assert!(renamed_assets(&mut state));
+        assert_eq!(
+            state,
+            json!({"multipart": [{"apply": {"uvlock": true, "x": 90, "model": "t:block/cable"},
+                "when": {"x": "1", "down": "false"}}],
+                "variants": {"": [{"model": "t:a", "y": 180, "weight": 3}]}})
+        );
     }
 
     /// 1.21.1's farmland template (`dirt` and `top`) is 26.3's `template_cube_bottom_top_indented`, whose

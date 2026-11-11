@@ -2,6 +2,7 @@
 //! dimension type's attributes, the biome layer, the dimension's timelines and, where it can
 //! have weather, the rain and thunder layers, sampled into the sky state the renderer draws.
 use crate::Result;
+use horizon_assets::resource_source::ResourceSource;
 use horizon_world::environment_attributes::{
     Attribute, AttributeMap, Entry, Kind, Value, attribute,
 };
@@ -9,8 +10,7 @@ use horizon_world::environment_system::{BiomeBlend, Builder, Conditions, System}
 use horizon_world::environment_timeline::Timeline;
 use serde_json::Value as Json;
 use std::collections::{HashMap, HashSet};
-use std::path::Path;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, LazyLock, OnceLock, RwLock};
 
 pub struct Environment {
     system: System,
@@ -21,7 +21,17 @@ pub struct Environment {
     biomes: HashMap<String, AttributeMap>,
     /// Packs' biome `post_process` maps by biome id: a biome layer after the weather.
     post: HashMap<String, AttributeMap>,
+    /// The data source and selected packs used to rebuild a level's environment.
+    source: ResourceSource,
+    dimension: String,
+    packs: PackModifiers,
 }
+
+/// The dimension types (their `attributes` and `timelines`) of the levels a mod or a data pack
+/// added, by level id, and the environment each makes over the Overworld's the first time it is asked for
+/// (`None` when its attributes are refused, which falls back to the Overworld's).
+type LevelAttributes = HashMap<String, &'static (Json, OnceLock<Option<Environment>>)>;
+static LEVELS: LazyLock<RwLock<LevelAttributes>> = LazyLock::new(Default::default);
 
 #[derive(Clone, Copy, Debug, Default, serde::Serialize, serde::Deserialize)]
 pub struct Sky {
@@ -67,60 +77,53 @@ pub struct Sample<'a> {
 
 /// Resource packs' Polytone biome and dimension modifiers (#11486): layers they add to, change
 /// in or remove from the attribute stack.
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct PackModifiers {
     biomes: Vec<horizon_polytone::BiomeModifier>,
     dimensions: Vec<horizon_polytone::DimensionModifier>,
     /// The packs' config values, for `config(id)` in expressions.
     configs: horizon_polytone::pack::Configs,
     /// The pack overlay root they were read from, where their colormaps are.
-    root: Option<std::path::PathBuf>,
+    root: Option<ResourceSource>,
     colormaps: ColormapCache,
 }
 
 impl PackModifiers {
     /// Every `assets/<namespace>/polytone/{biome,dimension}_modifiers/**.json` under a pack
     /// overlay root. A file that fails to parse is skipped with a warning.
-    pub fn read(pack_root: &Path) -> Self {
+    pub fn read(pack_root: &ResourceSource) -> Self {
         let mut out = Self {
-            root: Some(pack_root.to_path_buf()),
+            root: Some(pack_root.clone()),
             ..Self::default()
         };
-        let Ok(namespaces) = std::fs::read_dir(pack_root.join("assets")) else {
-            return out;
-        };
-        for namespace in namespaces.flatten() {
+        for namespace in pack_root.namespaces("assets") {
             for kind in ["biome_modifiers", "dimension_modifiers"] {
-                let mut stack = vec![namespace.path().join("polytone").join(kind)];
-                while let Some(dir) = stack.pop() {
-                    for entry in std::fs::read_dir(&dir).into_iter().flatten().flatten() {
-                        let path = entry.path();
-                        if path.is_dir() {
-                            stack.push(path);
-                            continue;
-                        }
-                        let Ok(relative) = path.strip_prefix(pack_root) else {
-                            continue;
-                        };
-                        let relative = relative.to_string_lossy();
-                        let implicit = horizon_polytone::implicit_id(&relative, kind);
-                        let json = match horizon_world::json_file::read::<Json>(&path) {
-                            Ok(json) => json,
-                            Err(e) => {
-                                log::warn!("{relative}: {e}");
-                                continue;
-                            }
-                        };
-                        let parsed = if kind == "biome_modifiers" {
-                            horizon_polytone::BiomeModifier::parse(&json, implicit.as_deref())
-                                .map(|m| m.map(|m| out.biomes.push(m)))
-                        } else {
-                            horizon_polytone::DimensionModifier::parse(&json, implicit.as_deref())
-                                .map(|m| m.map(|m| out.dimensions.push(m)))
-                        };
-                        if let Err(e) = parsed {
+                for relative in pack_root.list(&format!("assets/{namespace}/polytone/{kind}/")) {
+                    if !relative.ends_with(".json") {
+                        continue;
+                    }
+                    let implicit = horizon_polytone::implicit_id(&relative, kind);
+                    let json = match pack_root
+                        .read(&relative)
+                        .map_err(|e| e.to_string())
+                        .and_then(|bytes| {
+                            serde_json::from_slice::<Json>(&bytes).map_err(|e| e.to_string())
+                        }) {
+                        Ok(json) => json,
+                        Err(e) => {
                             log::warn!("{relative}: {e}");
+                            continue;
                         }
+                    };
+                    let parsed = if kind == "biome_modifiers" {
+                        horizon_polytone::BiomeModifier::parse(&json, implicit.as_deref())
+                            .map(|m| m.map(|m| out.biomes.push(m)))
+                    } else {
+                        horizon_polytone::DimensionModifier::parse(&json, implicit.as_deref())
+                            .map(|m| m.map(|m| out.dimensions.push(m)))
+                    };
+                    if let Err(e) = parsed {
+                        log::warn!("{relative}: {e}");
                     }
                 }
             }
@@ -169,6 +172,14 @@ pub struct Frame {
     pub downfall: f32,
 }
 
+impl Frame {
+    /// `g.rain`: the mean of the rain and thunder levels, so plain rain is 0.5 and a
+    /// thunderstorm 1 (observed on the real mod: a pack's `g.rain` colormap row).
+    pub fn global_rain(&self) -> f64 {
+        (f64::from(self.rain) + f64::from(self.thunder)) / 2.0
+    }
+}
+
 /// The game side of a pack expression in an attribute value: `g`, `p`, `c`, `o` (the camera's
 /// position) and `r`, `v` (the value so far) and the pack's `config`.
 struct FrameHost<'a> {
@@ -176,6 +187,21 @@ struct FrameHost<'a> {
     configs: &'a horizon_polytone::pack::Configs,
     value: f64,
     seed: u64,
+}
+
+/// `program`'s value for the frame (a pack's expression outside attribute layers: its `v` is 0).
+pub(crate) fn eval_frame(
+    program: &horizon_polytone::expr::Program,
+    frame: &Frame,
+    configs: &horizon_polytone::pack::Configs,
+) -> Option<horizon_polytone::expr::Value> {
+    let mut host = FrameHost {
+        frame,
+        configs,
+        value: 0.0,
+        seed: frame.game_time as u64,
+    };
+    program.eval(&mut host).ok()
 }
 
 impl horizon_polytone::expr::Host for FrameHost<'_> {
@@ -197,7 +223,7 @@ impl horizon_polytone::expr::Host for FrameHost<'_> {
         let on = |root: Root| *target == V::Object(root as u32);
         let num = |n: f64| Ok(V::Num(n));
         match name {
-            "rain" if on(Root::Global) => num(f64::from(f.rain)),
+            "rain" if on(Root::Global) => num(f.global_rain()),
             "time" if on(Root::Global) => num(f.game_time as f64),
             "dayTime" if on(Root::Global) => num(f.day_time as f64),
             "skyType" if on(Root::Global) => num(f64::from(f.sky_type)),
@@ -277,6 +303,14 @@ pub(crate) struct Colormap {
     triangular: bool,
     /// Rounds to the nearest pixel (the default) instead of the one below.
     rounds: bool,
+    /// `biome_blend`: blocks take the mean of the colours around them, over the Biome Blend
+    /// square, as vanilla's biome tints do. Without the field, maps that sample the biome
+    /// (`temperature`, `downfall`, `biome_id`) blend: Polytone 6.8.6's water by `biome_id`
+    /// fades over a biome edge.
+    pub(crate) biome_blend: bool,
+    /// Its axes read nothing that changes up a column of one biome (no `o.y`): a section of
+    /// one biome can sample it once per column.
+    pub(crate) column: bool,
     width: u32,
     height: u32,
     rgba: Vec<u8>,
@@ -295,6 +329,18 @@ enum Axis {
 }
 
 impl Axis {
+    /// Whether the axis reads only what stays the same up a column of one biome.
+    fn column(&self) -> bool {
+        use horizon_polytone::expr::Root;
+        let flat = |root: Root, name: &str| match root {
+            Root::Object => matches!(name, "x" | "z" | "biome" | "temperature" | "downfall"),
+            Root::Random => name == "noise",
+            _ => false,
+        };
+        match self {
+            Self::Expr(program) | Self::BiomeId(_, program) => program.reads_only(&flat),
+        }
+    }
     fn value(&self, host: &mut dyn horizon_polytone::expr::Host) -> Option<f64> {
         match self {
             Self::Expr(program) => Some(program.eval(host).ok()?.num()),
@@ -311,14 +357,16 @@ impl Axis {
 
 /// A `biome_id_mapper`: inline, or an id of `polytone/biome_id_mappers/<path>.json`. Its values
 /// are divided by its `texture_size`, when it has one (pixel coordinates).
-fn biome_id_mapper(pack_root: &Path, json: &Json) -> HashMap<String, f64> {
+fn biome_id_mapper(pack_root: &ResourceSource, json: &Json) -> HashMap<String, f64> {
     let object = match json {
         Json::String(id) => {
             let (namespace, path) = id.split_once(':').unwrap_or(("minecraft", id));
-            let file = pack_root.join(format!(
-                "assets/{namespace}/polytone/biome_id_mappers/{path}.json"
-            ));
-            horizon_world::json_file::read::<Json>(&file).unwrap_or(Json::Null)
+            let file = format!("assets/{namespace}/polytone/biome_id_mappers/{path}.json");
+            pack_root
+                .read(&file)
+                .ok()
+                .and_then(|b| serde_json::from_slice(&b).ok())
+                .unwrap_or(Json::Null)
         }
         other => other.clone(),
     };
@@ -345,28 +393,53 @@ fn biome_id_mapper(pack_root: &Path, json: &Json) -> HashMap<String, f64> {
 }
 
 impl Colormap {
+    /// One colour wherever it samples (a `biome_colors` flat colour, RGB).
+    pub(crate) fn flat(rgb: u32) -> Self {
+        let zero = || Axis::Expr(horizon_polytone::expr::Program::compile("0").expect("a number"));
+        let [_, r, g, b] = rgb.to_be_bytes();
+        Self {
+            x: zero(),
+            y: zero(),
+            triangular: false,
+            rounds: true,
+            biome_blend: false,
+            column: true,
+            width: 1,
+            height: 1,
+            rgba: vec![r, g, b, 255],
+        }
+    }
+
     /// `assets/<namespace>/polytone/colormaps/<path>.png` and its optional `.json` (without
     /// one, the axes are the biome's temperature and downfall).
-    pub(crate) fn load(pack_root: &Path, id: &str) -> Option<Self> {
+    pub(crate) fn load(pack_root: &ResourceSource, id: &str) -> Option<Self> {
         let (namespace, path) = id.split_once(':')?;
-        let base = pack_root.join(format!("assets/{namespace}/polytone/colormaps/{path}"));
-        let png = base.with_extension("png");
-        let (width, height, rgba) = match crate::sprites::read_rgba(&png) {
+        let base = format!("assets/{namespace}/polytone/colormaps/{path}");
+        let png = format!("{base}.png");
+        let (width, height, rgba) = match crate::sprites::decode_rgba(&pack_root.read(&png).ok()?) {
             Ok(image) => image,
             Err(e) => {
                 log::warn!("colormap {id}: {e}");
                 return None;
             }
         };
-        let json: Json =
-            horizon_world::json_file::read(&base.with_extension("json")).unwrap_or(Json::Null);
+        let json: Json = pack_root
+            .read(&format!("{base}.json"))
+            .ok()
+            .and_then(|bytes| serde_json::from_slice(&bytes).ok())
+            .unwrap_or(Json::Null);
         let compile = horizon_polytone::expr::Program::compile;
-        let axis = |key: &str, default: &str| -> Option<Axis> {
+        let mut by_biome = false;
+        let mut axis = |key: &str, default: &str| -> Option<Axis> {
             let src = match &json[key] {
                 Json::String(s) => s.clone(),
                 Json::Number(n) => n.to_string(),
                 _ => default.to_owned(),
             };
+            by_biome |= matches!(
+                src.trim(),
+                "biome_id" | "temperature" | "legacy_temperature" | "downfall"
+            ) || matches!(src.trim(), "o.temperature" | "o.downfall");
             // The named samplers (wiki "Default Samplers") as the expressions they stand for.
             let src = match src.trim() {
                 "biome_id" => {
@@ -387,9 +460,16 @@ impl Colormap {
                 }
             }
         };
+        let (x, y) = (
+            axis("x_axis", "o.temperature")?,
+            axis("y_axis", "o.downfall")?,
+        );
+        let column = [&x, &y].iter().all(|axis| axis.column());
         Some(Self {
-            x: axis("x_axis", "o.temperature")?,
-            y: axis("y_axis", "o.downfall")?,
+            x,
+            y,
+            column,
+            biome_blend: json["biome_blend"].as_bool().unwrap_or(by_biome),
             triangular: json["triangular"].as_bool() == Some(true),
             rounds: json["rounds"].as_bool() != Some(false),
             width,
@@ -428,45 +508,33 @@ impl Colormap {
 /// The colormaps of the Polytone block and fluid modifiers of the packs merged at `pack_root`:
 /// (a fluid modifier, its targets, the colormap's id). Inline colormaps aren't read.
 pub(crate) fn polytone_colormap_modifiers(
-    pack_root: &Path,
+    pack_root: &ResourceSource,
 ) -> Vec<(bool, horizon_polytone::Targets, String)> {
     let mut out = Vec::new();
-    let namespaces = std::fs::read_dir(pack_root.join("assets"))
-        .into_iter()
-        .flatten()
-        .flatten();
-    for namespace in namespaces {
+    for relative in pack_root.list("assets/") {
         for (kind, fluid) in [("block_modifiers", false), ("fluid_modifiers", true)] {
-            let mut stack = vec![namespace.path().join("polytone").join(kind)];
-            while let Some(dir) = stack.pop() {
-                for entry in std::fs::read_dir(&dir).into_iter().flatten().flatten() {
-                    let path = entry.path();
-                    if path.is_dir() {
-                        stack.push(path);
-                        continue;
-                    }
-                    let Ok(json) = horizon_world::json_file::read::<Json>(&path) else {
-                        continue;
-                    };
-                    let Some(id) = json.get("colormap").and_then(Json::as_str) else {
-                        continue;
-                    };
-                    let id = if id.contains(':') {
-                        id.to_owned()
-                    } else {
-                        format!("minecraft:{id}")
-                    };
-                    let relative = path
-                        .strip_prefix(pack_root)
-                        .unwrap_or(&path)
-                        .to_string_lossy();
-                    let implicit = horizon_polytone::implicit_id(&relative, kind);
-                    match horizon_polytone::Targets::parse(json.get("targets"), implicit.as_deref())
-                    {
-                        Ok(targets) => out.push((fluid, targets, id)),
-                        Err(e) => log::warn!("{relative}: {e}"),
-                    }
-                }
+            if !relative.ends_with(".json") || !relative.contains(&format!("/polytone/{kind}/")) {
+                continue;
+            }
+            let Some(json) = pack_root
+                .read(&relative)
+                .ok()
+                .and_then(|bytes| serde_json::from_slice::<Json>(&bytes).ok())
+            else {
+                continue;
+            };
+            let Some(id) = json.get("colormap").and_then(Json::as_str) else {
+                continue;
+            };
+            let id = if id.contains(':') {
+                id.to_owned()
+            } else {
+                format!("minecraft:{id}")
+            };
+            let implicit = horizon_polytone::implicit_id(&relative, kind);
+            match horizon_polytone::Targets::parse(json.get("targets"), implicit.as_deref()) {
+                Ok(targets) => out.push((fluid, targets, id)),
+                Err(e) => log::warn!("{relative}: {e}"),
             }
         }
     }
@@ -497,6 +565,25 @@ pub(crate) fn polytone_noise() -> &'static horizon_core::noise::SimplexNoise {
 }
 
 impl horizon_polytone::expr::Host for BlockHost<'_> {
+    fn field(
+        &mut self,
+        root: horizon_polytone::expr::Root,
+        field: horizon_polytone::expr::Field,
+    ) -> Option<horizon_polytone::expr::Value> {
+        use horizon_polytone::expr::Field as F;
+        if root != horizon_polytone::expr::Root::Object {
+            return None;
+        }
+        Some(horizon_polytone::expr::Value::Num(match field {
+            F::X => f64::from(self.at[0]),
+            F::Y => f64::from(self.at[1]),
+            F::Z => f64::from(self.at[2]),
+            F::Temperature => f64::from(self.biome.temperature),
+            F::Downfall => f64::from(self.biome.downfall),
+            _ => return None,
+        }))
+    }
+
     fn root(&mut self, root: horizon_polytone::expr::Root) -> horizon_polytone::expr::Value {
         use horizon_polytone::expr::Root;
         horizon_polytone::expr::Value::Object(match root {
@@ -544,7 +631,7 @@ struct Resolver {
     frame: Arc<RwLock<Frame>>,
     configs: Arc<horizon_polytone::pack::Configs>,
     /// Where the packs' colormaps are, and the ones loaded so far (`None`: missing).
-    pack_root: Option<std::path::PathBuf>,
+    pack_root: Option<ResourceSource>,
     colormaps: ColormapCache,
 }
 
@@ -651,7 +738,7 @@ impl Resolver {
     /// A colormap value: sampled whenever its layer applies, its colour the modifier's argument
     /// (`#rrggbb` on RGB attributes, `#aarrggbb` on ARGB ones).
     fn colormap(&self, attribute: &'static Attribute, op: &'static str, id: &str) -> Option<Entry> {
-        let root = self.pack_root.as_deref()?;
+        let root = self.pack_root.as_ref()?;
         let colormap = self
             .colormaps
             .lock()
@@ -713,7 +800,7 @@ impl Resolver {
 /// The biome ids a `#tag` (`data/<namespace>/tags/worldgen/biome/<path>.json`) holds, nested
 /// tags included.
 fn biome_tag(
-    root: &Path,
+    root: &ResourceSource,
     tag: &str,
     cache: &mut HashMap<String, HashSet<String>>,
 ) -> HashSet<String> {
@@ -722,9 +809,13 @@ fn biome_tag(
     }
     cache.insert(tag.to_owned(), HashSet::new());
     let (namespace, path) = tag.split_once(':').unwrap_or(("minecraft", tag));
-    let file = root.join(format!("data/{namespace}/tags/worldgen/biome/{path}.json"));
+    let file = format!("data/{namespace}/tags/worldgen/biome/{path}.json");
     let mut out = HashSet::new();
-    if let Ok(json) = horizon_world::json_file::read::<Json>(&file) {
+    if let Ok(json) = root
+        .read(&file)
+        .map_err(|e| e.to_string())
+        .and_then(|bytes| serde_json::from_slice::<Json>(&bytes).map_err(|e| e.to_string()))
+    {
         for value in json["values"].as_array().into_iter().flatten() {
             let id = value
                 .as_str()
@@ -749,7 +840,7 @@ fn biome_tag(
 
 /// The timeline ids a dimension type's `timelines` names: an id, a `#tag` or a list,
 /// tags resolved through `tags/timeline/` (their entries may be `{"id", "required"}`).
-fn timeline_ids(root: &Path, json: &Json, out: &mut Vec<String>, depth: u32) {
+fn timeline_ids(root: &ResourceSource, json: &Json, out: &mut Vec<String>, depth: u32) {
     let entry = |e: &Json| {
         e.as_str()
             .or_else(|| e.get("id").and_then(Json::as_str))
@@ -762,9 +853,14 @@ fn timeline_ids(root: &Path, json: &Json, out: &mut Vec<String>, depth: u32) {
     for item in items {
         if let Some(tag) = item.strip_prefix('#') {
             let (namespace, path) = tag.split_once(':').unwrap_or(("minecraft", tag));
-            let file = root.join(format!("data/{namespace}/tags/timeline/{path}.json"));
+            let file = format!("data/{namespace}/tags/timeline/{path}.json");
             if depth < 8
-                && let Ok(tag) = horizon_world::json_file::read::<Json>(&file)
+                && let Ok(tag) = root
+                    .read(&file)
+                    .map_err(|e| e.to_string())
+                    .and_then(|bytes| {
+                        serde_json::from_slice::<Json>(&bytes).map_err(|e| e.to_string())
+                    })
             {
                 timeline_ids(root, &tag["values"], out, depth + 1);
             }
@@ -775,14 +871,14 @@ fn timeline_ids(root: &Path, json: &Json, out: &mut Vec<String>, depth: u32) {
 }
 
 impl Environment {
-    pub fn load(root: &Path) -> Result<Self> {
+    pub fn load(root: &ResourceSource) -> Result<Self> {
         Self::load_dimension(root, "overworld")
     }
 
     /// `EnvironmentAttributeSystem.addDefaultLayers` for a dimension type: its attributes, a
     /// biome layer for every attribute some biome sets, its timelines (in tag order), and the
     /// weather where `Level.canHaveWeather` (sky light, no ceiling, not the End).
-    pub fn load_dimension(root: &Path, dimension: &str) -> Result<Self> {
+    pub fn load_dimension(root: &ResourceSource, dimension: &str) -> Result<Self> {
         Self::load_dimension_with(root, dimension, &PackModifiers::default())
     }
 
@@ -792,18 +888,43 @@ impl Environment {
     /// changes the biome's entries, `post_process` adds a biome layer after the weather.
     /// Modifiers apply lowest priority first, so the highest wins.
     pub fn load_dimension_with(
-        root: &Path,
+        root: &ResourceSource,
         dimension: &str,
         packs: &PackModifiers,
     ) -> Result<Self> {
-        let json: Json = horizon_world::json_file::read(
-            &root.join(format!("data/minecraft/dimension_type/{dimension}.json")),
+        Self::load_dimension_attributes(root, dimension, packs, &Json::Null)
+    }
+
+    /// Builds the data attributes first, then applies the selected resource packs.
+    fn load_dimension_attributes(
+        root: &ResourceSource,
+        dimension: &str,
+        packs: &PackModifiers,
+        extra: &Json,
+    ) -> Result<Self> {
+        let mut json: Json = serde_json::from_slice(
+            &root.read(&format!("data/minecraft/dimension_type/{dimension}.json"))?,
         )?;
+        if let Some(attributes) = extra["attributes"].as_object() {
+            if !json["attributes"].is_object() {
+                json["attributes"] = Json::Object(Default::default());
+            }
+            if let Some(own) = json["attributes"].as_object_mut() {
+                own.extend(attributes.iter().map(|(k, v)| (k.clone(), v.clone())));
+            }
+        }
+        if !extra["timelines"].is_null() {
+            json["timelines"] = extra["timelines"].clone();
+        }
         let id = format!("minecraft:{dimension}");
+        let tags = crate::pack_tags::Tags::new(root);
         let mine: Vec<_> = packs
             .dimensions
             .iter()
-            .filter(|m| m.targets.matches(&id, |_| false))
+            .filter(|m| {
+                m.targets
+                    .matches(&id, |tag| tags.contains("dimension_type", tag, &id))
+            })
             .collect();
         let frame = Arc::new(RwLock::new(Frame::default()));
         let resolver = Resolver {
@@ -827,41 +948,49 @@ impl Environment {
         let mut biomes = HashMap::new();
         let mut post = HashMap::new();
         let tags = std::cell::RefCell::new(HashMap::new());
-        if let Ok(folder) =
-            horizon_world::json_folder::read(&root.join("data/minecraft/worldgen/biome"))
-        {
-            for file in folder.files.iter().filter(|f| !f.name.contains('/')) {
-                let biome: Json = horizon_world::json_file::parse(&file.path, file.bytes()?)?;
-                let name = format!("minecraft:{}", file.name);
-                let mut map = match AttributeMap::parse(&biome["attributes"]) {
-                    Ok(map) => map,
-                    Err(e) => {
-                        log::warn!("biome {}: {e}", file.name);
-                        continue;
-                    }
-                };
-                let mut post_map = AttributeMap::default();
-                for m in &packs.biomes {
-                    let in_tag =
-                        |tag: &str| biome_tag(root, tag, &mut tags.borrow_mut()).contains(&name);
-                    if m.targets.matches(&name, in_tag) {
-                        resolver.apply(&mut map, &m.base);
-                        resolver.apply(&mut post_map, &m.post_process);
-                    }
-                }
-                if !post_map.is_empty() {
-                    post.insert(name.clone(), post_map);
-                }
-                biomes.insert(name, map);
+        for file in root.list("data/minecraft/worldgen/biome/") {
+            let Some(name) = file
+                .strip_prefix("data/minecraft/worldgen/biome/")
+                .and_then(|s| s.strip_suffix(".json"))
+            else {
+                continue;
+            };
+            if name.contains('/') {
+                continue;
             }
+            let biome: Json = serde_json::from_slice(&root.read(&file)?)?;
+            let name = format!("minecraft:{name}");
+            let mut map = match AttributeMap::parse(&biome["attributes"]) {
+                Ok(map) => map,
+                Err(e) => {
+                    log::warn!("biome {}: {e}", file);
+                    continue;
+                }
+            };
+            let mut post_map = AttributeMap::default();
+            for m in &packs.biomes {
+                let in_tag =
+                    |tag: &str| biome_tag(root, tag, &mut tags.borrow_mut()).contains(&name);
+                if m.targets.matches(&name, in_tag) {
+                    resolver.apply(&mut map, &m.base);
+                    resolver.apply(&mut post_map, &m.post_process);
+                }
+            }
+            if !post_map.is_empty() {
+                post.insert(name.clone(), post_map);
+            }
+            biomes.insert(name, map);
         }
         builder.biome_layer(biomes.values());
         let mut ids = Vec::new();
         timeline_ids(root, &json["timelines"], &mut ids, 0);
         for id in ids {
             let (namespace, path) = id.split_once(':').unwrap_or(("minecraft", &id));
-            let file = root.join(format!("data/{namespace}/timeline/{path}.json"));
-            match horizon_world::json_file::read::<Json>(&file)
+            let file = format!("data/{namespace}/timeline/{path}.json");
+            match root
+                .read(&file)
+                .map_err(|e| e.to_string())
+                .and_then(|bytes| serde_json::from_slice::<Json>(&bytes).map_err(|e| e.to_string()))
                 .map_err(|e| e.to_string())
                 .and_then(|t| Timeline::parse(&t))
             {
@@ -881,6 +1010,9 @@ impl Environment {
         builder.constant_layer(&dimension_post);
         Ok(Self {
             system: builder.build(),
+            source: root.clone(),
+            dimension: dimension.to_owned(),
+            packs: packs.clone(),
             frame,
             biomes,
             post,
@@ -907,6 +1039,49 @@ impl Environment {
     /// Whether packs added post-process biome layers (the frame then mixes them too).
     pub fn has_biome_post(&self) -> bool {
         !self.post.is_empty()
+    }
+
+    /// Replaces the levels' own dimension types (their `attributes` and `timelines`), at a world's
+    /// load. The table is leaked: one small entry per level and world load.
+    pub fn set_level_attributes(levels: Vec<(String, Json)>) {
+        let table = levels
+            .into_iter()
+            .map(|(id, attributes)| {
+                let entry = Box::leak(Box::new((attributes, OnceLock::new())));
+                (id, &*entry)
+            })
+            .collect();
+        *LEVELS.write().unwrap_or_else(|e| e.into_inner()) = table;
+    }
+
+    /// `base` with the attributes a level's dimension type set over it, for a level a mod or a
+    /// data pack added; `base` itself for any other, or when the attributes are refused.
+    pub fn for_level<'a>(level: &str, base: &'a Environment) -> &'a Environment {
+        let entry = LEVELS
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .get(level)
+            .copied();
+        let Some((attributes, made)) = entry else {
+            return base;
+        };
+        made.get_or_init(|| {
+            Self::load_dimension_attributes(&base.source, &base.dimension, &base.packs, attributes)
+                .map_err(|e| log::warn!("dimension {level}: attributes refused: {e}"))
+                .ok()
+        })
+        .as_ref()
+        .unwrap_or(base)
+    }
+
+    /// `base` with the `attributes` and `timelines` of the dimension type `extra` over it, owned:
+    /// what a client of a server keeps for the level the server's type describes. A timeline the
+    /// client has no file for is skipped with a warning. None when the type's attributes are
+    /// refused.
+    pub fn with_type(base: &Environment, extra: &Json) -> Option<Environment> {
+        Self::load_dimension_attributes(&base.source, &base.dimension, &base.packs, extra)
+            .map_err(|e| log::warn!("the server's dimension type: attributes refused: {e}"))
+            .ok()
     }
 
     /// `EnvironmentAttributeSystem.getValue` of one attribute, or its dimension value without
@@ -969,29 +1144,52 @@ impl Environment {
 
 /// `Level.updateSkyBrightness`'s darkening: from the sky light level, a dimension value.
 pub fn sky_darken(environment: &Environment, day_time: i64, rain: f32, thunder: f32) -> i32 {
-    let sky = environment.sample(&Sample {
-        day_time,
-        rain,
-        thunder,
-        ..Sample::default()
-    });
-    // Level.updateSkyBrightness: `(int)(15.0F - skyLightLevel)`, the float
-    // truncated, not rounded (#11323): the darkening steps up only once the
-    // light has fallen a whole level. `sky_light_level` is the attribute as a
-    // fraction of 15, so the product is its raw value in `f32`.
-    (15.0 - 15.0 * sky.sky_light_level) as i32
+    let level = match environment.value(
+        "gameplay/sky_light_level",
+        &Sample {
+            day_time,
+            rain,
+            thunder,
+            ..Sample::default()
+        },
+    ) {
+        Some(Value::Float(level)) => level,
+        _ => 0.0,
+    };
+    // Truncate the raw light level without a lossy normalize / denormalize round trip.
+    (15.0 - level) as i32
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    /// The level table is global, so the tests that set it take turns.
+    static LEVEL_TABLE: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+    #[test]
+    fn resolved_dimension_data_and_raw_darkening_need_no_files() {
+        use horizon_assets::resource_source::Resource;
+        for (level, expected) in [(14.5, 0), (13.5, 1), (4.0, 11)] {
+            let source = ResourceSource::indexed(std::collections::BTreeMap::from([(
+                "data/minecraft/dimension_type/overworld.json".into(),
+                Resource::bytes(
+                    format!(r#"{{"attributes":{{"minecraft:gameplay/sky_light_level":{level}}}}}"#)
+                        .into_bytes(),
+                ),
+            )]));
+            let environment = Environment::load(&source).unwrap();
+            assert_eq!(sky_darken(&environment, 0, 0.0, 0.0), expected);
+            assert!(Environment::load_dimension(&source, "missing").is_err());
+        }
+    }
+
     fn overworld() -> Option<Environment> {
         let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../../.local/horizon-client/26.3");
         root.join("data/minecraft/timeline/day.json")
             .exists()
-            .then(|| Environment::load(&root).unwrap())
+            .then(|| Environment::load(&ResourceSource::directory(root)).unwrap())
     }
 
     #[test]
@@ -1047,11 +1245,16 @@ mod tests {
         for (path, text) in pack {
             write(&format!("pack/{path}"), text);
         }
-        let modifiers = PackModifiers::read(&dir.join("pack")).with_configs(
-            crate::packs::polytone_configs(&crate::packs::Source::Dir(dir.join("pack"))),
-        );
-        let env =
-            Environment::load_dimension_with(&dir.join("world"), "overworld", &modifiers).unwrap();
+        let modifiers = PackModifiers::read(&ResourceSource::directory(dir.join("pack")))
+            .with_configs(crate::packs::polytone_configs(&crate::packs::Source::Dir(
+                dir.join("pack"),
+            )));
+        let env = Environment::load_dimension_with(
+            &ResourceSource::directory(dir.join("world")),
+            "overworld",
+            &modifiers,
+        )
+        .unwrap();
         std::fs::remove_dir_all(&dir).unwrap();
         env
     }
@@ -1167,20 +1370,25 @@ mod tests {
                 r#"{"default_value": 7}"#,
             ),
         ]);
-        let at = |rain: f32, chunks: i32| {
+        let at = |rain: f32, thunder: f32, chunks: i32| {
             env.set_frame(Frame {
                 rain,
+                thunder,
                 render_distance: chunks,
                 ..Frame::default()
             });
             sky_at(&env, "minecraft:plains", 0.0)
         };
         // `c.viewDistance` is in blocks: 16 chunks are 256.
-        assert_eq!(at(0.0, 16).fog_end, 224.0);
-        assert_eq!(at(0.25, 32).fog_end, 498.0);
+        assert_eq!(at(0.0, 0.0, 16).fog_end, 224.0);
+        // `g.rain` is the mean of rain and thunder: half rain is 0.25 (448 + 50), plain rain
+        // 0.5 and a thunderstorm 1, both past the `min` (224 + 100).
+        assert_eq!(at(0.5, 0.0, 32).fog_end, 498.0);
+        assert_eq!(at(1.0, 0.0, 16).fog_end, 324.0);
+        assert_eq!(at(1.0, 1.0, 16).fog_end, 324.0);
         // `v` is the value the layers before gave: the default start 0, and 192.33 for clouds.
-        assert_eq!(at(0.0, 16).fog_start, 7.0);
-        assert_eq!(at(0.0, 16).cloud_height, 192.33 * 0.5);
+        assert_eq!(at(0.0, 0.0, 16).fog_start, 7.0);
+        assert_eq!(at(0.0, 0.0, 16).cloud_height, 192.33 * 0.5);
     }
 
     /// A PNG of RGBA pixels in one row.
@@ -1215,18 +1423,100 @@ mod tests {
             ),
             ("assets/mypack/polytone/colormaps/sky.png", &png),
         ]);
-        let sky = |rain: f32| {
+        let sky = |rain: f32, thunder: f32| {
             env.set_frame(Frame {
                 rain,
+                thunder,
                 ..Frame::default()
             });
             env.sample(&Sample::default()).sky_color
         };
-        assert_eq!(sky(0.0), [1.0, 0.0, 0.0]);
-        assert_eq!(sky(0.3), [0.0, 1.0, 0.0]);
-        assert_eq!(sky(1.0), [0.0, 0.0, 1.0]);
-        // A transparent pixel keeps the colour the layers before gave (the dimension's #808080).
-        assert_eq!(sky(0.7), [128.0 / 255.0; 3]);
+        // `g.rain` 0, 0.3 (rain 0.6), 1 (a thunderstorm).
+        assert_eq!(sky(0.0, 0.0), [1.0, 0.0, 0.0]);
+        assert_eq!(sky(0.6, 0.0), [0.0, 1.0, 0.0]);
+        assert_eq!(sky(1.0, 1.0), [0.0, 0.0, 1.0]);
+        // A transparent pixel keeps the colour the layers before gave (the dimension's #808080):
+        // `g.rain` 0.7.
+        assert_eq!(sky(1.0, 0.4), [128.0 / 255.0; 3]);
+    }
+
+    /// A level's attributes go over the Overworld's one by one; only a registered level gets its
+    /// own environment, and the table clears.
+    #[test]
+    fn only_a_registered_level_gets_its_own_environment() {
+        let _turn = LEVEL_TABLE.lock().unwrap_or_else(|e| e.into_inner());
+        use horizon_assets::resource_source::Resource;
+        let source = ResourceSource::indexed(std::collections::BTreeMap::from([(
+            "data/minecraft/dimension_type/overworld.json".into(),
+            Resource::bytes(
+                br#"{"attributes":{"minecraft:gameplay/sky_light_level":15.0}}"#.to_vec(),
+            ),
+        )]));
+        let base = Environment::load(&source).unwrap();
+        let id = "test:env_pocket";
+        let darken = |e: &Environment| sky_darken(e, 0, 0.0, 0.0);
+        assert!(std::ptr::eq(Environment::for_level(id, &base), &base));
+        Environment::set_level_attributes(vec![(
+            id.to_owned(),
+            serde_json::json!({"attributes": {"minecraft:gameplay/sky_light_level": 4.0}}),
+        )]);
+        let own = Environment::for_level(id, &base);
+        assert!(!std::ptr::eq(own, &base));
+        assert_eq!((darken(&base), darken(own)), (0, 11));
+        assert!(std::ptr::eq(
+            Environment::for_level("test:other", &base),
+            &base
+        ));
+        Environment::set_level_attributes(Vec::new());
+        assert!(std::ptr::eq(Environment::for_level(id, &base), &base));
+    }
+
+    /// A client's own environment for a server's type: its attributes over the base's, owned.
+    #[test]
+    fn a_servers_type_makes_an_owned_environment() {
+        use horizon_assets::resource_source::Resource;
+        let source = ResourceSource::indexed(std::collections::BTreeMap::from([(
+            "data/minecraft/dimension_type/overworld.json".into(),
+            Resource::bytes(
+                br#"{"attributes":{"minecraft:gameplay/sky_light_level":15.0}}"#.to_vec(),
+            ),
+        )]));
+        let base = Environment::load(&source).unwrap();
+        let darken = |e: &Environment| sky_darken(e, 0, 0.0, 0.0);
+        let own = Environment::with_type(
+            &base,
+            &serde_json::json!({"attributes": {"minecraft:gameplay/sky_light_level": 4.0}}),
+        )
+        .unwrap();
+        assert_eq!((darken(&base), darken(&own)), (0, 11));
+        // Timelines the client has no file for are skipped, not refused.
+        assert!(
+            Environment::with_type(&base, &serde_json::json!({"timelines": ["test:none"]}))
+                .is_some()
+        );
+        let bad = serde_json::json!({"attributes": {"minecraft:visual/not_an_attribute": 1}});
+        assert!(Environment::with_type(&base, &bad).is_none());
+    }
+
+    /// Attributes the game refuses leave the level on the Overworld's environment.
+    #[test]
+    fn refused_attributes_fall_back_to_the_base() {
+        let _turn = LEVEL_TABLE.lock().unwrap_or_else(|e| e.into_inner());
+        use horizon_assets::resource_source::Resource;
+        let source = ResourceSource::indexed(std::collections::BTreeMap::from([(
+            "data/minecraft/dimension_type/overworld.json".into(),
+            Resource::bytes(br#"{"attributes":{}}"#.to_vec()),
+        )]));
+        let base = Environment::load(&source).unwrap();
+        Environment::set_level_attributes(vec![(
+            "test:bad_env".to_owned(),
+            serde_json::json!({"attributes": {"minecraft:visual/not_an_attribute": 1}}),
+        )]);
+        assert!(std::ptr::eq(
+            Environment::for_level("test:bad_env", &base),
+            &base
+        ));
+        Environment::set_level_attributes(Vec::new());
     }
 
     #[test]

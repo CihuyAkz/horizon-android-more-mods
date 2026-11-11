@@ -8,6 +8,8 @@ pub mod data_location;
 pub mod datapacks;
 pub mod desktop;
 pub mod desktop_seams;
+pub mod developer_install;
+pub mod developer_offline;
 pub mod export;
 #[cfg(unix)]
 pub mod game_app;
@@ -16,6 +18,7 @@ pub mod github;
 pub mod github_mods;
 pub mod heads;
 pub mod i18n;
+pub mod identity;
 pub mod import;
 #[cfg(windows)]
 pub mod installer;
@@ -42,6 +45,7 @@ pub mod private_window;
 pub mod process;
 pub mod proxy;
 pub mod relocation;
+mod run_leases;
 pub mod rust_toolchain;
 pub mod screenshots;
 pub mod server_list;
@@ -50,7 +54,6 @@ pub mod setup_args;
 pub mod shop;
 pub mod shortcut;
 pub mod signed;
-pub mod skins;
 pub mod sources;
 pub mod tailscale;
 pub mod telemetry;
@@ -62,3 +65,11 @@ pub mod wardrobe;
 #[cfg(windows)]
 mod windows_runtime;
 pub mod worlds;
+
+pub mod jars;
+
+pub mod storage;
+
+pub mod cache_cleanup;
+
+pub mod bug_report;

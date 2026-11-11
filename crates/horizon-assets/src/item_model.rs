@@ -18,7 +18,13 @@ use std::{
 
 mod component_predicate;
 mod foreign;
+mod mod_properties;
 mod special;
+pub use mod_properties::{
+    is_item_model_type, is_range_property, is_select_property, is_tint_source, keep_mod_ids,
+    register_item_models, register_range_properties, register_select_properties,
+    register_tint_sources,
+};
 pub use special::{SpecialKind, SpecialModel};
 
 type Result<T> = std::result::Result<T, DecodeError>;
@@ -420,6 +426,16 @@ pub enum ItemModelNode {
         model: SpecialModel,
     },
     BundleSelectedItem,
+    /// A node of a type a native mod registered (`register_item_models`): per stack, its mod
+    /// answers which of `models`, by name, draw (`item_model_update`).
+    Registered {
+        kind: String,
+        transformation: Option<Mat4>,
+        /// The node's JSON object, converted once at load.
+        config: Arc<horizon_core::nbt::Tag>,
+        /// The node's `models` object: named nodes decoded and baked as any other.
+        models: Vec<(String, ItemModelNode)>,
+    },
 }
 #[derive(Clone, Debug)]
 pub struct SwitchCase {
@@ -473,7 +489,11 @@ impl ItemModelNode {
                 on_true: Box::new(Self::decode(required(m, "on_true")?)?),
                 on_false: Box::new(Self::decode(required(m, "on_false")?)?),
             },
-            "minecraft:select" if foreign::property_is_foreign(m)? => {
+            // A mod's registered property is read per stack; no case matches any other foreign one.
+            "minecraft:select"
+                if foreign::property_is_foreign(m)?
+                    && !is_select_property(&ident(required(m, "property")?)?) =>
+            {
                 // No case can match a property Horizon cannot read.
                 let fallback = get(m, "fallback").map(Self::decode).transpose()?;
                 foreign::wrap(fallback.unwrap_or(Self::Empty), optional_transformation(m)?)
@@ -505,7 +525,9 @@ impl ItemModelNode {
                 }
             }
             "minecraft:range_dispatch" => {
-                let foreign_property = foreign::property_is_foreign(m)?;
+                // A mod's registered property is read per stack; any other foreign one is 0.
+                let foreign_property = foreign::property_is_foreign(m)?
+                    && !is_range_property(&ident(required(m, "property")?)?);
                 let mut entries = list(required(m, "entries")?)?
                     .iter()
                     .map(|e| {
@@ -540,6 +562,7 @@ impl ItemModelNode {
                 }
             }
             "minecraft:special" if SpecialModel::is_foreign(required(m, "model")?) => {
+                SpecialModel::warn_foreign_once(required(m, "model")?);
                 // The mod's own renderer is not run: the base model stands in.
                 Self::Model(ModelLeaf {
                     model: ident(required(m, "base")?)?,
@@ -553,8 +576,22 @@ impl ItemModelNode {
                 model: SpecialModel::decode(required(m, "model")?)?,
             },
             "minecraft:bundle/selected_item" => Self::BundleSelectedItem,
-            other if foreign::is_foreign(other) => foreign::decode_node(other, m),
-            _ => return Err(err("unknown item model type")),
+            kind if is_item_model_type(kind) => Self::Registered {
+                kind: kind.to_owned(),
+                transformation: optional_transformation(m)?,
+                config: Arc::new(
+                    horizon_core::json_nbt::json_to_tag(v)
+                        .map_err(|_| err("invalid item model data"))?,
+                ),
+                models: match m.get("models") {
+                    None => Vec::new(),
+                    Some(models) => object(models)?
+                        .iter()
+                        .map(|(name, node)| Ok((name.clone(), Self::decode(node)?)))
+                        .collect::<Result<_>>()?,
+                },
+            },
+            other => return Err(err(&format!("unknown item model type {other}"))),
         })
     }
     /// Every model resource id the tree can ask for.
@@ -582,6 +619,9 @@ impl ItemModelNode {
                 fallback.iter().for_each(|f| f.dependencies(out));
             }
             Self::Special { base, .. } => out.push(base.clone()),
+            Self::Registered { models, .. } => {
+                models.iter().for_each(|(_, m)| m.dependencies(out));
+            }
         }
     }
 }
@@ -612,12 +652,24 @@ impl SwitchCase {
 #[derive(Clone, Debug, PartialEq)]
 pub enum TintSource {
     Constant(i32),
-    CustomModelData { index: i32, default: i32 },
+    CustomModelData {
+        index: i32,
+        default: i32,
+    },
     Dye(i32),
-    Grass { temperature: f32, downfall: f32 },
+    Grass {
+        temperature: f32,
+        downfall: f32,
+    },
     Firework(i32),
     Potion(i32),
     Team(i32),
+    /// A source a native mod registered (`register_tint_sources`), read through
+    /// [`ItemEnv::item_tint_source`] with its entry in the model's `tints`.
+    Mod {
+        id: String,
+        config: Arc<horizon_core::nbt::Tag>,
+    },
 }
 impl TintSource {
     fn decode(v: &Value) -> Result<Self> {
@@ -645,6 +697,13 @@ impl TintSource {
             "minecraft:firework" => Self::Firework(default()?),
             "minecraft:potion" => Self::Potion(default()?),
             "minecraft:team" => Self::Team(default()?),
+            other if is_tint_source(other) => Self::Mod {
+                id: other.to_owned(),
+                config: Arc::new(
+                    horizon_core::json_nbt::json_to_tag(v)
+                        .map_err(|_| err("unknown item tint source"))?,
+                ),
+            },
             // A mod's own tint source, which its Java code computes: untinted here.
             other if foreign::is_foreign(other) => Self::Constant(-1),
             _ => return Err(err("unknown item tint source")),
@@ -705,6 +764,9 @@ impl ConditionProperty {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum SelectProperty {
+    /// A property a native mod registered (`register_select_properties`), read through
+    /// [`ItemEnv::item_model_select_property`]; its `when` values are strings.
+    Custom(String),
     CustomModelData(i32),
     MainHand,
     ChargeType,
@@ -722,7 +784,11 @@ pub enum SelectProperty {
 }
 impl SelectProperty {
     fn decode(m: &Map<String, Value>) -> Result<Self> {
-        Ok(match ident(required(m, "property")?)?.as_str() {
+        let property = ident(required(m, "property")?)?;
+        if is_select_property(&property) {
+            return Ok(Self::Custom(property));
+        }
+        Ok(match property.as_str() {
             "minecraft:custom_model_data" => {
                 Self::CustomModelData(get(m, "index").map_or(Ok(0), non_negative)?)
             }
@@ -747,9 +813,10 @@ impl SelectProperty {
     /// A `when` value in canonical form (identifiers normalised).
     fn decode_value(&self, v: &Value) -> Result<Value> {
         Ok(match self {
-            Self::CustomModelData(_) | Self::BlockState(_) | Self::LocalTime { .. } => {
-                Value::String(string(v)?)
-            }
+            Self::Custom(_)
+            | Self::CustomModelData(_)
+            | Self::BlockState(_)
+            | Self::LocalTime { .. } => Value::String(string(v)?),
             Self::MainHand => match string(v)?.as_str() {
                 s @ ("left" | "right") => Value::String(s.to_owned()),
                 _ => return Err(err("invalid arm")),
@@ -832,6 +899,9 @@ impl PartialEq for NeedleState {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum NumericProperty {
+    /// A property a native mod registered (`register_range_properties`), read through
+    /// [`ItemEnv::item_model_range_property`].
+    Custom(String),
     BundleFullness,
     Compass {
         wobble: bool,
@@ -860,7 +930,11 @@ pub enum NumericProperty {
 impl NumericProperty {
     fn decode(m: &Map<String, Value>) -> Result<Self> {
         let normalize = || get(m, "normalize").map_or(Ok(true), boolean);
-        Ok(match ident(required(m, "property")?)?.as_str() {
+        let property = ident(required(m, "property")?)?;
+        if is_range_property(&property) {
+            return Ok(Self::Custom(property));
+        }
+        Ok(match property.as_str() {
             "minecraft:custom_model_data" => {
                 Self::CustomModelData(get(m, "index").map_or(Ok(0), non_negative)?)
             }
@@ -1035,6 +1109,37 @@ pub trait ItemEnv {
     fn item_model_property(&self, _property: &str, _stack: &StackView) -> bool {
         false
     }
+    /// A mod's registered numeric `range_dispatch` property, 0 when no mod answers.
+    fn item_model_range_property(&self, _property: &str, _stack: &StackView) -> f32 {
+        0.0
+    }
+    /// A mod's registered categorical `select` property, `None` (the fallback) when no
+    /// mod answers.
+    fn item_model_select_property(&self, _property: &str, _stack: &StackView) -> Option<String> {
+        None
+    }
+    /// A mod's registered tint source for `stack`, with its entry in the model's `tints`:
+    /// ARGB, white when no mod answers.
+    fn item_tint_source(
+        &self,
+        _source: &str,
+        _config: &horizon_core::nbt::Tag,
+        _stack: &StackView,
+    ) -> i32 {
+        -1
+    }
+    /// A mod's registered node type for `stack`, with the node's object and the surroundings
+    /// `ItemModel.update` reads (`ctx`): push the names of the node's `models` to draw, in order.
+    /// None draw when no mod answers.
+    fn item_model_update(
+        &self,
+        _kind: &str,
+        _config: &horizon_core::nbt::Tag,
+        _stack: &StackView,
+        _ctx: &Context,
+        _models: &mut Vec<String>,
+    ) {
+    }
     /// `PotionContents.getColorOr` for the potion/effects part: the mixed
     /// effect colour, or `None` when the contents have no visible effects.
     fn potion_effect_color(&self, _potion_contents: &Value) -> Option<i32> {
@@ -1115,7 +1220,7 @@ pub struct ResolvedItem {
 #[derive(Default)]
 pub struct ItemModels {
     pub definitions: BTreeMap<String, ClientItem>,
-    pub prototypes: BTreeMap<String, Components>,
+    pub prototypes: Arc<BTreeMap<String, Components>>,
 }
 
 impl ItemModels {
@@ -1371,6 +1476,22 @@ impl Resolve<'_> {
                         .append_layers(out, &selected, self.ctx, self.env);
                 }
             }
+            ItemModelNode::Registered {
+                kind,
+                transformation,
+                config,
+                models,
+            } => {
+                let mut drawn = Vec::new();
+                self.env
+                    .item_model_update(kind, config, self.stack, self.ctx, &mut drawn);
+                let child = compose(parent, transformation);
+                for name in &drawn {
+                    if let Some((_, model)) = models.iter().find(|(key, _)| key == name) {
+                        self.node(out, model, &child);
+                    }
+                }
+            }
         }
     }
     fn item_in_compass_tag(&self) -> bool {
@@ -1435,6 +1556,10 @@ impl Resolve<'_> {
     fn select_value(&self, property: &SelectProperty) -> Option<Value> {
         let owner = self.ctx.owner;
         match property {
+            SelectProperty::Custom(property) => self
+                .env
+                .item_model_select_property(property, self.stack)
+                .map(Value::String),
             SelectProperty::CustomModelData(i) => self
                 .component("minecraft:custom_model_data")
                 .and_then(|d| custom_data_at(d, "strings", *i))
@@ -1496,6 +1621,9 @@ impl Resolve<'_> {
     fn numeric(&self, property: &NumericProperty) -> f32 {
         let owner = self.ctx.owner;
         match property {
+            NumericProperty::Custom(property) => {
+                self.env.item_model_range_property(property, self.stack)
+            }
             NumericProperty::BundleFullness => self
                 .env
                 .bundle_fullness(self.stack, &self.components.to_map()),
@@ -1706,6 +1834,7 @@ impl Resolve<'_> {
                     .and_then(|o| o.team_color)
                     .unwrap_or(*default),
             ),
+            TintSource::Mod { id, config } => self.env.item_tint_source(id, config, self.stack),
         }
     }
 }

@@ -305,7 +305,10 @@ pub fn mouse_button(name: &str) -> Option<MouseButton> {
         _ => return None,
     })
 }
-pub use horizon_client_core::key_display::display_name;
+pub use horizon_client_core::key_display::{
+    clear_action_bindings, clear_action_resolver, display_name, replace_action_bindings,
+    reset_action_bindings, set_action_binding, set_action_resolver,
+};
 
 /// A key event: what the layout writes on its key, without modifiers, names
 /// that key from now on (`key_display::learn_layout`), so an AZERTY player's
@@ -379,6 +382,12 @@ impl KeyBinds {
             self.keys.insert(n, key.to_owned());
         }
     }
+    /// Publish these bindings as the ones `keybind` text components show
+    /// (`KeybindResolver`). Only the active set calls this: on load and after
+    /// the options change it.
+    pub fn sync_action_bindings(&self) {
+        replace_action_bindings(self.keys.iter().map(|(n, d)| (*n, d.as_str())));
+    }
     /// The bindings `options.txt` holds: vanilla's mappings only.
     pub fn saved(&self) -> Vec<(&'static str, String)> {
         MAPPINGS
@@ -425,7 +434,10 @@ impl KeyBinds {
     /// (`KeyboardHandler.handleDebugKeys`, `debug_keys.rs` reads the physical
     /// key and the binding itself); their defaults (A, S, D, T, L, 1 to 4...)
     /// would otherwise turn the key back into its old gameplay meaning.
-    fn translated_mappings<'a>(&'a self, key: &'a str) -> impl Iterator<Item = &'static str> + 'a {
+    pub fn translated_mappings<'a>(
+        &'a self,
+        key: &'a str,
+    ) -> impl Iterator<Item = &'static str> + 'a {
         all_mappings()
             .filter(|m| m.2 != "debug")
             .map(|m| m.0)
@@ -667,5 +679,16 @@ mod tests {
     fn display_names() {
         assert_eq!(display_name("key.keyboard.w").plain(), "W");
         assert_eq!(display_name("key.keyboard.slash").plain(), "/");
+    }
+    #[test]
+    fn only_a_synced_set_changes_keybind_display() {
+        let mut k = KeyBinds::default();
+        k.set("key.forward", "key.keyboard.up");
+        k.sync_action_bindings();
+        assert_eq!(display_name("key.forward").plain(), "key.keyboard.up");
+        let mut inactive = KeyBinds::default();
+        inactive.set("key.forward", "key.keyboard.x");
+        assert_eq!(display_name("key.forward").plain(), "key.keyboard.up");
+        clear_action_bindings();
     }
 }

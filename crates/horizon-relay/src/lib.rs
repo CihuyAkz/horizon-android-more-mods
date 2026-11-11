@@ -114,6 +114,12 @@ impl Config {
         if let Some(v) = var::<f64>("RELAY_GLOBAL_UNKNOWN_PER_MIN") {
             c.global_unknown_per_min = v;
         }
+        if let Some(v) = var::<f64>("RELAY_NAMEPLATE_UNKNOWN_PER_MIN") {
+            c.rates.nameplate_unknown_per_min = v;
+        }
+        if let Some(v) = var::<f64>("RELAY_NAMEPLATE_UNKNOWN_BURST") {
+            c.rates.nameplate_unknown_burst = v;
+        }
         if let Some(v) = var::<u8>("RELAY_PER_ADDRESS_LIMITS") {
             c.per_address = v != 0;
         }
@@ -668,8 +674,8 @@ fn join(
     let now = Instant::now();
     state.joins.fetch_add(1, Ordering::Relaxed);
     // The budgets for unknown codes (the site's, then the global one) are checked before the
-    // lookup, so a refusal says nothing about whether the nameplate exists. The site's comes first:
-    // emptying the global budget takes many sites, not the /64s of one home's /56.
+    // lookup, so a refusal says nothing about whether the nameplate exists. The site's comes
+    // first: emptying the global budget takes many sites, not the /64s of one home's /56.
     let allowed = {
         let mut limiter = locked(&state.limiter);
         limiter.allow_join(peer.ip(), now) && limiter.site_unknown_has(peer.ip(), now)
@@ -681,6 +687,15 @@ fn join(
     let Some(nameplate) = code::parse_nameplate(nameplate) else {
         return refuse(&mut stream, ErrorCode::BadRequest);
     };
+    // The nameplate's own budget: what one address set can take of the global unknown budget for
+    // a single short code. Checked before the lookup like the other budgets, so a refusal says
+    // nothing about whether the code exists. It counts unknown short codes only, so a wrong secret
+    // for an existing code stays the host's limit (five, then it retires the code), not the
+    // relay's.
+    if !locked(&state.limiter).nameplate_unknown_has(&nameplate, now) {
+        state.rate_limited.fetch_add(1, Ordering::Relaxed);
+        return refuse(&mut stream, ErrorCode::RateLimited);
+    }
     let session = random_u64();
     let (atx, arx) = sync_channel(1);
     let lookup = {
@@ -720,6 +735,7 @@ fn join(
             {
                 let mut limiter = locked(&state.limiter);
                 limiter.unknown(peer.ip(), now);
+                limiter.nameplate_unknown_take(&nameplate, now);
                 limiter.site_unknown_take(peer.ip(), now);
             }
             locked(&state.global_unknown).try_take(now);
@@ -813,26 +829,59 @@ fn bridge(
                 observed: Some(host_peer.to_string()),
             },
         )?;
+        let idle = state.config.idle;
         for s in [&guest, &host] {
-            s.set_read_timeout(Some(state.config.idle))?;
+            if cfg!(windows) {
+                s.set_read_timeout(Some(idle.min(WAITING_TURN)))?;
+                s.set_write_timeout(Some(idle))?;
+            } else {
+                s.set_read_timeout(Some(idle))?;
+            }
             let _ = s.set_nodelay(true);
             let _ = horizon_friends::set_tcp_keepalive(s);
         }
         let (g, h, st) = (guest.try_clone()?, host.try_clone()?, state.clone());
+        let ended = Arc::new(AtomicBool::new(false));
+        let other = ended.clone();
         let up = std::thread::Builder::new()
             .name("relay-copy".into())
-            .spawn(move || copy(&st, g, h))?;
-        copy(state, host, guest);
+            .spawn(move || copy(&st, g, h, &other))?;
+        copy(state, host, guest, &ended);
         let _ = up.join();
         Ok(())
     })()
 }
 
-fn copy(state: &State, mut from: TcpStream, mut to: TcpStream) {
+/// How long a read waits on Windows before looking whether the bridge has ended.
+const WAITING_TURN: Duration = Duration::from_millis(100);
+
+/// Whether `from` has something to read, a close included, before `idle` runs out or the other
+/// direction ends. For Windows, where `shutdown` wakes neither a read nor a write blocked on another
+/// handle of the socket. Peeking, so a wait that times out can't lose bytes.
+fn wait_for_data(from: &TcpStream, idle: Duration, ended: &AtomicBool) -> bool {
+    let since = Instant::now();
+    while !ended.load(Ordering::Relaxed) && since.elapsed() < idle {
+        match from.peek(&mut [0]) {
+            Ok(_) => return true,
+            Err(e)
+                if matches!(
+                    e.kind(),
+                    io::ErrorKind::WouldBlock | io::ErrorKind::TimedOut
+                ) => {}
+            Err(_) => return false,
+        }
+    }
+    false
+}
+
+fn copy(state: &State, mut from: TcpStream, mut to: TcpStream, ended: &AtomicBool) {
     let rate = state.config.session_rate;
     let mut bucket = Bucket::new(rate, (rate / 2.0).max(16384.0), Instant::now());
     let mut buf = [0u8; 16 * 1024];
     loop {
+        if cfg!(windows) && !wait_for_data(&from, state.config.idle, ended) {
+            break;
+        }
         let n = match from.read(&mut buf) {
             Ok(0) | Err(_) => break,
             Ok(n) => n,
@@ -849,6 +898,7 @@ fn copy(state: &State, mut from: TcpStream, mut to: TcpStream) {
         }
         state.relayed_bytes.fetch_add(n as u64, Ordering::Relaxed);
     }
+    ended.store(true, Ordering::Relaxed);
     let _ = from.shutdown(Shutdown::Both);
     let _ = to.shutdown(Shutdown::Both);
 }

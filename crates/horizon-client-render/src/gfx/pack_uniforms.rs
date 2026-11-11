@@ -374,6 +374,41 @@ pub const NAMES: &[&str] = &[
     "horizonDynamicLight13",
     "horizonDynamicLight14",
     "horizonDynamicLight15",
+    // Horizon's own: the boats' water patches, for the shadow pass's water (`water_patches`):
+    // how many, then each one's corner and y range, and its two horizontal edges.
+    "horizonWaterPatchCount",
+    "horizonWaterPatch0",
+    "horizonWaterPatch1",
+    "horizonWaterPatch2",
+    "horizonWaterPatch3",
+    "horizonWaterPatch4",
+    "horizonWaterPatch5",
+    "horizonWaterPatch6",
+    "horizonWaterPatch7",
+    "horizonWaterPatch8",
+    "horizonWaterPatch9",
+    "horizonWaterPatch10",
+    "horizonWaterPatch11",
+    "horizonWaterPatch12",
+    "horizonWaterPatch13",
+    "horizonWaterPatch14",
+    "horizonWaterPatch15",
+    "horizonWaterPatch16",
+    "horizonWaterPatch17",
+    "horizonWaterPatch18",
+    "horizonWaterPatch19",
+    "horizonWaterPatch20",
+    "horizonWaterPatch21",
+    "horizonWaterPatch22",
+    "horizonWaterPatch23",
+    "horizonWaterPatch24",
+    "horizonWaterPatch25",
+    "horizonWaterPatch26",
+    "horizonWaterPatch27",
+    "horizonWaterPatch28",
+    "horizonWaterPatch29",
+    "horizonWaterPatch30",
+    "horizonWaterPatch31",
     "isElytraFlying",
     "cloudHeight",
 ];
@@ -894,6 +929,7 @@ impl FrameUniforms {
             ),
         };
 
+        let patches = water_patches(frame.entities);
         let value = |name: &str| -> Value {
             let v3 = |v: Vec3| Value::f(&v.to_array());
             let m4 = |m: Mat4| Value::f(&m.to_cols_array());
@@ -984,6 +1020,11 @@ impl FrameUniforms {
                 "gbufferProjectionInverse" => m4(projection_inverse),
                 "gbufferPreviousModelView" => m4(previous_view),
                 "gbufferPreviousProjection" => m4(previous_projection),
+                "horizonWaterPatchCount" => Value::i(&[patches.len() as i32]),
+                n if water_patch_index(n).is_some() => Value::f(
+                    &(water_patch_index(n).and_then(|k| patches.get(k / 2).map(|p| p[k % 2])))
+                        .unwrap_or([0.0; 4]),
+                ),
                 "horizonDynamicLightCount" => Value::i(&[frame.dynamic_lights.len() as i32]),
                 n if dynamic_light_index(n).is_some() => Value::f(
                     &(dynamic_light_index(n).and_then(|k| frame.dynamic_lights.get(k)))
@@ -1302,7 +1343,11 @@ mod tests {
             format!(r#"{{"attributes": {attributes}}}"#),
         )
         .unwrap();
-        let environment = crate::environment::Environment::load_dimension(&root, name).unwrap();
+        let environment = crate::environment::Environment::load_dimension(
+            &horizon_assets::resource_source::ResourceSource::directory(root.clone()),
+            name,
+        )
+        .unwrap();
         std::fs::remove_dir_all(&root).unwrap();
         environment.sample(&crate::environment::Sample {
             day_time: 6000,
@@ -1445,7 +1490,7 @@ pub(super) mod initial_history_tests {
     /// 100-block offset; one it doesn't set is -100.05 (near) or 156 (far).
     #[test]
     fn the_shadow_projection_is_iris_s_for_the_pack_s_planes() {
-        let hud = HudBatch::new([1280, 720]);
+        let hud = HudBatch::scratch([1280, 720]);
         let f = frame(&hud);
         let (o, z, one) = (0, 0x80000000, 0x3f800000);
         type Case = (f32, Option<f32>, Option<f32>, [u32; 4], [u32; 4]);
@@ -1519,7 +1564,7 @@ pub(super) mod initial_history_tests {
     /// flying field of view (76.99999°) at 1280×720, the camera at (13.5, 69.62, -13.5).
     #[test]
     fn the_matrices_are_iris_to_the_last_bit() {
-        let hud = HudBatch::new([1280, 720]);
+        let hud = HudBatch::scratch([1280, 720]);
         let mut f = frame(&hud);
         f.camera = DVec3::new(13.5, 68.0 + f64::from(1.62f32), -13.5);
         f.yaw = 90.0;
@@ -1603,7 +1648,7 @@ pub(super) mod initial_history_tests {
     /// angles are vanilla's timeline at those ticks.
     #[test]
     fn the_sun_moon_and_up_are_iris_s_to_the_last_bit() {
-        let hud = HudBatch::new([1280, 720]);
+        let hud = HudBatch::scratch([1280, 720]);
         let mut f = frame(&hud);
         let o = 0;
         type Case = (f32, f32, f32, u32, u32, [[u32; 3]; 3], bool);
@@ -1700,7 +1745,7 @@ pub(super) mod initial_history_tests {
     /// negative x keeps its sign in the remainder.
     #[test]
     fn the_moon_s_shadow_matrices_are_iris_to_the_last_bit() {
-        let hud = HudBatch::new([1280, 720]);
+        let hud = HudBatch::scratch([1280, 720]);
         let mut f = frame(&hud);
         f.camera = DVec3::new(-556.5, 75.0 + f64::from(1.62f32), 212.5);
         f.sky.sun_angle = f32::from_bits(0x43107d5b);
@@ -1738,7 +1783,7 @@ pub(super) mod initial_history_tests {
     /// (13.5, 69.62, -13.5). The sky angles are vanilla's timeline at those ticks.
     #[test]
     fn the_shadow_matrices_turn_by_iris_s_angle_between_ticks() {
-        let hud = HudBatch::new([1280, 720]);
+        let hud = HudBatch::scratch([1280, 720]);
         let mut f = frame(&hud);
         f.camera = DVec3::new(13.5, 68.0 + f64::from(1.62f32), -13.5);
         let (o, z, one, minus) = (0, 0x80000000, 0x3f800000, 0xbf800000);
@@ -1814,7 +1859,7 @@ pub(super) mod initial_history_tests {
 
     #[test]
     fn first_history_is_current_then_tracks_the_actual_previous_frame() {
-        let hud = HudBatch::new([800, 450]);
+        let hud = HudBatch::scratch([800, 450]);
         let mut f = frame(&hud);
         let mut u = FrameUniforms::default();
         f.camera = DVec3::new(1024.25, -3.5, 11.75);
@@ -1853,7 +1898,7 @@ pub(super) mod initial_history_tests {
     /// clouds' drift at 0.03 blocks a tick, 5266 ticks in.
     #[test]
     fn cloud_time_is_how_far_the_clouds_drifted() {
-        let hud = HudBatch::new([800, 450]);
+        let hud = HudBatch::scratch([800, 450]);
         let f = frame(&hud);
         let mut u = FrameUniforms::default();
         let drift = crate::clouds::drift(5266, 0.0, 256);
@@ -1869,7 +1914,13 @@ pub(super) mod initial_history_tests {
 
     #[test]
     fn the_dynamic_lights_reach_the_pack_nearest_first() {
-        let hud = HudBatch::new([800, 450]);
+        let hud = HudBatch::new(
+            [800, 450],
+            crate::hud::GuiScale {
+                requested: 0,
+                unicode: false,
+            },
+        );
         let mut f = frame(&hud);
         let lights = [[1.0, 2.0, 3.0, 14.0], [-4.0, 0.5, 6.0, 7.0]];
         f.dynamic_lights = &lights;
@@ -1891,8 +1942,39 @@ pub(super) mod initial_history_tests {
     }
 
     #[test]
+    fn a_boats_water_patch_becomes_its_box() {
+        let vertex = |pos: [f32; 3], layer: u32| super::super::Vertex {
+            pos,
+            layer,
+            ..bytemuck::Zeroable::zeroed()
+        };
+        // A patch 1.75 by 1 block, 0.2 thick, turned 30 degrees, at the hull's water line;
+        // a hull quad on each side of it.
+        let (c, s) = (30f32.to_radians().cos(), 30f32.to_radians().sin());
+        let at = |x: f32, y: f32, z: f32| [2.0 + x * c - z * s, y, 3.0 + x * s + z * c];
+        let mask = super::super::WATER_MASK_OVERLAY;
+        let mut quads = vec![vertex([0.0; 3], 0); 4];
+        for y in [-1.2, -1.0] {
+            quads.extend(
+                [(0.0, 0.0), (1.75, 0.0), (1.75, 1.0), (0.0, 1.0)]
+                    .map(|(x, z)| vertex(at(x, y, z), mask)),
+            );
+        }
+        quads.extend(vec![vertex([5.0; 3], 0); 4]);
+        let boxes = water_patches(&quads);
+        assert_eq!(boxes.len(), 1);
+        let [[x, z, low, high], [ax, az, bx, bz]] = boxes[0];
+        let close = |a: f32, b: f32| (a - b).abs() < 1e-4;
+        assert!(close(x, 2.0) && close(z, 3.0) && close(low, -1.2) && close(high, -1.0));
+        // The edges: the 1-block one first (nearer), then the 1.75-block one.
+        assert!(close(ax, -s) && close(az, c), "{boxes:?}");
+        assert!(close(bx, 1.75 * c) && close(bz, 1.75 * s), "{boxes:?}");
+        assert!(water_patches(&quads[..4]).is_empty());
+    }
+
+    #[test]
     fn environmental_smoothing_starts_at_the_first_inputs_without_resetting_each_frame() {
-        let hud = HudBatch::new([800, 450]);
+        let hud = HudBatch::scratch([800, 450]);
         let f = frame(&hud);
         let mut u = FrameUniforms::default();
         let mut input = PackInputs {
@@ -1917,12 +1999,12 @@ pub(super) mod initial_history_tests {
     #[test]
     #[ignore = "requires a host GPU; run with --ignored --nocapture"]
     fn core_matrix_inputs_render_provider_values() {
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
+        let instance = crate::gfx::test_gpu::instance();
         let adapter = pollster::block_on(instance.request_adapter(&Default::default())).unwrap();
         eprintln!("Core matrix GPU: {:?}", adapter.get_info());
         let (device, queue) =
             pollster::block_on(adapter.request_device(&Default::default())).unwrap();
-        let hud = HudBatch::new([800, 400]);
+        let hud = HudBatch::scratch([800, 400]);
         let mut f = frame(&hud);
         f.camera = DVec3::new(1024.25, 100.5, -2048.75);
         f.yaw = 180.0;
@@ -1994,12 +2076,12 @@ pub(super) mod initial_history_tests {
     #[test]
     #[ignore = "requires a host GPU; run with --ignored --nocapture"]
     fn core_normal_matrix_renders_the_view_rotation() {
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
+        let instance = crate::gfx::test_gpu::instance();
         let adapter = pollster::block_on(instance.request_adapter(&Default::default())).unwrap();
         eprintln!("Normal matrix GPU: {:?}", adapter.get_info());
         let (device, queue) =
             pollster::block_on(adapter.request_device(&Default::default())).unwrap();
-        let hud = HudBatch::new([800, 400]);
+        let hud = HudBatch::scratch([800, 400]);
         let mut f = frame(&hud);
         // Facing west (-X), level: view space looks down -Z with +X to the right (north).
         f.yaw = 90.0;
@@ -2199,7 +2281,7 @@ pub(super) mod initial_history_tests {
     /// 0.1, blockEntityId -1, fogMode 0 and fogShape -1.
     #[test]
     fn fog_and_draw_uniforms_outside_a_draw_follow_iris() {
-        let hud = HudBatch::new([800, 450]);
+        let hud = HudBatch::scratch([800, 450]);
         let mut f = frame(&hud);
         f.fog = Some(crate::fog::FogData {
             color: [0.7, 0.8, 1.0, 1.0],
@@ -2227,7 +2309,7 @@ pub(super) mod initial_history_tests {
     /// and end, a scale of 1 / (end - start), and a density of 0, not 1.
     #[test]
     fn the_compatibility_gl_fog_has_no_density() {
-        let hud = HudBatch::new([800, 450]);
+        let hud = HudBatch::scratch([800, 450]);
         let mut f = frame(&hud);
         f.fog = Some(crate::fog::FogData {
             color: [0.09, 0.24, 0.23, 1.0],
@@ -2249,7 +2331,7 @@ pub(super) mod initial_history_tests {
     /// (cylinder) where composite and final programs read 0 and -1.
     #[test]
     fn programs_that_draw_geometry_read_their_own_fog_and_centre_depth() {
-        let hud = HudBatch::new([800, 450]);
+        let hud = HudBatch::scratch([800, 450]);
         let mut u = FrameUniforms::default();
         u.update(&frame(&hud), &PackInputs::default(), [800, 450]);
         let at = |name, geometry| index_in(name, geometry).unwrap();
@@ -2272,7 +2354,7 @@ pub(super) mod initial_history_tests {
     /// centre depth 0.1 s.
     #[test]
     fn smoothed_uniforms_take_iris_half_lives() {
-        let hud = HudBatch::new([800, 450]);
+        let hud = HudBatch::scratch([800, 450]);
         let f = frame(&hud);
         let mut u = FrameUniforms::default();
         // A scripted clock: the next frame comes exactly `seconds` after the last, however long
@@ -2322,7 +2404,13 @@ pub(super) mod initial_history_tests {
     /// wetness reaches half the rain in 3 s instead of 60 s.
     #[test]
     fn a_pack_s_half_lives_replace_the_defaults() {
-        let hud = HudBatch::new([800, 450]);
+        let hud = HudBatch::new(
+            [800, 450],
+            crate::hud::GuiScale {
+                requested: 0,
+                unicode: false,
+            },
+        );
         let f = frame(&hud);
         let mut u = FrameUniforms {
             half_lives: [Some(30.0), Some(10.0), None, None],
@@ -2357,7 +2445,7 @@ pub(super) mod initial_history_tests {
     /// the frame is drawn, and smoothed values are at their targets.
     #[test]
     fn a_still_frame_takes_the_world_ticks_as_its_clock() {
-        let hud = HudBatch::new([800, 450]);
+        let hud = HudBatch::scratch([800, 450]);
         let f = frame(&hud);
         let mut u = FrameUniforms::default();
         let mut input = PackInputs {
@@ -2392,7 +2480,7 @@ pub(super) mod initial_history_tests {
     /// A scripted clock's values reach the pack as they are, before STILL's ticks.
     #[test]
     fn a_scripted_clock_comes_before_the_still_ticks() {
-        let hud = HudBatch::new([800, 450]);
+        let hud = HudBatch::scratch([800, 450]);
         let f = frame(&hud);
         for still_ticks in [None, Some(47_811)] {
             let mut u = FrameUniforms::default();
@@ -2426,7 +2514,7 @@ pub(super) mod initial_history_tests {
     /// otherwise put them at their targets.
     #[test]
     fn a_scripted_clock_moves_smoothed_values_by_its_delta() {
-        let hud = HudBatch::new([800, 450]);
+        let hud = HudBatch::scratch([800, 450]);
         let f = frame(&hud);
         let mut u = FrameUniforms::default();
         let mut input = PackInputs {
@@ -2469,7 +2557,7 @@ pub(super) mod initial_history_tests {
             &horizon_shaders::Macros::standard(),
         );
         let mut custom = horizon_shaders::Custom::parse(&properties);
-        let hud = HudBatch::new([800, 450]);
+        let hud = HudBatch::scratch([800, 450]);
         let f = frame(&hud);
         let mut u = FrameUniforms::default();
         let mut run = |u: &mut FrameUniforms| -> Vec<[u32; 2]> {
@@ -2532,7 +2620,13 @@ pub(super) mod initial_history_tests {
     /// at their targets, the clock from 0; the atlas size it was given stays.
     #[test]
     fn a_reset_forgets_the_uniforms_history_and_keeps_the_pack_s_settings() {
-        let hud = HudBatch::new([16, 16]);
+        let hud = HudBatch::new(
+            [16, 16],
+            crate::hud::GuiScale {
+                requested: 0,
+                unicode: false,
+            },
+        );
         let mut f = frame(&hud);
         let mut uniforms = FrameUniforms {
             atlas: [256, 128],
@@ -2587,7 +2681,7 @@ pub(super) mod initial_history_tests {
     /// 0.25 in the End), and `playerMood` and `constantMood` both the cave mood.
     #[test]
     fn ambient_light_and_mood_come_from_the_inputs() {
-        let hud = HudBatch::new([800, 450]);
+        let hud = HudBatch::scratch([800, 450]);
         let mut u = FrameUniforms::default();
         let input = PackInputs {
             ambient_light: 0.25,
@@ -2683,6 +2777,67 @@ pub(super) mod initial_history_tests {
             post_effects: crate::post_chain::Request::none(),
         }
     }
+}
+
+/// `horizonWaterPatch<k>`'s `k`: patch `k / 2`, its corner and y range (even) or edges (odd).
+fn water_patch_index(name: &str) -> Option<usize> {
+    let k: usize = name.strip_prefix("horizonWaterPatch")?.parse().ok()?;
+    (k < 2 * horizon_shaders::WATER_PATCHES).then_some(k)
+}
+
+/// The boats' water patches among the frame's entity quads (`WATER_MASK_OVERLAY`), the first
+/// `WATER_PATCHES`, each as a camera-relative box: a corner's x and z and the patch's lowest and
+/// highest y, then its two horizontal edges from that corner. A boat rocks a little: its patch's
+/// corners are told apart in x and z within 2 cm.
+pub(super) fn water_patches(entities: &[super::Vertex]) -> Vec<[[f32; 4]; 2]> {
+    let mut out = Vec::new();
+    let mut points: Vec<[f32; 3]> = Vec::new();
+    let flush = |points: &mut Vec<[f32; 3]>, out: &mut Vec<[[f32; 4]; 2]>| {
+        if let Some(b) = patch_box(points)
+            && out.len() < horizon_shaders::WATER_PATCHES
+        {
+            out.push(b);
+        }
+        points.clear();
+    };
+    for quad in entities.as_chunks::<4>().0 {
+        if quad[0].layer & 0xffff == super::WATER_MASK_OVERLAY {
+            points.extend(quad.iter().map(|v| v.pos));
+        } else if !points.is_empty() {
+            flush(&mut points, &mut out);
+        }
+    }
+    flush(&mut points, &mut out);
+    out
+}
+
+/// A water patch's box (`water_patches`) from its corners.
+fn patch_box(points: &[[f32; 3]]) -> Option<[[f32; 4]; 2]> {
+    let first = points.first()?;
+    let (low, high) = points
+        .iter()
+        .fold((f32::MAX, f32::MIN), |(l, h), p| (l.min(p[1]), h.max(p[1])));
+    let mut corners: Vec<[f32; 2]> = Vec::new();
+    for p in points {
+        let c = [p[0], p[2]];
+        if !corners
+            .iter()
+            .any(|q| (q[0] - c[0]).abs() < 0.02 && (q[1] - c[1]).abs() < 0.02)
+        {
+            corners.push(c);
+        }
+    }
+    let origin = [first[0], first[2]];
+    let mut others: Vec<[f32; 2]> = corners.into_iter().filter(|c| *c != origin).collect();
+    if others.len() < 2 {
+        return None;
+    }
+    let distance = |c: &[f32; 2]| (c[0] - origin[0]).powi(2) + (c[1] - origin[1]).powi(2);
+    others.sort_by(|a, b| distance(a).total_cmp(&distance(b)));
+    // The two nearest corners are the edges' ends; the farthest is across.
+    let edge = |c: [f32; 2]| [c[0] - origin[0], c[1] - origin[1]];
+    let (a, b) = (edge(others[0]), edge(others[1]));
+    Some([[origin[0], origin[1], low, high], [a[0], a[1], b[0], b[1]]])
 }
 
 /// `horizonDynamicLight<k>`'s `k`, for the lights `Frame::dynamic_lights` holds.

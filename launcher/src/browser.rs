@@ -5,7 +5,7 @@
 //! Offered: Java mods (Fabric, NeoForge, Forge), whose content Horizon ports and whose jar is
 //! checked before install ([`java`]), modpacks (imported and ported), resource packs
 //! (`resourcepacks/`) and data packs (into a world, [`installed::install_datapack`]). Java code
-//! itself doesn't run in Horizon (docs/mods.md).
+//! itself doesn't run in Horizon (docs/modding/src/how-to/content-mods.md).
 pub mod curseforge;
 pub mod details;
 pub mod download;
@@ -14,16 +14,15 @@ pub mod images;
 pub mod installed;
 pub mod java;
 pub mod java_instance;
-pub mod lock;
 pub mod modrinth;
 
-pub use lock::{lock_home, try_lock_home, HomeLockGuard};
+pub use horizon_mod_package::install_lock::{lock_home, try_lock_home, HomeLockGuard};
 
 use serde::{Deserialize, Serialize};
 
 /// The Minecraft version Horizon plays: the pinned version, so a port's regenerated
 /// `crates/horizon-core/src/version.rs` moves it with everything else (docs/version-ports.md).
-pub const GAME: &str = horizon_core::version::VERSION_ID;
+pub const GAME: &str = horizon_platform::version::VERSION_ID;
 
 /// What a project is, as far as Horizon is concerned.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]

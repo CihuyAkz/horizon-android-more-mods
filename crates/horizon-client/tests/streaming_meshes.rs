@@ -59,15 +59,27 @@ fn columns_loaded_past_the_render_distance_mesh_when_they_come_in_range() {
         return;
     };
     let assets = Arc::new(Assets::load(&root).unwrap());
-    let render = Arc::new(assets.reload(&root).unwrap());
+    let render = Arc::new(
+        assets
+            .reload(&horizon_assets::resource_source::ResourceRoot::directory(
+                root.to_path_buf(),
+            ))
+            .unwrap(),
+    );
     let facts = BlockFacts::load(&root, assets.registry).unwrap();
     let visibility = models::load_visibility(&root, assets.registry).unwrap();
     let context = Arc::new(WorkerContext {
-        tables: Arc::new(MeshTables::new(&assets, &render, &facts, visibility).unwrap()),
+        tables: Arc::new(MeshTables::new(&assets, &render, &facts, visibility, None).unwrap()),
         light: Arc::new(LightTables::load(&root, assets.registry, &facts).unwrap()),
-        biomes: Arc::new(Biomes::load(&root).unwrap()),
+        biomes: Arc::new(
+            Biomes::load(&horizon_assets::resource_source::ResourceRoot::directory(
+                root.to_path_buf(),
+            ))
+            .unwrap(),
+        ),
         assets,
         render: render.clone(),
+        hidden_states: Arc::from([]),
     });
     let mut streaming = Streaming::new(Arc::new(Saved), context, 3);
     streaming.radius = 4;
@@ -157,15 +169,27 @@ fn relit_columns_keep_every_mesh_current() {
         return;
     };
     let assets = Arc::new(Assets::load(&root).unwrap());
-    let render = Arc::new(assets.reload(&root).unwrap());
+    let render = Arc::new(
+        assets
+            .reload(&horizon_assets::resource_source::ResourceRoot::directory(
+                root.to_path_buf(),
+            ))
+            .unwrap(),
+    );
     let facts = BlockFacts::load(&root, assets.registry).unwrap();
     let visibility = models::load_visibility(&root, assets.registry).unwrap();
     let context = Arc::new(WorkerContext {
-        tables: Arc::new(MeshTables::new(&assets, &render, &facts, visibility).unwrap()),
+        tables: Arc::new(MeshTables::new(&assets, &render, &facts, visibility, None).unwrap()),
         light: Arc::new(LightTables::load(&root, assets.registry, &facts).unwrap()),
-        biomes: Arc::new(Biomes::load(&root).unwrap()),
+        biomes: Arc::new(
+            Biomes::load(&horizon_assets::resource_source::ResourceRoot::directory(
+                root.to_path_buf(),
+            ))
+            .unwrap(),
+        ),
         assets: assets.clone(),
         render: render.clone(),
+        hidden_states: Arc::from([]),
     });
     let state = |name: &str| assets.registry.default_state(name).unwrap().0;
     let (stone, glowstone, torch) = (
@@ -242,6 +266,7 @@ fn relit_columns_keep_every_mesh_current() {
             assets: &context.assets,
             render: &context.render,
             tables: &context.tables,
+            hidden_states: &context.hidden_states,
             biomes: &context.biomes,
             visibility: context.tables.visibility.clone(),
         };
@@ -279,13 +304,25 @@ fn every_extra_area_loads_however_the_areas_change() {
         return;
     };
     let assets = Arc::new(Assets::load(&root).unwrap());
-    let render = Arc::new(assets.reload(&root).unwrap());
+    let render = Arc::new(
+        assets
+            .reload(&horizon_assets::resource_source::ResourceRoot::directory(
+                root.clone(),
+            ))
+            .unwrap(),
+    );
     let facts = BlockFacts::load(&root, assets.registry).unwrap();
     let visibility = models::load_visibility(&root, assets.registry).unwrap();
     let context = Arc::new(WorkerContext {
-        tables: Arc::new(MeshTables::new(&assets, &render, &facts, visibility).unwrap()),
+        hidden_states: Default::default(),
+        tables: Arc::new(MeshTables::new(&assets, &render, &facts, visibility, None).unwrap()),
         light: Arc::new(LightTables::load(&root, assets.registry, &facts).unwrap()),
-        biomes: Arc::new(Biomes::load(&root).unwrap()),
+        biomes: Arc::new(
+            Biomes::load(&horizon_assets::resource_source::ResourceRoot::directory(
+                root.clone(),
+            ))
+            .unwrap(),
+        ),
         assets,
         render,
     });
@@ -331,4 +368,65 @@ fn every_extra_area_loads_however_the_areas_change() {
     streaming.extra = second.to_vec();
     settle(&mut streaming, &mut world);
     assert_eq!(missing(&world, &second), []);
+}
+
+/// Finished meshes the game has not uploaded yet count against the room for
+/// new mesh jobs, as the jobs in flight do: while uploads fall behind (a low
+/// frame rate at a wide render distance) meshing waits instead of piling up
+/// gigabytes of meshes, and it resumes once the game takes them.
+#[test]
+fn meshes_waiting_for_upload_hold_back_new_mesh_jobs() {
+    let Some(root) = resources() else {
+        return;
+    };
+    let assets = Arc::new(Assets::load(&root).unwrap());
+    let source = horizon_assets::resource_source::ResourceRoot::directory(root.clone());
+    let render = Arc::new(assets.reload(&source).unwrap());
+    let facts = BlockFacts::load(&root, assets.registry).unwrap();
+    let visibility = models::load_visibility(&root, assets.registry).unwrap();
+    let context = Arc::new(WorkerContext {
+        tables: Arc::new(MeshTables::new(&assets, &render, &facts, visibility, None).unwrap()),
+        light: Arc::new(LightTables::load(&root, assets.registry, &facts).unwrap()),
+        biomes: Arc::new(Biomes::load(&source).unwrap()),
+        assets,
+        render,
+        hidden_states: Arc::from([]),
+    });
+    let workers = 3;
+    let mut streaming = Streaming::new(Arc::new(Saved), context, workers);
+    streaming.radius = 2;
+    let mut world = World::new(BlockStateId(0), 0);
+    let settle = |streaming: &mut Streaming, world: &mut World| {
+        let mut meshed = HashSet::new();
+        let deadline = Instant::now() + Duration::from_secs(60);
+        let mut quiet = 0;
+        while quiet < 40 {
+            assert!(Instant::now() < deadline, "streaming never settled");
+            let before = (world.chunks.len(), meshed.len());
+            let (uploads, _) = streaming.update(world);
+            meshed.extend(uploads.iter().map(|(key, _)| *key));
+            streaming.free(uploads);
+            thread::sleep(Duration::from_millis(5));
+            let idle = !streaming.busy() && before == (world.chunks.len(), meshed.len());
+            quiet = if idle { quiet + 1 } else { 0 };
+        }
+        meshed
+    };
+    // The game holds as many meshes as the workers' whole room (32 each).
+    streaming.upload_backlog = workers * 32;
+    assert_eq!(
+        settle(&mut streaming, &mut world).len(),
+        0,
+        "sections meshed"
+    );
+    assert!(world.chunks.contains_key(&(0, 0)), "the columns still load");
+    // The game uploaded them: the columns in range mesh.
+    streaming.upload_backlog = 0;
+    let meshed = settle(&mut streaming, &mut world);
+    for sy in 0..HEIGHT / 16 {
+        assert!(
+            meshed.contains(&(0, sy, 0)),
+            "section 0 {sy} 0 was never meshed"
+        );
+    }
 }

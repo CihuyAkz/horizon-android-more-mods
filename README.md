@@ -1,3 +1,12 @@
+> [!IMPORTANT]
+> **This is arismoko/horizon, a fork of [horizon-rust/horizon](https://github.com/horizon-rust/horizon) for modding work. It is not the official Horizon repository.**
+>
+> - **What's different:** this fork builds Horizon's mod API: native hooks, the `Host`, handles, Parts, attachments, mod loading and WebAssembly mods. The mod API here is under active development and changes in ways upstream's doesn't. Start at the pinned issue, [#771](https://github.com/arismoko/horizon/issues/771), which links the [project board](https://github.com/users/arismoko/projects/1) and says where the mod API is going. The modder docs are in [`docs/modding/`](docs/modding/).
+> - **Kept in step with upstream:** upstream's main is merged in regularly. Changes that differ from upstream are marked "Diverges from upstream" in their pull requests.
+> - **Where to report things:** modding proposals, API gaps and mod-loading bugs go in this fork's [issues](https://github.com/arismoko/horizon/issues). Game bugs that have nothing to do with modding belong upstream, at [horizon-rust/horizon](https://github.com/horizon-rust/horizon/issues).
+> - **Downloads:** this fork's [signed Nightlies](https://github.com/arismoko/horizon/releases) serve developers and server hosts: dedicated servers, exact source pins for native mods, and CI-tested builds—not a ready-to-play client installer. A launcher built from this fork's `launcher/` source can install them (`horizon-launcher install nightly`), but installation is not authenticated Play. No prebuilt fork launcher is published; Microsoft sign-in is part of the configured fork launcher work, using upstream's application with permission. An unconfigured source build cannot obtain a new sign-in. For launcher-managed client development without sign-in, [build an unsigned developer base from source](docs/modding/src/how-to/native-mods/042-local-developer-builds.md) and opt into single-player-only Play with `HORIZON_LAUNCHER_DEVELOPER_OFFLINE=1`; this does not enable signed Nightly Play. Existing compatible cached sessions and standalone game entry remain separate code paths. The official launcher, website and stable releases below are upstream's, not this fork's.
+> - **How it's maintained:** day-to-day work on this fork is done by Aria's agent swarm, Dyna, with reviews on every pull request.
+
 <p align="center">
   <img src="https://img.shields.io/badge/Minecraft-Java%2026.3-5D9C3F" alt="Minecraft Java 26.3">
   <img src="https://img.shields.io/badge/Rust-stable-B7410E?logo=rust&logoColor=white" alt="Rust">
@@ -8,15 +17,37 @@
 
 <p align="center">
   <a href="#download"><b>Download</b></a> ·
+<<<<<<< HEAD
   <a href="#android-status"><b>Android status</b></a> ·
   <a href="roadmap/starling.md"><b>Roadmap</b></a> ·
   <a href="#mods"><b>Mods</b></a> ·
   <a href="#build-from-source"><b>Build from source</b></a> ·
   <a href="CONTRIBUTING.md"><b>Contributing</b></a> ·
   <a href="https://github.com/ludovic111/horizon"><b>Horizon</b></a>
+||||||| c98a51a664
+  <a href="https://playhorizon.dev/docs/"><b>Docs</b></a> ·
+  <a href="https://discord.gg/playhorizon"><b>Discord</b></a> ·
+  <a href="ROADMAP.md"><b>Roadmap</b></a> ·
+  <a href="#contributing"><b>Contributing</b></a>
+=======
+  <a href="https://playhorizon.dev/docs/"><b>Docs</b></a> ·
+  <a href="ROADMAP.md"><b>Roadmap</b></a> ·
+  <a href="#contributing"><b>Contributing</b></a>
+>>>>>>> arismoko/main
 </p>
 
+<<<<<<< HEAD
 # Starling
+||||||| c98a51a664
+<p align="center">
+  <img src="https://img.shields.io/badge/vanilla%20parity-100%25-F0795A" alt="Vanilla parity 100%">
+  <a href="#project-status"><img src="https://img.shields.io/badge/player--visible%20gaps-0%20open-F0795A" alt="Player-visible gaps open"></a>
+</p>
+=======
+<p align="center">
+  <a href="#project-status"><img src="https://img.shields.io/badge/player--visible%20gaps-0%20open-F0795A" alt="Player-visible gaps open"></a>
+</p>
+>>>>>>> arismoko/main
 
 **Starling, formerly Horizon Android, is a lightweight port of Minecraft: Java Edition 26.3 to Android.** Co-founded by [JuanLuci](https://github.com/JuanLuci), founder of Starling, and [Vasysik](https://github.com/Vasysik), founder of Horizon Android. It is a fork of [Horizon](https://github.com/ludovic111/horizon), the Java game rewritten in Rust: it reads the same worlds, follows the same rules and generates the same terrain as Java Edition, and is checked against it by differential harnesses. You play it on the files from your own copy of Minecraft; it is free, open source and unofficial. And it runs natively, with no Java virtual machine and no OpenGL translation in between, so it starts fast and plays smoothly on a phone.
 
@@ -101,9 +132,23 @@ The old Starling mods and the WebAssembly mod format of v0.1 are gone.
 For developers. Requirements: Rust 1.90 or newer with the `aarch64-linux-android` target, [cargo-ndk](https://github.com/bbqsrc/cargo-ndk), the Android SDK (build-tools 35.0.0, platform 36, NDK r28c), a JDK 25 and Python 3.10 or newer.
 
 ```sh
+<<<<<<< HEAD
 git clone -b starling https://github.com/starling-client/starling.git
 cd starling
 python packaging/android/build_apk.py            # the APK lands in target/android/
+||||||| c98a51a664
+git clone https://github.com/horizon-rust/horizon.git
+cd horizon
+cargo run --release -p horizon-prepare -- --prepare --server-jar ~/Downloads/server.jar   # needs JDK 25
+cargo run --release -p horizon-prepare -- sounds   # optional: sounds from your launcher install
+cargo run --release -p horizon-client
+=======
+git clone https://github.com/horizon-rust/horizon.git
+cd horizon
+cargo run --release -p horizon-prepare -- --prepare --server-jar ~/Downloads/server.jar   # needs JDK 25
+cargo run --release -p horizon-prepare -- sounds   # optional: sounds from your launcher install
+cargo run --release -p horizon-game
+>>>>>>> arismoko/main
 ```
 
 The build compiles Horizon's original exporter classes with the host JDK and
@@ -126,11 +171,93 @@ The prepared files land in the gitignored `.local/horizon-client/26.3`. Zip that
 
 ## Contributing
 
+<<<<<<< HEAD
 Issues and pull requests are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md). Changes to the game itself belong upstream, in [Horizon](https://github.com/ludovic111/horizon); Starling is the Android app around it.
+||||||| c98a51a664
+Issues and pull requests are welcome: read [CONTRIBUTING.md](CONTRIBUTING.md) (vanilla first, small pull requests), and see [ROADMAP.md](ROADMAP.md) or [playhorizon.dev/hub](https://playhorizon.dev/hub) for what's next. Questions: [Discord](https://discord.gg/playhorizon). Before a pull request, run the self-check and paste its output:
+
+```sh
+git config core.hooksPath .githooks
+python3 tools/pr_ready.py
+```
+
+It runs rustfmt, clippy, the touched crates' tests, the Python tests, the public-tree check and the vanilla harnesses your change affects. Never commit game files, decompiled source or prepared resources.
+
+## Project status
+
+**Player-visible gaps: 0 open** of the 833 the [port ledger](tools/port_ledger.py) found, reading every vanilla 26.3 method against Horizon's code: vanilla behaviour a player would notice that Horizon doesn't have yet. By area: Animals [0](https://github.com/horizon-rust/horizon/issues/3512); Monsters and bosses [0](https://github.com/horizon-rust/horizon/issues/3513); Entities, projectiles, vehicles and decorations [0](https://github.com/horizon-rust/horizon/issues/3514); Items, enchantments and inventories [0](https://github.com/horizon-rust/horizon/issues/3515); Blocks, redstone and fluids [0](https://github.com/horizon-rust/horizon/issues/3516); World, world generation and saves [0](https://github.com/horizon-rust/horizon/issues/3517); Screens, HUD and client packets [0](https://github.com/horizon-rust/horizon/issues/3518); Entity and block rendering, models [0](https://github.com/horizon-rust/horizon/issues/3519); Server and players on the server [0](https://github.com/horizon-rust/horizon/issues/3520); Mob AI, villagers and raids [0](https://github.com/horizon-rust/horizon/issues/3521). This number goes down as gaps close (`tools/parity_gaps.py`); the harness results below say that what is tested matches.
+
+The table is the project's own audit: every subsystem matches vanilla in every harness that compares it. 100% means 100% of what the harnesses compare, not that nothing else differs. What players still run into: [known issues](docs/known-issues.md).
+
+### Java parity: 100%
+
+Scores: 0 (absent), 0.25 (started), 0.5 (playable, major features missing), 0.75 (mostly complete) or 1 (complete and verified by differential tests); the percentage is their average. Last audited 2026-10-13: the harnesses pass on Linux and macOS. The [port ledger](tools/port_ledger.py) adds a method-by-method view of what is ported.
+
+| Subsystem | Score | Main gaps |
+| --- | ---: | --- |
+| Window, input and game loop | 1 | None: game loop, options, camera, auto-jump, toggle sprint/sneak and frame limiter match |
+| Assets and resources | 1 | None: item models match over 196,290 stacks; the resource pack screen over 3,000 sessions |
+| Network protocol and multiplayer | 1 | None: joins vanilla servers; the dedicated server matches vanilla's files, login, configuration, play and command tree; LAN discovery over 462 cases (offline mode only) |
+| Chunk storage and palettes | 1 | None: client and saves share paletted containers, identical to vanilla over 266 scenarios |
+| Section meshing | 1 | None: 112 scenes and over a million quads identical to vanilla |
+| Rendering | 1 | None: entity models, block entity renderers (407 cases) and animations (296), HUD overlays (2,200 states), the recipe book (600), player list, subtitles and world border match |
+| Lighting | 1 | None: saved and relit light matches vanilla, slabs and stairs included |
+| World generation | 1 | None: 2,352 whole chunks over 225 structure sites, in all three dimensions, identical to vanilla |
+| Region files and saves | 1 | None: saves round-trip with vanilla; worlds from 1.8 to 26.2 upgrade as vanilla's DataFixers do |
+| Entities and physics | 1 | None: attributes, spawn rules, natural spawning (15,500 cases), raids and patrols (1,900), `finalizeSpawn` (24,000) and mob AI (92 scenarios) match |
+| Interaction and inventory | 1 | None: menu clicks over 8,000 sequences; recipe book placement (6,000), buttons (1,200), saved book (1,500), loom and crafter screens (1,600) |
+| Menus, HUD and chat | 1 | None: every command (758 over 39,685 inputs), scoreboards (81,000 operations), the player list (872,000 draw calls), chat and its suggestions (3,000 sessions) match |
+| Audio | 1 | None: the sound engine, sound events, music, situational music, ambience and subtitles match vanilla |
+| Block behaviours and ticking | 1 | None: block updates, random ticks, redstone, dispensers (6,000 cases), crafters (4,000), container spills (4,000), copper golems and the sculk family (435 scenarios) match |
+=======
+Issues and pull requests are welcome: read [CONTRIBUTING.md](CONTRIBUTING.md) (vanilla first, small pull requests). Questions: this fork's [issues](https://github.com/arismoko/horizon/issues). Before a pull request, run the self-check and paste its output:
+
+```sh
+git config core.hooksPath .githooks
+python3 tools/pr_ready.py
+```
+
+It runs rustfmt, clippy, the touched crates' tests, the Python tests, the public-tree check and the vanilla harnesses your change affects. Never commit game files, decompiled source or prepared resources.
+
+How Horizon is run (the council, theme groups and their leads, the Horizon Team, moderation): [GOVERNANCE.md](GOVERNANCE.md).
+
+## Project status
+
+**Player-visible gaps: 0 open** of the 833 the [port ledger](tools/port_ledger.py) found, reading every vanilla 26.3 method against Horizon's code: vanilla behaviour a player would notice that Horizon doesn't have yet. By area: Animals [0](https://github.com/horizon-rust/horizon/issues/3512); Monsters and bosses [0](https://github.com/horizon-rust/horizon/issues/3513); Entities, projectiles, vehicles and decorations [0](https://github.com/horizon-rust/horizon/issues/3514); Items, enchantments and inventories [0](https://github.com/horizon-rust/horizon/issues/3515); Blocks, redstone and fluids [0](https://github.com/horizon-rust/horizon/issues/3516); World, world generation and saves [0](https://github.com/horizon-rust/horizon/issues/3517); Screens, HUD and client packets [0](https://github.com/horizon-rust/horizon/issues/3518); Entity and block rendering, models [0](https://github.com/horizon-rust/horizon/issues/3519); Server and players on the server [0](https://github.com/horizon-rust/horizon/issues/3520); Mob AI, villagers and raids [0](https://github.com/horizon-rust/horizon/issues/3521). This number goes down as gaps close (`tools/parity_gaps.py`); the table below says what the harnesses compare.
+
+The table is the project's own audit of what the harnesses compare, subsystem by subsystem: a score says how much of that subsystem the harnesses cover and pass, not that nothing else differs from vanilla. What players still run into: [known issues](docs/known-issues.md).
+
+### What the harnesses compare
+
+Scores: 0 (absent), 0.25 (started), 0.5 (playable, major features missing), 0.75 (mostly complete) or 1 (its harnesses cover the subsystem and pass). Last audited 2026-10-13: the harnesses pass on Linux and macOS. The [port ledger](tools/port_ledger.py) adds a method-by-method view of what is ported.
+
+| Subsystem | Score | Main gaps |
+| --- | ---: | --- |
+| Window, input and game loop | 1 | None: game loop, options, camera, auto-jump, toggle sprint/sneak and frame limiter match |
+| Assets and resources | 1 | None: item models match over 196,290 stacks; the resource pack screen over 3,000 sessions |
+| Network protocol and multiplayer | 1 | None: joins vanilla servers; the dedicated server matches vanilla's files, login, configuration, play and command tree; LAN discovery over 462 cases (offline mode only) |
+| Chunk storage and palettes | 1 | None: client and saves share paletted containers, identical to vanilla over 266 scenarios |
+| Section meshing | 1 | None: 112 scenes and over a million quads identical to vanilla |
+| Rendering | 1 | None: entity models, block entity renderers (407 cases) and animations (296), HUD overlays (2,200 states), the recipe book (600), player list, subtitles and world border match |
+| Lighting | 1 | None: saved and relit light matches vanilla, slabs and stairs included |
+| World generation | 1 | None: 2,352 whole chunks over 225 structure sites, in all three dimensions, identical to vanilla |
+| Region files and saves | 1 | None: saves round-trip with vanilla; worlds from 1.8 to 26.2 upgrade as vanilla's DataFixers do |
+| Entities and physics | 1 | None: attributes, spawn rules, natural spawning (15,500 cases), raids and patrols (1,900), `finalizeSpawn` (24,000) and mob AI (92 scenarios) match |
+| Interaction and inventory | 1 | None: menu clicks over 8,000 sequences; recipe book placement (6,000), buttons (1,200), saved book (1,500), loom and crafter screens (1,600) |
+| Menus, HUD and chat | 1 | None: every command (758 over 39,685 inputs), scoreboards (81,000 operations), the player list (872,000 draw calls), chat and its suggestions (3,000 sessions) match |
+| Audio | 1 | None: the sound engine, sound events, music, situational music, ambience and subtitles match vanilla |
+| Block behaviours and ticking | 1 | None: block updates, random ticks, redstone, dispensers (6,000 cases), crafters (4,000), container spills (4,000), copper golems and the sculk family (435 scenarios) match |
+>>>>>>> arismoko/main
 
 ## Licence
 
+<<<<<<< HEAD
 [MIT](LICENSE), for the project's original work only, as Horizon's. Dependencies keep their own licences. Minecraft is a trademark of Mojang Synergies AB; Minecraft code and assets belong to Mojang and Microsoft and are covered by the [Minecraft EULA](https://www.minecraft.net/en-us/eula). Prepared resources stay on your devices and are never published.
+||||||| c98a51a664
+[MIT](LICENSE), for the project's original work; dependencies keep their own licences ([notices](THIRD_PARTY_NOTICES.md)). Horizon is made by [Ludovic Marie](https://lu4ovic.com) ([@ludovic111](https://github.com/ludovic111)) and [its contributors](https://github.com/horizon-rust/horizon/graphs/contributors); support it on [GitHub Sponsors](https://github.com/sponsors/ludovic111).
+=======
+[MIT](LICENSE), for the project's original work; dependencies keep their own licences ([notices](THIRD_PARTY_NOTICES.md)). Horizon is made by [Ludovic Marie](https://lu4ovic.com) ([@ludovic111](https://github.com/ludovic111)) and [its contributors](https://github.com/horizon-rust/horizon/graphs/contributors).
+>>>>>>> arismoko/main
 
 Third-party credits and licenses: [Third-party notices](THIRD_PARTY_NOTICES.md).
 

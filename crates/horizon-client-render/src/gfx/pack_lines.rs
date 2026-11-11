@@ -53,7 +53,13 @@ pub fn inputs() -> horizon_shaders::GbuffersInputs {
         item_id_declared: false,
         far_depth: false,
         paged_maps: false,
+<<<<<<< HEAD
         prepass_uv: false,
+||||||| c98a51a664
+=======
+        water_mask: false,
+        water_patches: false,
+>>>>>>> arismoko/main
     }
 }
 

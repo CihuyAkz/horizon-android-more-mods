@@ -1,7 +1,7 @@
 //! The methods of vanilla's management protocol (`management.rs`), as vanilla 26.3's `methods/*Service` answer
 //! them: the players, the server's state, and the lists. Kicks, saves and messages go through the game's
 //! console, so they log and save as an operator's command would; the lists change through the game's
-//! `management` request (game/dedicated/management.rs), which finds the players and sends the shut-out away as
+//! `management` request (game/interface/dedicated/management.rs), which finds the players and sends the shut-out away as
 //! vanilla's services do.
 
 use crate::{
@@ -9,7 +9,8 @@ use crate::{
     engine,
     management::{self, Failure, INTERNAL_ERROR, invalid_params},
 };
-use horizon_server_files::properties::{ServerProperties, SystemEntropy};
+use horizon_platform::server_files::properties::{ServerProperties, SystemEntropy};
+use horizon_server_launch::config;
 use serde_json::{Value, json};
 use std::path::Path;
 
@@ -534,7 +535,7 @@ impl Game<'_> {
                 "enforce_allowlist" => "enforce_whitelist",
                 _ => unreachable!("allowlist setting is validated by its callers"),
             };
-            crate::config::update(
+            config::update(
                 &self.shared.dir,
                 "properties",
                 property,
@@ -589,7 +590,7 @@ impl Game<'_> {
             return Err((INTERNAL_ERROR, Some(error.to_owned())));
         }
         if let Some(value) = value {
-            crate::config::update(
+            config::update(
                 &self.shared.dir,
                 "properties",
                 "pause-when-empty-seconds",
@@ -612,7 +613,7 @@ impl Game<'_> {
             return Err((INTERNAL_ERROR, Some(error.to_owned())));
         }
         if let Some(value) = value {
-            crate::config::update(
+            config::update(
                 &self.shared.dir,
                 "properties",
                 "force-gamemode",
@@ -658,7 +659,7 @@ impl Game<'_> {
             return Err((INTERNAL_ERROR, Some(error.to_owned())));
         }
         if let Some(value) = value {
-            crate::config::update(
+            config::update(
                 &self.shared.dir,
                 "properties",
                 "allow-flight",
@@ -681,7 +682,7 @@ impl Game<'_> {
             return Err((INTERNAL_ERROR, Some(error.to_owned())));
         }
         if let Some(value) = value {
-            crate::config::update(
+            config::update(
                 &self.shared.dir,
                 "properties",
                 "hide-online-players",
@@ -704,7 +705,7 @@ impl Game<'_> {
             return Err((INTERNAL_ERROR, Some(error.to_owned())));
         }
         if let Some(value) = value {
-            crate::config::update(
+            config::update(
                 &self.shared.dir,
                 "properties",
                 "enable-status",
@@ -750,7 +751,7 @@ impl Game<'_> {
             return Err((INTERNAL_ERROR, Some(error.to_owned())));
         }
         if let Some(value) = value {
-            crate::config::update(
+            config::update(
                 &self.shared.dir,
                 "properties",
                 "player-idle-timeout",
@@ -773,7 +774,7 @@ impl Game<'_> {
             return Err((INTERNAL_ERROR, Some(error.to_owned())));
         }
         if let Some(value) = value {
-            crate::config::update(
+            config::update(
                 &self.shared.dir,
                 "server",
                 "max_players",
@@ -796,7 +797,7 @@ impl Game<'_> {
             return Err((INTERNAL_ERROR, Some(error.to_owned())));
         }
         if let Some(value) = value {
-            crate::config::update(
+            config::update(
                 &self.shared.dir,
                 "world",
                 "game_mode",
@@ -827,7 +828,7 @@ impl Game<'_> {
         }
         if let Some(value) = value {
             let value = reply["value"].as_i64().unwrap_or(i64::from(value));
-            crate::config::update(
+            config::update(
                 &self.shared.dir,
                 "properties",
                 "op-permission-level",
@@ -851,7 +852,7 @@ impl Game<'_> {
         }
         // server.toml's `motd` writes server.properties' at each start: keep the new one there too.
         if let Some(value) = value {
-            crate::config::update(
+            config::update(
                 &self.shared.dir,
                 "server",
                 "motd",
@@ -874,7 +875,7 @@ impl Game<'_> {
             return Err((INTERNAL_ERROR, Some(error.to_owned())));
         }
         if let Some(value) = value {
-            crate::config::update(
+            config::update(
                 &self.shared.dir,
                 "world",
                 "difficulty",
@@ -1007,8 +1008,8 @@ impl Game<'_> {
     /// `ServerStateService.status`.
     fn status(&self) -> Value {
         let version = json!({
-            "name": horizon_core::version::VERSION_ID,
-            "protocol": horizon_core::version::PROTOCOL_VERSION,
+            "name": horizon_platform::version::VERSION_ID,
+            "protocol": horizon_platform::version::PROTOCOL_VERSION,
         });
         let players = if self.running() {
             self.online().ok()
@@ -1089,17 +1090,18 @@ impl Game<'_> {
 struct Lists<'a>(&'a Path);
 
 impl Lists<'_> {
-    fn load<E: horizon_server_files::user_lists::Entry>(
+    fn load<E: horizon_platform::server_files::user_lists::Entry>(
         &self,
         file: &str,
-    ) -> horizon_server_files::user_lists::UserList<E> {
-        let mut list = horizon_server_files::user_lists::UserList::new(self.0.join(file));
+    ) -> horizon_platform::server_files::user_lists::UserList<E> {
+        let mut list = horizon_platform::server_files::user_lists::UserList::new(self.0.join(file));
         let _ = list.load();
         list
     }
 
     fn allowlist(&self) -> Value {
-        let list: horizon_server_files::user_lists::WhiteList = self.load("whitelist.json");
+        let list: horizon_platform::server_files::user_lists::WhiteList =
+            self.load("whitelist.json");
         list.entries()
             .iter()
             .map(|e| json!({ "id": uuid(e.user.id), "name": e.user.name }))
@@ -1107,7 +1109,7 @@ impl Lists<'_> {
     }
 
     fn operators(&self) -> Value {
-        let list: horizon_server_files::user_lists::OpList = self.load("ops.json");
+        let list: horizon_platform::server_files::user_lists::OpList = self.load("ops.json");
         list.entries()
             .iter()
             .map(|e| {
@@ -1121,7 +1123,8 @@ impl Lists<'_> {
     }
 
     fn bans(&self) -> Value {
-        let list: horizon_server_files::user_lists::BanList = self.load("banned-players.json");
+        let list: horizon_platform::server_files::user_lists::BanList =
+            self.load("banned-players.json");
         list.entries()
             .iter()
             .map(|b| {
@@ -1132,7 +1135,8 @@ impl Lists<'_> {
     }
 
     fn ip_bans(&self) -> Value {
-        let list: horizon_server_files::user_lists::IpBanList = self.load("banned-ips.json");
+        let list: horizon_platform::server_files::user_lists::IpBanList =
+            self.load("banned-ips.json");
         list.entries()
             .iter()
             .map(|b| ban(("ip", json!(b.user)), &b.reason, &b.source, b.expires))

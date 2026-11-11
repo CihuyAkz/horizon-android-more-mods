@@ -37,6 +37,8 @@ struct Globals {
     hdr_light: vec4<f32>,
     hdr_settings: vec4<f32>,
     hdr_shares: vec4<f32>,
+    // The eye fog is measured from, camera-relative: zero but in a mod's world view.
+    view_origin: vec4<f32>,
 }
 @group(0) @binding(0) var<uniform> globals: Globals;
 @group(0) @binding(1) var atlas: texture_2d<f32>;
@@ -165,8 +167,9 @@ fn entity_vertex(position: vec3<f32>, uv: vec2<f32>,
     out.back_color = back;
     out.overlay_color = overlay_texel(overlay);
     // Sky geometry (clouds, celestial bodies) is exempt from render-distance fog.
-    out.fog_distance.x = select(length(position), 0.0, overlay >= 2u && overlay <= 4u);
-    out.fog_distance.y = select(max(length(position.xz), abs(position.y)), 0.0, overlay >= 2u && overlay <= 4u);
+    let eye = position - globals.view_origin.xyz;
+    out.fog_distance.x = select(length(eye), 0.0, overlay >= 2u && overlay <= 4u);
+    out.fog_distance.y = select(max(length(eye.xz), abs(eye.y)), 0.0, overlay >= 2u && overlay <= 4u);
     out.overlay = overlay;
     out.glint_uv = vec2(0.0);
     if overlay == 4u { out.fog_distance.x = length(position); }
@@ -175,11 +178,7 @@ fn entity_vertex(position: vec3<f32>, uv: vec2<f32>,
 @vertex fn vs_entity(@location(0) position: vec3<f32>, @location(1) uv: vec2<f32>,
     @location(2) overlay: u32, @location(3) color: vec4<f32>, @location(4) light: vec4<u32>,
     @location(5) normal: vec4<f32>, @location(6) glint_uv: vec2<f32>) -> Out {
-    // [world warp entity]
-    // (a world warp's pipelines put the vertex through the mod's `world_warp`: gfx/world_warp.rs)
-    let at = position;
-    // [end world warp entity]
-    var out = entity_vertex(at, uv, overlay & 0xffffu, color, light, normal);
+    var out = entity_vertex(position, uv, overlay & 0xffffu, color, light, normal);
     out.glint_uv = glint_uv;
     out.tier = (overlay >> 16u) & 0xffu;
     return out;
@@ -442,7 +441,15 @@ fn celestial_color(in: Out) -> vec4<f32> {
                       linear_fog(in.fog_distance.y, globals.fog.z, globals.fog.w));
         return in.color * (1.0 - fog);
     }
-    return textureSample(atlas, atlas_sampler, in.uv) * in.color * in.light_color;
+    let color = textureSample(atlas, atlas_sampler, in.uv) * in.color * in.light_color;
+    if in.overlay == 45u {
+        // A Polytone custom particle drawn additively: the fog over its colour, as vanilla's
+        // particle.fsh, under the additive blend (no alpha cutout: its faint texels add up).
+        let f = max(linear_fog(in.fog_distance.x, globals.fog.x, globals.fog.y),
+                    linear_fog(in.fog_distance.y, globals.fog.z, globals.fog.w));
+        return vec4(mix(color.rgb, globals.fog_color.rgb, f * globals.fog_color.a), color.a);
+    }
+    return color;
 }
 @fragment fn fs_celestial(in: Out) -> @location(0) vec4<f32> {
     let color = celestial_color(in);

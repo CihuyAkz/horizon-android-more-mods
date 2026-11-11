@@ -2,7 +2,7 @@
 //! Rules mirror the natively-validated `block_survival` port; dispatch follows
 //! the Java class chain so `super.canSurvive` reaches the next override.
 use super::{
-    LevelAccess, Sim,
+    LevelAccess, Signals, Sim,
     classes::Class,
     query::is_horizontal,
     update::{HORIZONTAL, above, below, rel},
@@ -361,6 +361,13 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
         ground: BlockStateId,
         ground_pos: BlockPos,
     ) -> bool {
+        // NeoForge's `BushBlock.canSurvive`: the soil's answer first, the plant's second.
+        let mut sustains = None;
+        self.level
+            .before_can_sustain_plant(state, ground, ground_pos, &mut sustains);
+        if let Some(sustains) = sustains {
+            return sustains;
+        }
         let mut may = None;
         self.level
             .before_may_place_on(state, ground, ground_pos, &mut may);
@@ -446,17 +453,6 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
     }
     pub(crate) fn multiface_has_face(&self, state: BlockStateId, direction: Direction) -> bool {
         self.b.table.bool(state, self.direction_prop(direction))
-    }
-    pub(crate) fn direction_prop(&self, direction: Direction) -> super::states::PropKey {
-        let p = &self.b.props;
-        match direction {
-            Direction::Down => p.down,
-            Direction::Up => p.up,
-            Direction::North => p.north,
-            Direction::South => p.south,
-            Direction::West => p.west,
-            Direction::East => p.east,
-        }
     }
     /// Head and body blocks of a growing-plant family.
     pub(crate) fn growing_plant_pair(
@@ -614,5 +610,26 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
         .into_iter()
         .filter(|d| self.b.table.bool(state, self.direction_prop(*d)))
         .count()
+    }
+}
+
+impl<L: super::signal_access::SignalAccess + ?Sized> Signals<'_, L> {
+    pub(crate) fn direction_prop(&self, direction: Direction) -> super::states::PropKey {
+        let p = &self.b.props;
+        match direction {
+            Direction::Down => p.down,
+            Direction::Up => p.up,
+            Direction::North => p.north,
+            Direction::South => p.south,
+            Direction::West => p.west,
+            Direction::East => p.east,
+        }
+    }
+}
+
+/// `Sim` reads these through its [`Signals`], so there is one implementation of each.
+impl<L: LevelAccess + ?Sized> Sim<'_, L> {
+    pub(crate) fn direction_prop(&self, direction: Direction) -> super::states::PropKey {
+        self.signals().direction_prop(direction)
     }
 }
