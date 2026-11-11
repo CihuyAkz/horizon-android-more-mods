@@ -82,16 +82,10 @@ fn slime_at(world: &World, facts: &BlockFacts, position: BlockPos) -> bool {
 }
 
 mod fluids;
-<<<<<<< HEAD
-pub use fluids::flow_vector;
-pub use fluids::{fluid_flow, update_entity_fluids};
-||||||| c98a51a664
-pub use fluids::{fluid_flow, update_entity_fluids};
-=======
 mod item_fall;
 mod item_no_physics;
+pub use fluids::flow_vector;
 pub use fluids::{fall_reset_hit, fluid_flow, update_entity_fluids, water_clip};
->>>>>>> arismoko/main
 
 #[cfg(test)]
 mod drop_motion_tests {

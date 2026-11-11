@@ -30,6 +30,10 @@ impl Game<'_> {
 
     fn tick_remote_level_body(&mut self) -> Result<()> {
         self.ticks += 1;
+        // Last tick's hits and uses held back for its move (Free Direction): first in this one,
+        // before its move, as a hit one tick later would be (an anticheat's Post check wants no
+        // hit after the move of its tick).
+        self.send_held_back();
         self.repro_tick();
         // Hud.tick ends with ChatComponent.tick.
         let chat_ticks = self.visual_ticks();

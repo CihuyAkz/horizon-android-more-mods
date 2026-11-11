@@ -1107,14 +1107,10 @@ mod tests {
             blinks: Default::default(),
             pois: Default::default(),
             species_placements: Default::default(),
-<<<<<<< HEAD
             armor_atlases: Default::default(),
             equipment: Default::default(),
-||||||| c98a51a664
-=======
             mod_spawns: Default::default(),
             pathfindable_overrides: Default::default(),
->>>>>>> arismoko/main
         };
         // Sprite i spans u and v from 0.2 i to 0.2 i + 0.1.
         let atlas = |name: &str| -> Option<[f32; 4]> {

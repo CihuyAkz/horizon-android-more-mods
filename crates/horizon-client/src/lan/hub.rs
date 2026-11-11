@@ -3312,25 +3312,11 @@ impl Hub {
                 // A decorated pot is no block entity: its tag is the chunk's saved one.
                 let state = world.block(x, y, z).0;
                 let tag = match world.block_entities.get(&(x, y, z)) {
-<<<<<<< HEAD
-                    Some(entity) => self.encoder.update_tag((x, y, z), entity),
+                    Some(entity) => self.encoder.change_tag((x, y, z), state, entity),
                     None => world.chunks.get(&(x >> 4, z >> 4)).and_then(|c| {
                         super::chunks::pot_tag(c, (x, y, z))
                             .or_else(|| super::chunks::machine_tag(c, (x, y, z)))
                     }),
-||||||| c98a51a664
-                    Some(entity) => self.encoder.update_tag((x, y, z), entity),
-                    None => world
-                        .chunks
-                        .get(&(x >> 4, z >> 4))
-                        .and_then(|c| super::chunks::pot_tag(c, (x, y, z))),
-=======
-                    Some(entity) => self.encoder.change_tag((x, y, z), state, entity),
-                    None => world
-                        .chunks
-                        .get(&(x >> 4, z >> 4))
-                        .and_then(|c| super::chunks::pot_tag(c, (x, y, z))),
->>>>>>> arismoko/main
                 };
                 let Some(tag) = tag else {
                     continue;

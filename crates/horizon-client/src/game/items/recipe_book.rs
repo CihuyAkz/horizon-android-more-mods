@@ -391,13 +391,7 @@ impl Game<'_> {
             .map_or_else(Vec::new, |b| b.entries.clone())
     }
     /// The display ids the player's book holds, and a number that changes
-<<<<<<< HEAD:crates/horizon-client/src/game/recipe_book.rs
-    /// whenever they do (`native_known_recipes`, capability `recipes`).
-||||||| c98a51a664:crates/horizon-client/src/game/recipe_book.rs
-    /// whenever they do (`native_known_recipes`).
-=======
     /// whenever they do (`known_recipes`).
->>>>>>> arismoko/main:crates/horizon-client/src/game/items/recipe_book.rs
     pub(super) fn recipe_book_displays(&mut self) -> (u64, Vec<i32>) {
         self.sync_client_book();
         (

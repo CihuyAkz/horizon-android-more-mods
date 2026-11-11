@@ -206,72 +206,6 @@ impl ArmorStandAssets {
         let mut equipment = HashMap::new();
         let mut equipment_layers = HashMap::new();
         let mut trim_overrides = HashMap::new();
-<<<<<<< HEAD:crates/horizon-client/src/game/armor_stands.rs
-        for (id, v) in horizon_client::equipment::assets(root) {
-            equipment.insert(id.clone(), horizon_client::equipment::layers(&id, &v));
-            let mut kinds = HashMap::new();
-            for kind in ["humanoid", "humanoid_leggings", "wings"] {
-                // Every layer of the kind: leather's overlay is layer 1.
-                let layers: Vec<(String, Option<u32>)> = v["layers"][kind]
-                    .as_array()
-                    .into_iter()
-                    .flatten()
-                    .map(|layer| {
-                        let texture = layer["texture"].as_str().unwrap_or(&id);
-                        let undyed = layer["dyeable"]["color_when_undyed"]
-                            .as_i64()
-                            .map(|c| c as u32 & 0xFF_FFFF);
-                        (horizon_client::equipment::sprite(texture, kind), undyed)
-                    })
-                    .collect();
-                if !layers.is_empty() {
-                    kinds.insert(kind.to_owned(), layers);
-||||||| c98a51a664:crates/horizon-client/src/game/armor_stands.rs
-        // EquipmentAssetManager reads every namespace: vanilla's and the content mods'.
-        let namespaces = std::iter::once("minecraft".to_owned())
-            .chain(horizon_client::mod_content::namespaces(root));
-        for namespace in namespaces {
-            let Ok(entries) = std::fs::read_dir(root.join(format!("assets/{namespace}/equipment")))
-            else {
-                continue;
-            };
-            for e in entries.flatten() {
-                let path = e.path();
-                let Some(name) = path.file_stem().and_then(|s| s.to_str()) else {
-                    continue;
-                };
-                let Ok(v) =
-                    std::fs::read(&path).map(|b| serde_json::from_slice::<serde_json::Value>(&b))
-                else {
-                    continue;
-                };
-                let Ok(v) = v else { continue };
-                let id = format!("{namespace}:{name}");
-                let mut kinds = HashMap::new();
-                for kind in ["humanoid", "humanoid_leggings", "wings"] {
-                    // Every layer of the kind: leather's overlay is layer 1.
-                    let layers: Vec<(String, Option<u32>)> = v["layers"][kind]
-                        .as_array()
-                        .into_iter()
-                        .flatten()
-                        .map(|layer| {
-                            let tex = layer["texture"].as_str().unwrap_or(&id);
-                            let (tex_namespace, tex) =
-                                tex.split_once(':').unwrap_or(("minecraft", tex));
-                            let sprite = match tex_namespace {
-                                "minecraft" => format!("entity/equipment/{kind}/{tex}"),
-                                other => format!("{other}:entity/equipment/{kind}/{tex}"),
-                            };
-                            let undyed = layer["dyeable"]["color_when_undyed"]
-                                .as_i64()
-                                .map(|c| c as u32 & 0xFF_FFFF);
-                            (sprite, undyed)
-                        })
-                        .collect();
-                    if !layers.is_empty() {
-                        kinds.insert(kind.to_owned(), layers);
-                    }
-=======
         // EquipmentAssetManager reads resolved resources in every namespace.
         for namespace in root.namespaces("assets") {
             let prefix = format!("assets/{namespace}/equipment/");
@@ -290,6 +224,7 @@ impl ArmorStandAssets {
                 };
                 let Ok(v) = v else { continue };
                 let id = format!("{namespace}:{name}");
+                equipment.insert(id.clone(), horizon_client::equipment::layers(&id, &v));
                 let mut kinds = HashMap::new();
                 for kind in ["humanoid", "humanoid_leggings", "wings"] {
                     // Every layer of the kind: leather's overlay is layer 1.
@@ -314,7 +249,6 @@ impl ArmorStandAssets {
                     if !layers.is_empty() {
                         kinds.insert(kind.to_owned(), layers);
                     }
->>>>>>> arismoko/main:crates/horizon-client/src/game/entities/armor_stands.rs
                 }
             }
             trim_overrides.insert(id.clone(), TrimOverride::list(&v));
@@ -325,7 +259,8 @@ impl ArmorStandAssets {
             small: load("minecraft:armor_stand_small#main").map(Arc::new),
             layers,
             player,
-            atlases: horizon_client::custom_armor::load(root),
+            // Custom (ItemsAdder) armour atlases read the prepared folder: see FOLLOWUPS.
+            atlases: HashMap::new(),
             equipment,
             equipment_layers,
             trim_overrides,
@@ -333,19 +268,9 @@ impl ArmorStandAssets {
             root: root.to_owned(),
         }
     }
-<<<<<<< HEAD:crates/horizon-client/src/game/armor_stands.rs
-    /// Trim data and custom armour of reloaded resources (`fresh`, loaded from them without the
-    /// models: these stay).
-    pub fn take_reloaded(&mut self, fresh: Self) {
-||||||| c98a51a664:crates/horizon-client/src/game/armor_stands.rs
-    /// Trim data of reloaded resources (the models stay).
-    pub fn reload_trims(&mut self, root: &std::path::Path) {
-        let fresh = Self::load(root, None);
-=======
-    /// Trim data of reloaded resources (the models stay).
+    /// Trim data and equipment of reloaded resources (the models stay).
     pub fn apply_resources(&mut self, fresh: Self) {
         self.equipment = fresh.equipment;
->>>>>>> arismoko/main:crates/horizon-client/src/game/entities/armor_stands.rs
         self.trim_overrides = fresh.trim_overrides;
         self.atlases = fresh.atlases;
         self.trims = fresh.trims;
@@ -464,27 +389,6 @@ impl Game<'_> {
             };
             // EquipmentLayerRenderer.renderLayers: NO_OVERLAY, the armour
             // glint on the first layer and on the trim when `stack.hasFoil()`.
-<<<<<<< HEAD:crates/horizon-client/src/game/armor_stands.rs
-            let overlay = if stack.is_some_and(|s| {
-                let item_glint = self
-                    .res
-                    .items()
-                    .enchantments
-                    .props
-                    .get(&*s.item)
-                    .is_some_and(|p| p.glint);
-                s.has_foil(item_glint)
-            }) {
-||||||| c98a51a664:crates/horizon-client/src/game/armor_stands.rs
-            let item_glint = self
-                .res
-                .items()
-                .enchantments
-                .props
-                .get(item)
-                .is_some_and(|p| p.glint);
-            let overlay = if stack.is_some_and(|s| s.has_foil(item_glint)) {
-=======
             let item_glint = self
                 .res
                 .items()
@@ -493,7 +397,6 @@ impl Game<'_> {
                 .get(item)
                 .and_then(|p| p.glint);
             let overlay = if stack.is_some_and(|s| s.has_foil(item_glint)) {
->>>>>>> arismoko/main:crates/horizon-client/src/game/entities/armor_stands.rs
                 horizon_client::mobs::render::ARMOR_GLINT
             } else {
                 0

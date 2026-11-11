@@ -129,6 +129,9 @@ impl Game<'_> {
         let mut resume_was_on_fire = false;
         let mut resume_sampled = None;
         let mut resume_guest = None;
+        // The mob ticks' time and count, summed (spans: HORIZON_SPIKES).
+        let timed = horizon_client::spans::enabled();
+        let (mut tick_ms, mut ticked_count) = (0.0f32, 0usize);
         loop {
             let mut pause = None;
             {
@@ -416,6 +419,7 @@ impl Game<'_> {
                             )
                         }
                     };
+                    let started_at = timed.then(std::time::Instant::now);
                     let progress =
                         match std::panic::catch_unwind(std::panic::AssertUnwindSafe(run_tick)) {
                             Ok(progress) => progress,
@@ -444,6 +448,10 @@ impl Game<'_> {
                                 break;
                             }
                         };
+                    if let Some(t) = started_at {
+                        tick_ms += t.elapsed().as_secs_f32() * 1000.0;
+                        ticked_count += 1;
+                    }
                     let kept = match progress {
                         horizon_client::mobs::ai::TickProgress::Complete(kept) => kept,
                         horizon_client::mobs::ai::TickProgress::Consumption {
@@ -636,6 +644,9 @@ impl Game<'_> {
             lent = horizon_client::health::LentLevel::take(&mut self.world);
             resuming = true;
         }
+        horizon_client::spans::add("entities.mob_tick", tick_ms);
+        horizon_client::spans::add("entities.ticked_count", ticked_count as f32);
+        horizon_client::mobs::ai::parts::flush();
         laps.lap("creature_loop");
         if dispatch_panic.is_none() {
             if !self.persist.off_level.is_empty() {

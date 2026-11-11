@@ -1082,16 +1082,8 @@ fn configure(
     lang: &Language,
     send: &Sender<Event>,
     cookies: &Cookies,
-<<<<<<< HEAD
-    resources: &Path,
-) -> Result<Result<Dynamic, Reason>, Reason> {
-||||||| c98a51a664
-    resources: &Path,
-) -> Result<Dynamic, Reason> {
-=======
     resources: &ItemData,
-) -> Result<Dynamic, Reason> {
->>>>>>> arismoko/main
+) -> Result<Result<Dynamic, Reason>, Reason> {
     let mut registries = Dynamic::default();
     let mut content_verified = false;
     crate::datapack_net::clear_received();

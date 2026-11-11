@@ -272,17 +272,8 @@ impl ChunkGenerator for NoTerrain {
 
 /// A server entity the client tracks (position as last sent).
 pub(super) struct Tracked {
-<<<<<<< HEAD:crates/horizon-client/src/game/remote.rs
     pub(super) kind: String,
     pub(super) position: [f64; 3],
-||||||| c98a51a664:crates/horizon-client/src/game/remote.rs
-struct Tracked {
-    kind: String,
-    position: [f64; 3],
-=======
-    kind: String,
-    position: [f64; 3],
->>>>>>> arismoko/main:crates/horizon-client/src/game/network/remote/mod.rs
     /// `Entity.getPositionCodec`'s base: the position the server last
     /// reported (AddEntity, MoveEntity, EntityPositionSync), which a move
     /// packet's delta counts from. A TeleportEntity moves the entity but not
@@ -1834,7 +1825,7 @@ impl Game<'_> {
         title.last_server = self.settings.file.string("lastServer");
         title.skip_multiplayer_warning = self.settings.file.bool("skipMultiplayerWarning");
         if single_player && reason.is_none() {
-            self.title = Some(title);
+            self.show_title(title);
             self.capture(false);
             return Ok(());
         }
@@ -1846,7 +1837,7 @@ impl Game<'_> {
             },
             None => horizon_client::multiplayer::Screen::list(&saves),
         });
-        self.title = Some(title);
+        self.show_title(title);
         self.capture(false);
         Ok(())
     }
@@ -1877,52 +1868,6 @@ impl Game<'_> {
         if let Some(r) = self.renderer.as_mut() {
             r.clear_sections(self.world.layout());
         }
-<<<<<<< HEAD:crates/horizon-client/src/game/remote.rs
-||||||| c98a51a664:crates/horizon-client/src/game/remote.rs
-        let saves = std::env::current_dir()?.join("saves");
-        let mut title = horizon_client::title::Title::new(saves.clone(), &self.options.resources)
-            .with_user(|| self.options.player_name());
-        title.last_server = self.settings.file.string("lastServer");
-        title.skip_multiplayer_warning = self.settings.file.bool("skipMultiplayerWarning");
-        if single_player && reason.is_none() {
-            self.title = Some(title);
-            self.capture(false);
-            return Ok(());
-        }
-        title.mode = horizon_client::title::Mode::Multiplayer(match reason {
-            Some(reason) => horizon_client::multiplayer::Screen::Disconnected {
-                reason,
-                retry: None,
-                lines: std::cell::Cell::new(1),
-            },
-            None => horizon_client::multiplayer::Screen::list(&saves),
-        });
-        self.title = Some(title);
-        self.capture(false);
-        Ok(())
-=======
-        let saves = std::env::current_dir()?.join("saves");
-        let mut title = horizon_client::title::Title::new(saves.clone(), &self.options.resources)
-            .with_user(|| self.options.player_name());
-        title.last_server = self.settings.file.string("lastServer");
-        title.skip_multiplayer_warning = self.settings.file.bool("skipMultiplayerWarning");
-        if single_player && reason.is_none() {
-            self.show_title(title);
-            self.capture(false);
-            return Ok(());
-        }
-        title.mode = horizon_client::title::Mode::Multiplayer(match reason {
-            Some(reason) => horizon_client::multiplayer::Screen::Disconnected {
-                reason,
-                retry: None,
-                lines: std::cell::Cell::new(1),
-            },
-            None => horizon_client::multiplayer::Screen::list(&saves),
-        });
-        self.show_title(title);
-        self.capture(false);
-        Ok(())
->>>>>>> arismoko/main:crates/horizon-client/src/game/network/remote/mod.rs
     }
     /// `Hud.onDisconnected`, from `Minecraft.disconnect` and `clearClientLevel`
     /// (a proxy's reconfiguration too), but the chat: joining clears it and a
@@ -1937,14 +1882,8 @@ impl Game<'_> {
     }
 
     pub(super) fn send(&self, packet: S) {
-<<<<<<< HEAD:crates/horizon-client/src/game/remote.rs
         if let Some(r) = &self.remote {
             let interaction = is_interaction(&packet);
-||||||| c98a51a664:crates/horizon-client/src/game/remote.rs
-        if let Some(r) = &self.remote {
-=======
-        if self.remote.is_some() {
->>>>>>> arismoko/main:crates/horizon-client/src/game/network/remote/mod.rs
             // MultiPlayerGameMode's attack, interact, useItem, useItemOn, releaseUsingItem, dropItem and
             // piercingAttack run ensureHasSentCarriedItem before their packet: a slot the number keys
             // chose this tick goes out first. A miss, a dig's start or a swap waits for the next tick.
@@ -1955,7 +1894,6 @@ impl Game<'_> {
             {
                 self.remote_send_carried();
             }
-<<<<<<< HEAD:crates/horizon-client/src/game/remote.rs
             if (interaction || matches!(packet, S::Punch(_))) && r.stick_mode == ServerStick::Free {
                 // A hit, a use, a block placed or an item dropped goes where the player looks:
                 // a server places stairs, throws and aims by the rotation it was last sent. While
@@ -1973,8 +1911,6 @@ impl Game<'_> {
                     return;
                 }
             }
-||||||| c98a51a664:crates/horizon-client/src/game/remote.rs
-=======
             self.send_play(packet);
         }
     }
@@ -1984,7 +1920,6 @@ impl Game<'_> {
         if let Some(r) = &self.remote
             && !self.client_packet_send_canceled(&packet)
         {
->>>>>>> arismoko/main:crates/horizon-client/src/game/network/remote/mod.rs
             r.session.send(packet);
         }
     }
@@ -1992,7 +1927,7 @@ impl Game<'_> {
     fn send_held_back(&self) {
         if let Some(r) = &self.remote {
             for packet in r.held_back.take() {
-                r.session.send(packet);
+                self.send_play(packet);
             }
         }
     }
@@ -2854,13 +2789,8 @@ impl Game<'_> {
                     self.close_dialogs();
                     if let Some(r) = self.remote.as_mut() {
                         r.joined = true;
-<<<<<<< HEAD:crates/horizon-client/src/game/remote.rs
                         r.play_began = Some(Instant::now());
                         // handleLogin: startWaitingForNewLevel with Reason.OTHER.
-||||||| c98a51a664:crates/horizon-client/src/game/remote.rs
-                        // handleLogin: startWaitingForNewLevel with Reason.OTHER.
-=======
->>>>>>> arismoko/main:crates/horizon-client/src/game/network/remote/mod.rs
                         r.profile = uuid;
                         r.profile_name = name.clone();
                         r.status = horizon_client::lang::get_or(
@@ -2896,12 +2826,8 @@ impl Game<'_> {
                     }
                 }
                 Event::Reconfiguring => {
-<<<<<<< HEAD:crates/horizon-client/src/game/remote.rs
                     log::info!("Horizon: the server is reconfiguring the connection");
-||||||| c98a51a664:crates/horizon-client/src/game/remote.rs
-=======
                     self.reset_book_view();
->>>>>>> arismoko/main:crates/horizon-client/src/game/network/remote/mod.rs
                     // handleConfigurationStart: the held-back chat shows, then
                     // clearClientLevel opens ServerReconfigScreen over no level.
                     self.flush_chat_queue();
@@ -2910,14 +2836,8 @@ impl Game<'_> {
                     // The level goes, and a new listener starts from nothing when the
                     // configuration ends; the server configuring us now (a proxy's next one)
                     // offers its own far terrain, or none, and announces its
-<<<<<<< HEAD:crates/horizon-client/src/game/remote.rs
-                    // own features again (a Horizon server's quiet commands).
-                    self.clear_remote_world();
-||||||| c98a51a664:crates/horizon-client/src/game/remote.rs
-                    // own features again (a Horizon server's quiet commands).
-=======
                     // own features again.
->>>>>>> arismoko/main:crates/horizon-client/src/game/network/remote/mod.rs
+                    self.clear_remote_world();
                     if let Some(remote) = &mut self.remote {
                         remote.far_terrain = None;
                         remote.quiet_commands = false;
@@ -4156,60 +4076,6 @@ impl Game<'_> {
         self.move_remote_text_display(id, position, rotation);
         self.turn_remote_projectile(id, rotation);
     }
-<<<<<<< HEAD:crates/horizon-client/src/game/remote.rs
-    fn remove_entity(&mut self, id: i32) {
-        self.audio.remove_sound_entity(id as u32);
-        // Entity.setRemoved detaches every passenger, even when no empty
-        // SetPassengers packet preceded the vehicle's removal. Otherwise
-        // mobs and other players keep their passenger pose after it is gone.
-        self.remote_set_passengers(id, &[]);
-        self.mobs.retain(|m| m.id != id as u32);
-        self.orbs.retain(|o| o.id != id as u32);
-        self.dropped.retain(|d| d.id != id as u32);
-        // Before the crystals go: the dragon's beam index follows them.
-        self.remove_remote_dragon(id);
-        self.remove_remote_object(id as u32);
-        self.remove_remote_projectile(id as u32);
-        self.persist.uuids.remove(&(id as u32));
-        if let Some(r) = self.remote.as_mut() {
-            r.glowing.remove(&id);
-            r.entities.remove(&id);
-            r.passenger_vehicles.remove(&(id as u32));
-            r.passenger_vehicles.retain(|_, v| *v != id as u32);
-            r.lerps.remove(&id);
-            r.cart_lerps.remove(&id);
-            r.stepped.remove(&id);
-            r.head_lerps.remove(&id);
-            r.pending_items.remove(&id);
-            r.names.remove(&id);
-        }
-||||||| c98a51a664:crates/horizon-client/src/game/remote.rs
-    fn remove_entity(&mut self, id: i32) {
-        self.audio.remove_sound_entity(id as u32);
-        // Entity.setRemoved detaches every passenger, even when no empty
-        // SetPassengers packet preceded the vehicle's removal. Otherwise
-        // mobs and other players keep their passenger pose after it is gone.
-        self.remote_set_passengers(id, &[]);
-        self.mobs.retain(|m| m.id != id as u32);
-        self.orbs.retain(|o| o.id != id as u32);
-        self.dropped.retain(|d| d.id != id as u32);
-        // Before the crystals go: the dragon's beam index follows them.
-        self.remove_remote_dragon(id);
-        self.remove_remote_object(id as u32);
-        self.remove_remote_projectile(id as u32);
-        self.persist.uuids.remove(&(id as u32));
-        if let Some(r) = self.remote.as_mut() {
-            r.glowing.remove(&id);
-            r.entities.remove(&id);
-            r.passenger_vehicles.remove(&(id as u32));
-            r.passenger_vehicles.retain(|_, v| *v != id as u32);
-            r.lerps.remove(&id);
-            r.cart_lerps.remove(&id);
-            r.stepped.remove(&id);
-            r.head_lerps.remove(&id);
-            r.pending_items.remove(&id);
-        }
-=======
     pub(super) fn detach_remote_tracking_entity(&mut self, id: i32) {
         let mobs = &self.mobs;
         let index = &mut self.mob_index;
@@ -4217,7 +4083,6 @@ impl Game<'_> {
             .detach_tracking_target(TrackingTarget::Entity(id), || {
                 index.get(mobs, id as u32).map(mob_tracking_body)
             });
->>>>>>> arismoko/main:crates/horizon-client/src/game/network/remote/mod.rs
     }
 
     /// Map a menu slot to Horizon's inventory screen slot ids.
@@ -5294,84 +5159,8 @@ impl Game<'_> {
                         m.extra.charged = charged;
                     }
                     for (slot, item, stack) in items {
-<<<<<<< HEAD:crates/horizon-client/src/game/remote.rs
-                        // The worn stacks keep a piece's dye and its own equipment asset (a
-                        // server's custom armour: `ItemStack::equippable_asset`).
-                        let e = &mut m.extra;
-                        match slot {
-                            0 => match stack {
-                                // The components the server sent (a loaded
-                                // crossbow's `charged_projectiles`, dyed
-                                // leather, an enchanted book's id, ...) are
-                                // what the item model draws.
-                                Some(stack) => e.set_main_hand_stack(Some(stack)),
-                                None => e.set_main_hand(item),
-                            },
-                            1 => e.off_hand = item,
-                            2 => {
-                                e.feet = item;
-                                e.armor[3] = stack;
-                            }
-                            3 => {
-                                e.legs = item;
-                                e.armor[2] = stack;
-                            }
-                            4 => {
-                                e.chest = item;
-                                e.armor[1] = stack;
-                            }
-                            5 => {
-                                e.head = item;
-                                e.armor[0] = stack;
-                            }
-                            6 => {
-                                // A wolf's armor shows its cracks.
-                                e.body_damage = stack.as_ref().map_or(0, |s| s.damage as i32);
-                                e.body = item;
-                            }
-                            7 => m.set_saddle(stack),
-                            _ => {}
-                        }
-||||||| c98a51a664:crates/horizon-client/src/game/remote.rs
-                        let e = &mut m.extra;
-                        match slot {
-                            0 => match stack {
-                                // The components the server sent (a loaded
-                                // crossbow's `charged_projectiles`, dyed
-                                // leather, an enchanted book's id, ...) are
-                                // what the item model draws.
-                                Some(stack) => e.set_main_hand_stack(Some(stack)),
-                                None => e.set_main_hand(item),
-                            },
-                            1 => e.off_hand = item,
-                            2 => {
-                                e.feet = item;
-                                e.armor[3] = stack;
-                            }
-                            3 => {
-                                e.legs = item;
-                                e.armor[2] = stack;
-                            }
-                            4 => {
-                                e.chest = item;
-                                e.armor[1] = stack;
-                            }
-                            5 => {
-                                e.head = item;
-                                e.armor[0] = stack;
-                            }
-                            6 => {
-                                // A wolf's armor shows its cracks.
-                                e.body_damage = stack.as_ref().map_or(0, |s| s.damage as i32);
-                                e.body = item;
-                            }
-                            7 => m.set_saddle(stack),
-                            _ => {}
-                        }
-=======
                         let stack = stack.or_else(|| item.map(|item| ItemStack::new(&item, 1)));
                         m.set_equipment_stack(slot as usize, stack);
->>>>>>> arismoko/main:crates/horizon-client/src/game/network/remote/mod.rs
                     }
                 }
             }
@@ -7168,17 +6957,9 @@ impl Game<'_> {
     }
     /// ChatType.Bound.decorate (`Decoration::Chat`) and `decorateNarration`
     /// (`Decoration::Narration`): the chat type's decoration from the
-<<<<<<< HEAD:crates/horizon-client/src/game/remote.rs
     /// server's registry, applied to `content`. Legacy `§` codes in it (which plugins still
     /// send) style the line, as `remote_text`'s do.
-    fn decorate_chat(
-||||||| c98a51a664:crates/horizon-client/src/game/remote.rs
-    /// server's registry, applied to `content`.
-    fn decorate_chat(
-=======
-    /// server's registry, applied to `content`.
     pub(super) fn decorate_chat(
->>>>>>> arismoko/main:crates/horizon-client/src/game/network/remote/mod.rs
         &self,
         bound: &play::ChatTypeBound,
         content: &serde_json::Value,
@@ -7503,16 +7284,10 @@ impl Game<'_> {
                 self.player_attachments.retire();
                 self.resident_entities.local_player.renew();
                 self.player = Some(player);
-<<<<<<< HEAD:crates/horizon-client/src/game/remote.rs
                 self.apply_remote_abilities();
                 self.apply_remote_attributes();
-                self.pad.player_replaced();
-||||||| c98a51a664:crates/horizon-client/src/game/remote.rs
-                self.pad.player_replaced();
-=======
                 self.bind_local_player_residency();
                 self.input_player_replaced();
->>>>>>> arismoko/main:crates/horizon-client/src/game/network/remote/mod.rs
                 self.sway = Default::default();
                 self.eye = 1.62;
                 self.previous_eye = 1.62;
@@ -7520,16 +7295,10 @@ impl Game<'_> {
                 self.apply_remote_health();
             }
         }
-<<<<<<< HEAD:crates/horizon-client/src/game/remote.rs
         if setback {
             self.stick_setback();
         }
-        if self.studio_replay.is_none() {
-||||||| c98a51a664:crates/horizon-client/src/game/remote.rs
-        if self.studio_replay.is_none() {
-=======
         if !self.replay.playing() {
->>>>>>> arismoko/main:crates/horizon-client/src/game/network/remote/mod.rs
             self.previous_position = position;
         }
         self.yaw = yaw;
@@ -7657,129 +7426,7 @@ impl Game<'_> {
         Ok(())
     }
 
-<<<<<<< HEAD:crates/horizon-client/src/game/remote.rs
-    fn tick_remote_level(&mut self) -> Result<()> {
-        self.ticks += 1;
-        // Last tick's hits and uses held back for its move (Free Direction): first in this one,
-        // before its move, as a hit one tick later would be (an anticheat's Post check wants no
-        // hit after the move of its tick).
-        self.send_held_back();
-        self.repro_tick();
-        // Hud.tick ends with ChatComponent.tick.
-        let chat_ticks = self.visual_ticks();
-        self.ui.chat.tick(&self.gui.atlas, chat_ticks);
-        self.tick_sign_editor();
-        self.track_experience_display();
-        self.tick_enchanting_book();
-        // Leaving a slot clears its bundle's selection here and on the server.
-        self.tick_bundle_hover();
-        // Options.broadcastOptions: a changed render distance, Chat, skin or Main Hand
-        // option is sent again.
-        let info = self
-            .settings
-            .client_information(client_view_distance(self.settings.render_distance));
-        if let Some(r) = self.remote.as_mut()
-            && r.joined
-            && r.sent_info != info
-        {
-            r.sent_info = info.clone();
-            self.send(S::ClientInformation(info));
-        }
-        // Minecraft.tick: TickRateManager.tick; ClientLevel.tickTime advances
-        // the time only while the level runs normally.
-        let running = self.clock.world_runs();
-        self.boss_overlay.tick_darken(running);
-        // Under `HORIZON_STILL` the frame's countdowns (this one, the hotbar's pop, the HUD's
-        // below) wait for the world, as the border's size change does in any frozen level: a
-        // frozen client keeps ticking, as many ticks as the run took.
-        let hold = !running && self.clock.still();
-        if !hold {
-            self.tick_item_activation();
-        }
-        if running {
-            self.world.game_time += 1;
-            self.remote_clock_tick();
-        }
-        // Weather levels drift toward their targets between server updates.
-        let w = &mut self.world.weather;
-        w.rain_level.0 = w.rain_level.1;
-        w.thunder_level.0 = w.thunder_level.1;
-        if self.use_delay > 0 {
-            self.use_delay -= 1;
-        }
-        // Minecraft.handleKeybinds precedes entity ticking and sendChanges.
-        // Window callbacks only queue clicks, so an interaction cannot leak
-        // between CLIENT_TICK_END and a later pong.
-        self.remote_handle_input();
-        // Player.tick's ItemCooldowns.tick, in ClientLevel.tickEntities after
-        // handleKeybinds: this path replaces `tick_world`'s for a server's
-        // client (multiplayer and the default single player), so the entries
-        // advance here or the slot stays shaded until the server says the
-        // entry ended. `onCooldownEnded` is the plain ItemCooldowns' no-op on
-        // a client. Ticking it after the keybinds keeps a held use from
-        // trying again a tick before the server's entry ends.
-        self.cooldowns.tick();
-||||||| c98a51a664:crates/horizon-client/src/game/remote.rs
-    fn tick_remote_level(&mut self) -> Result<()> {
-        self.ticks += 1;
-        self.repro_tick();
-        // Hud.tick ends with ChatComponent.tick.
-        let chat_ticks = self.visual_ticks();
-        self.ui.chat.tick(&self.gui.atlas, chat_ticks);
-        self.tick_sign_editor();
-        self.track_experience_display();
-        self.tick_enchanting_book();
-        // Leaving a slot clears its bundle's selection here and on the server.
-        self.tick_bundle_hover();
-        // Options.broadcastOptions: a changed render distance or Chat option
-        // is sent again.
-        let info = self
-            .settings
-            .client_information(client_view_distance(self.settings.render_distance));
-        if let Some(r) = self.remote.as_mut()
-            && r.joined
-            && r.sent_info != info
-        {
-            r.sent_info = info.clone();
-            self.send(S::ClientInformation(info));
-        }
-        // Minecraft.tick: TickRateManager.tick; ClientLevel.tickTime advances
-        // the time only while the level runs normally.
-        let running = self.clock.world_runs();
-        self.boss_overlay.tick_darken(running);
-        // Under `HORIZON_STILL` the frame's countdowns (this one, the hotbar's pop, the HUD's
-        // below) wait for the world, as the border's size change does in any frozen level: a
-        // frozen client keeps ticking, as many ticks as the run took.
-        let hold = !running && self.clock.still();
-        if !hold {
-            self.tick_item_activation();
-        }
-        if running {
-            self.world.game_time += 1;
-            self.remote_clock_tick();
-        }
-        // Weather levels drift toward their targets between server updates.
-        let w = &mut self.world.weather;
-        w.rain_level.0 = w.rain_level.1;
-        w.thunder_level.0 = w.thunder_level.1;
-        if self.use_delay > 0 {
-            self.use_delay -= 1;
-        }
-        // Minecraft.handleKeybinds precedes entity ticking and sendChanges.
-        // Window callbacks only queue clicks, so an interaction cannot leak
-        // between CLIENT_TICK_END and a later pong.
-        self.remote_handle_input();
-        // Player.tick's ItemCooldowns.tick, in ClientLevel.tickEntities after
-        // handleKeybinds: this path replaces `tick_world`'s for a server's
-        // client (multiplayer and the default single player), so the entries
-        // advance here or the slot stays shaded until the server says the
-        // entry ended. `onCooldownEnded` is the plain ItemCooldowns' no-op on
-        // a client. Ticking it after the keybinds keeps a held use from
-        // trying again a tick before the server's entry ends.
-        self.cooldowns.tick();
-=======
     fn tick_remote_player(&mut self, running: bool, hold: bool) -> Result<()> {
->>>>>>> arismoko/main:crates/horizon-client/src/game/network/remote/mod.rs
         // Inventory.tick's ItemStack.inventoryTick: the pop time runs down.
         if !hold {
             for pop in &mut self.hotbar_pop {
@@ -8272,44 +7919,11 @@ impl Game<'_> {
         self.remote_send_state(input | u8::from(auto_jumped) << 4);
         Ok(())
     }
-<<<<<<< HEAD:crates/horizon-client/src/game/remote.rs
-||||||| c98a51a664:crates/horizon-client/src/game/remote.rs
-
-    /// ClientPacketListener.handlePlayerAbilities: the player flies, may fly
-    /// and is invulnerable as the server says (bits 2, 4 and 1).
-    fn apply_remote_abilities(&mut self) {
-        let (Some(player), Some(a)) = (
-            self.player.as_mut(),
-            self.remote.as_ref().and_then(|r| r.abilities.as_ref()),
-        ) else {
-            return;
-        };
-        player.invulnerable = a.flags & 1 != 0;
-        player.flying = a.flags & 2 != 0;
-        player.may_fly = a.flags & 4 != 0;
-        player.flying_speed = a.flying_speed;
-    }
-=======
 
     /// The last `ClientboundPlayerAbilities` the server sent, on a client.
     pub(super) fn remote_abilities(&self) -> Option<&play::PlayerAbilities> {
         self.remote.as_ref()?.abilities.as_ref()
     }
-    /// ClientPacketListener.handlePlayerAbilities: the player flies, may fly
-    /// and is invulnerable as the server says (bits 2, 4 and 1).
-    fn apply_remote_abilities(&mut self) {
-        let (Some(player), Some(a)) = (
-            self.player.as_mut(),
-            self.remote.as_ref().and_then(|r| r.abilities.as_ref()),
-        ) else {
-            return;
-        };
-        player.invulnerable = a.flags & 1 != 0;
-        player.flying = a.flags & 2 != 0;
-        player.may_fly = a.flags & 4 != 0;
-        player.flying_speed = a.flying_speed;
-    }
->>>>>>> arismoko/main:crates/horizon-client/src/game/network/remote/mod.rs
     /// The local player's share of every touching entity's
     /// `LivingEntity.pushEntities`, and of the boats' pushes: on a client
     /// `EntitySelector.pushableBy` lets entities push only the local player,
@@ -11084,8 +10698,7 @@ impl Game<'_> {
     /// The rest of Minecraft.startUseItem once the main hand's target passed:
     /// the main hand's item, then the off hand's turn (its block, its item).
     /// The server does each packet's part with that packet's hand only.
-<<<<<<< HEAD:crates/horizon-client/src/game/remote.rs
-    fn remote_use_hands(&mut self) {
+    fn remote_use_hands(&mut self, attempt: mod_api::InteractionAttempt) {
         #[cfg(target_os = "android")]
         if self.mobile.touch_shield {
             let hand = if self
@@ -11101,17 +10714,13 @@ impl Game<'_> {
                 self.heights.item_used(hand);
             }
             return;
-||||||| c98a51a664:crates/horizon-client/src/game/remote.rs
-    fn remote_use_hands(&mut self) {
-=======
-    fn remote_use_hands(&mut self, attempt: mod_api::InteractionAttempt) {
+        }
         // Nothing in the crosshair: an empty hand's click is heard, by mods only.
         let miss = mod_api::__private::listened(mod_api::HookId::RightClickEmpty)
             && !self.entity_targeted()
             && self.pick().is_none();
         if miss && self.held().is_none() {
             self.native_right_click_empty(Hand::Main);
->>>>>>> arismoko/main:crates/horizon-client/src/game/network/remote/mod.rs
         }
         // A successful Item.use always drops the hand (LocalPlayer.itemUsed).
         if self.remote_use_item(Hand::Main) {
@@ -11425,14 +11034,7 @@ impl Game<'_> {
     }
 
     pub(in crate::game) fn remote_start_attack(&mut self) -> bool {
-<<<<<<< HEAD:crates/horizon-client/src/game/remote.rs
-        if self.clicks.miss_time > 0 {
-||||||| c98a51a664:crates/horizon-client/src/game/remote.rs
-    fn remote_start_attack(&mut self) -> bool {
-        if self.clicks.miss_time > 0 {
-=======
         if self.clicks.miss_time > 0 || self.hands_busy() {
->>>>>>> arismoko/main:crates/horizon-client/src/game/network/remote/mod.rs
             return false;
         }
         if self.spectator() {
@@ -11858,13 +11460,12 @@ impl Game<'_> {
             self.send_signed_chat(message);
         }
     }
-<<<<<<< HEAD:crates/horizon-client/src/game/remote.rs
     /// key.swapOffhand pressed: the next tick sends it (`remote_swap_hands`).
     pub(super) fn remote_swap_pressed(&mut self) {
         if let Some(r) = self.remote.as_mut() {
             r.swap_presses += 1;
-||||||| c98a51a664:crates/horizon-client/src/game/remote.rs
-=======
+        }
+    }
     /// ChatScreen.handleChatInput fires the client event for chat, not commands.
     pub(super) fn send_chat_from_screen(&mut self, message: &str) {
         if message.starts_with('/') || !mod_api::__private::listened(mod_api::HookId::ClientChat) {
@@ -11877,7 +11478,6 @@ impl Game<'_> {
             if let Some(outgoing) = sent {
                 self.send_signed_chat(&outgoing);
             }
->>>>>>> arismoko/main:crates/horizon-client/src/game/network/remote/mod.rs
         }
     }
     /// MultiPlayerGameMode.dropItem (key.drop): predict the removal, then send

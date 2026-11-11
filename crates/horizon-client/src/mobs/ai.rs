@@ -794,16 +794,10 @@ pub fn tick_until_consumption(
     if m.species() == Species::Strider {
         super::strider::pre_tick(m, w, events);
     }
-<<<<<<< HEAD
-    let was_on_fire = parts::time(1, || base_tick(m, w, events));
-||||||| c98a51a664
-    let was_on_fire = base_tick(m, w, events);
-=======
-    let was_on_fire = base_tick(m, w, level, events);
+    let was_on_fire = parts::time(1, || base_tick(m, w, level, events));
     if m.impulse_grace_time > 0 {
         m.impulse_grace_time -= 1;
     }
->>>>>>> arismoko/main
     if m.species() == Species::Rabbit {
         super::rabbit::base_tick(m);
     }
@@ -1990,13 +1984,7 @@ fn ai_step(m: &mut Mob, w: &MobWorld, level: &mut DamageLevel<'_>, events: &mut 
         super::piglin::before_goals(m, w, level.random(), events);
     }
     if m.alive() && !immobile {
-<<<<<<< HEAD
-        parts::time(2, || server_ai_step(m, w, level_random, events));
-||||||| c98a51a664
-        server_ai_step(m, w, level_random, events);
-=======
-        server_ai_step(m, w, level, events);
->>>>>>> arismoko/main
+        parts::time(2, || server_ai_step(m, w, level, events));
     } else {
         m.ai.jumping = false;
         m.ai.xxa = 0.0;
@@ -2010,7 +1998,6 @@ fn ai_step(m: &mut Mob, w: &MobWorld, level: &mut DamageLevel<'_>, events: &mut 
     );
     update_fall_flying(m, w, events);
     reset_effect_fall_distance(m);
-<<<<<<< HEAD
     parts::time(3, || {
         if super::equine::moved_by_client(m) {
             // LivingEntity.travelRidden: the rider's client moves it
@@ -2018,46 +2005,15 @@ fn ai_step(m: &mut Mob, w: &MobWorld, level: &mut DamageLevel<'_>, events: &mut 
             m.velocity = Vec3::ZERO;
         } else if !(m.species() == Species::Mannequin && m.extra.immovable) {
             // Mannequin.isEffectiveAi: an immovable one never travels.
-            m.travel(w, input, events);
+            m.travel(w, level, input, events);
             // A fall's hurt (checkFallDamage) teleports at once.
             hurt_teleports(m, w, events);
         }
     });
-||||||| c98a51a664
-    if super::equine::moved_by_client(m) {
-        // LivingEntity.travelRidden: the rider's client moves it
-        // (handleMoveVehicle), so the server only stops it.
-        m.velocity = Vec3::ZERO;
-    } else if !(m.species() == Species::Mannequin && m.extra.immovable) {
-        // Mannequin.isEffectiveAi: an immovable one never travels.
-        m.travel(w, input, events);
-        // A fall's hurt (checkFallDamage) teleports at once.
-        hurt_teleports(m, w, events);
-    }
-=======
-    if super::equine::moved_by_client(m) {
-        // LivingEntity.travelRidden: the rider's client moves it
-        // (handleMoveVehicle), so the server only stops it.
-        m.velocity = Vec3::ZERO;
-    } else if !(m.species() == Species::Mannequin && m.extra.immovable) {
-        // Mannequin.isEffectiveAi: an immovable one never travels.
-        m.travel(w, level, input, events);
-        // A fall's hurt (checkFallDamage) teleports at once.
-        hurt_teleports(m, w, events);
-    }
->>>>>>> arismoko/main
     // LivingEntity.aiStep: applyEffectsFromBlocks follows travel.
     m.apply_effects_from_blocks(w, events);
-<<<<<<< HEAD
-    parts::time(4, || push_entities(m, w, events));
-    hurt_by_water(m, w, events);
-||||||| c98a51a664
-    push_entities(m, w, events);
-    hurt_by_water(m, w, events);
-=======
-    push_entities(m, w, level, events);
+    parts::time(4, || push_entities(m, w, level, events));
     hurt_by_water(m, w, level, events);
->>>>>>> arismoko/main
     // Spider.tick: climbing while pressed against a wall.
     if m.kind.flags.climber {
         m.climbing = m.horizontal_collision;

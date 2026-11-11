@@ -981,21 +981,22 @@ pub fn layers(m: &Mob, age: f32) -> Vec<Layer> {
 const OWN_EQUIPMENT: &str = "horizon:own_equipment/";
 
 /// A worn piece's own equipment asset (its stack's `equippable`: a server's custom armour).
-fn own_asset(stack: &Option<crate::items::ItemStack>) -> Option<String> {
-    stack.as_ref()?.equippable_asset()
+fn own_asset(stack: Option<&crate::items::ItemStack>) -> Option<String> {
+    stack?.equippable_asset()
 }
 
 /// A piece's own equipment asset ([`own_asset`]) as the pack's equipment layers draw it:
 /// the layer of `kind` of the asset of the piece `model` wears (`...#chestplate`), in its dye
 /// colour (or the undyed one) when dyeable. An asset the packs lack draws nothing.
 fn own_equipment(m: &Mob, layer: &mut Layer, kind: &str, equipment: &crate::equipment::Layers) {
+    use horizon_items::equipment::{CHEST, FEET, HEAD, LEGS};
     let slot = match layer.model.rsplit('#').next() {
-        Some("helmet") => 0,
-        Some("chestplate") => 1,
-        Some("leggings") => 2,
-        _ => 3,
+        Some("helmet") => HEAD,
+        Some("chestplate") => CHEST,
+        Some("leggings") => LEGS,
+        _ => FEET,
     };
-    let stack = &m.extra.armor[slot];
+    let stack = m.extra.slot_stack(slot);
     let found = own_asset(stack)
         .and_then(|a| equipment.get(&a))
         .and_then(|k| k.get(kind));
@@ -1043,10 +1044,10 @@ fn humanoid_armor(m: &Mob, v: &mut Vec<Layer>) {
         (LEGS, "leggings"),
         (FEET, "boots"),
     ];
-<<<<<<< HEAD
-    for (item, stack, layer) in slots {
+    for (slot, layer) in slots {
+        let stack = e.slot_stack(slot);
         // A piece with its own equipment asset: its layer, found when drawn (`own_equipment`).
-        if item.is_some() && own_asset(stack).is_some() {
+        if own_asset(stack).is_some() {
             let folder = if layer == "leggings" {
                 "humanoid_leggings"
             } else {
@@ -1061,15 +1062,7 @@ fn humanoid_armor(m: &Mob, v: &mut Vec<Layer>) {
             });
             continue;
         }
-        let Some(name) = item.as_deref().and_then(|i| i.strip_prefix("minecraft:")) else {
-||||||| c98a51a664
-    for (item, stack, layer) in slots {
-        let Some(name) = item.as_deref().and_then(|i| i.strip_prefix("minecraft:")) else {
-=======
-    for (slot, layer) in slots {
-        let stack = e.slot_stack(slot);
         let Some(name) = stack.and_then(|s| s.item.strip_prefix("minecraft:")) else {
->>>>>>> arismoko/main
             continue;
         };
         let Some(material) = name.strip_suffix(layer).and_then(|n| n.strip_suffix('_')) else {
@@ -3507,14 +3500,10 @@ mod tests {
             blinks: Default::default(),
             pois: Default::default(),
             species_placements: Default::default(),
-<<<<<<< HEAD
             armor_atlases: Default::default(),
             equipment: Default::default(),
-||||||| c98a51a664
-=======
             mod_spawns: Default::default(),
             pathfindable_overrides: Default::default(),
->>>>>>> arismoko/main
         };
         let atlas = |name: &str| {
             Some(if name.contains("copper_golem_eyes") {
@@ -3692,14 +3681,10 @@ mod tests {
             blinks: Default::default(),
             pois: Default::default(),
             species_placements: Default::default(),
-<<<<<<< HEAD
             armor_atlases: Default::default(),
             equipment: Default::default(),
-||||||| c98a51a664
-=======
             mod_spawns: Default::default(),
             pathfindable_overrides: Default::default(),
->>>>>>> arismoko/main
         };
         let atlas = |_: &str| Some([0.0, 0.0, 0.25, 0.25]);
         let part = &kind.model;
@@ -4006,14 +3991,10 @@ mod scroll_tests {
             blinks: Default::default(),
             pois: Default::default(),
             species_placements: Default::default(),
-<<<<<<< HEAD
             armor_atlases: Default::default(),
             equipment: Default::default(),
-||||||| c98a51a664
-=======
             mod_spawns: Default::default(),
             pathfindable_overrides: Default::default(),
->>>>>>> arismoko/main
         };
         let atlas = |name: &str| {
             let h = name.len() as f32 / 64.0;
@@ -4180,14 +4161,10 @@ mod emissive_tests {
             blinks: RwLock::new(blinks),
             pois: Default::default(),
             species_placements: Default::default(),
-<<<<<<< HEAD
             armor_atlases: Default::default(),
             equipment: Default::default(),
-||||||| c98a51a664
-=======
             mod_spawns: Default::default(),
             pathfindable_overrides: Default::default(),
->>>>>>> arismoko/main
         }
     }
 
@@ -4468,14 +4445,10 @@ mod random_texture_tests {
             entity_tags: Default::default(),
             pois: Default::default(),
             species_placements: Default::default(),
-<<<<<<< HEAD
             armor_atlases: Default::default(),
             equipment: Default::default(),
-||||||| c98a51a664
-=======
             mod_spawns: Default::default(),
             pathfindable_overrides: Default::default(),
->>>>>>> arismoko/main
         }
     }
 

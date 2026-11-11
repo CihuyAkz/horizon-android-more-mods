@@ -527,8 +527,8 @@ impl Mob {
         dims_array(self.dims_in_pose(self.pose()))
     }
     /// The pose this mob is in (`Entity.getPose`): the stance its species
-    /// keeps in its own fields — a villager's bed, a camel's sit flag, an
-    /// avatar's stance — else the synced pose id.
+    /// keeps in its own fields â€” a villager's bed, a camel's sit flag, an
+    /// avatar's stance â€” else the synced pose id.
     pub fn pose(&self) -> mod_api::Pose {
         if super::villager::sleeping(self) {
             return mod_api::Pose::Sleeping;
@@ -557,7 +557,7 @@ impl Mob {
     /// fish, the shulker's lid, the salmon's variant and the polar bear's
     /// rear-up read the mob's own state, as their `getDefaultDimensions`
     /// do) times its `minecraft:scale` (`getScale`), width, height and eye
-    /// height alike — except fixed boxes: sleeping, dying avatars and
+    /// height alike â€” except fixed boxes: sleeping, dying avatars and
     /// digging/emerging wardens (`EntityDimensions.fixed`).
     pub fn dims_in_pose(&self, pose: mod_api::Pose) -> (f64, f64, f64) {
         if pose == mod_api::Pose::Sleeping {
@@ -661,7 +661,7 @@ impl Mob {
         self.dims().1 as f32
     }
     /// `AgeableMob.isBaby`: `canBeABaby() && getAge() < 0`. The age alone is
-    /// not enough — a frog, a parrot, a zombie nautilus, a camel husk, a slime,
+    /// not enough â€” a frog, a parrot, a zombie nautilus, a camel husk, a slime,
     /// a magma cube, a piglin brute, a tadpole, or anything that is not an
     /// `AgeableMob` at all is an adult whatever `Age` says, so its box, voice,
     /// breeding, growth, drops and goals stay an adult's.
@@ -845,16 +845,10 @@ impl Mob {
         if self.kind.flags.lava_walker && self.fluids.in_lava {
             self.fall_distance = 0.0;
         } else if !matches!(self.kind.species, super::Species::Bat | super::Species::Bee) {
-<<<<<<< HEAD
-            parts::time(7, || self.check_fall_damage(w, moved, events));
-||||||| c98a51a664
-            self.check_fall_damage(w, moved, events);
-=======
-            self.check_fall_damage(w, level, moved, events);
->>>>>>> arismoko/main
+            parts::time(7, || self.check_fall_damage(w, level, moved, events));
         }
         self.restitute_movement(w, level, wanted, moved);
-        self.movement_emission(w, moved, events);
+        parts::time(9, || self.movement_emission(w, moved, events));
         // Entity.move's last step: soul sand, honey and the like slow the
         // horizontal speed of whatever the mob stands in or on.
         let factor = self.block_speed_factor(w);
@@ -904,20 +898,6 @@ impl Mob {
                 input,
             );
         }
-<<<<<<< HEAD
-        parts::time(9, || self.movement_emission(w, moved, events));
-        // Entity.move's last step: soul sand, honey and the like slow the
-        // horizontal speed of whatever the mob stands in or on.
-        let factor = self.block_speed_factor(w);
-        self.velocity = horizon_world::entity_move::scale_by_block_speed(self.velocity, factor);
-||||||| c98a51a664
-        self.movement_emission(w, moved, events);
-        // Entity.move's last step: soul sand, honey and the like slow the
-        // horizontal speed of whatever the mob stands in or on.
-        let factor = self.block_speed_factor(w);
-        self.velocity = horizon_world::entity_move::scale_by_block_speed(self.velocity, factor);
-=======
->>>>>>> arismoko/main
     }
     /// `Entity.getBlockSpeedFactor` at the mob's feet.
     fn block_speed_factor(&self, w: &MobWorld) -> f32 {
@@ -2389,14 +2369,14 @@ mod tests {
     use super::*;
     /// `AgeableMob.isBaby` is `canBeABaby() && getAge() < 0`, and `Age` alone
     /// says nothing: the six ageable classes that override `canBeABaby` to
-    /// false — `Frog`, `Parrot`, `ZombieNautilus`, `CamelHusk`, `Slime` and
-    /// `MagmaCube` — stay adults, and so do the `PiglinBrute` (no `isBaby` of
+    /// false â€” `Frog`, `Parrot`, `ZombieNautilus`, `CamelHusk`, `Slime` and
+    /// `MagmaCube` â€” stay adults, and so do the `PiglinBrute` (no `isBaby` of
     /// its own), the `Creeper` (outside the ageable tree) and the `Tadpole`,
     /// whose own age runs up from -24000 without it ever being a baby.
     ///
-    /// Every one of them keeps its type's box, the plain 1.0 ± 0.2 voice and
+    /// Every one of them keeps its type's box, the plain 1.0 Â± 0.2 voice and
     /// `getAgeScale`'s 1.0, where a cow with the same age takes
-    /// `Cow.BABY_DIMENSIONS` (0.45 by 0.7, eyes at 0.69) and the 1.5 ± 0.2
+    /// `Cow.BABY_DIMENSIONS` (0.45 by 0.7, eyes at 0.69) and the 1.5 Â± 0.2
     /// that `LivingEntity.getVoicePitch` gives a baby.
     #[test]
     fn a_negative_age_is_a_baby_only_where_can_be_a_baby_allows_it() {

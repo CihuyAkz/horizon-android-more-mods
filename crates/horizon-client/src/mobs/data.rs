@@ -124,28 +124,14 @@ impl MobData {
         data.entity_tags =
             crate::items::load_tags(root, "entity_type", &horizon_world::loot::PackOverlay::NONE)
                 .unwrap_or_default();
-<<<<<<< HEAD
-        data.villager_hats = std::sync::RwLock::new(super::villager_hats::VillagerHats::load(root));
-        data.armor_atlases = std::sync::RwLock::new(crate::custom_armor::load(root));
-        data.equipment = std::sync::RwLock::new(crate::equipment::load(root));
-        let random = horizon_optifine::random_textures::RandomTextures::scan(root);
-        let blinks = horizon_optifine::blink::Blinks::scan(root, &random);
-        let mut emissive = horizon_optifine::emissive::Emissive::scan(root, &random);
-        emissive.pair_beside(root, blinks.files());
-||||||| c98a51a664
-        data.villager_hats = std::sync::RwLock::new(super::villager_hats::VillagerHats::load(root));
-        let random = horizon_optifine::random_textures::RandomTextures::scan(root);
-        let blinks = horizon_optifine::blink::Blinks::scan(root, &random);
-        let mut emissive = horizon_optifine::emissive::Emissive::scan(root, &random);
-        emissive.pair_beside(root, blinks.files());
-=======
         data.villager_hats =
             std::sync::RwLock::new(super::villager_hats::VillagerHats::load(source));
+        data.armor_atlases = std::sync::RwLock::new(crate::custom_armor::load(root));
+        data.equipment = std::sync::RwLock::new(crate::equipment::load(root));
         let random = horizon_optifine::random_textures::RandomTextures::scan(source);
         let blinks = horizon_optifine::blink::Blinks::scan(source, &random);
         let mut emissive = horizon_optifine::emissive::Emissive::scan(source, &random);
         emissive.pair_beside(source, blinks.files());
->>>>>>> arismoko/main
         data.emissive = std::sync::RwLock::new(std::sync::Arc::new(emissive));
         data.blinks = std::sync::RwLock::new(blinks);
         data.random_textures = std::sync::RwLock::new(random);

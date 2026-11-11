@@ -1054,27 +1054,17 @@ impl Game<'_> {
                 }
                 Ok(tag)
             }
-<<<<<<< HEAD:crates/horizon-client/src/game/commands/data.rs
-            DataRef::Block(p) => self
-                .block_entity_nbt(*p)
-                .or_else(|| crate::game::spill::saved_entity(&self.world, *p))
-                .ok_or_else(|| err("commands.data.block.invalid", &[])),
-||||||| c98a51a664:crates/horizon-client/src/game/commands/data.rs
-            DataRef::Block(p) => self
-                .block_entity_nbt(*p)
-                .ok_or_else(|| err("commands.data.block.invalid", &[])),
-=======
             DataRef::Block(p) => {
                 if let Some(tag) = self.comparator_data(*p).or_else(|| self.pot_data(*p)) {
                     return Ok(tag);
                 }
                 let key = (p[0], p[1], p[2]);
                 let name = self.data_block_name(*p);
-                let e = self
-                    .world
-                    .block_entities
-                    .get(&key)
-                    .ok_or_else(|| err("commands.data.block.invalid", &[]))?;
+                let Some(e) = self.world.block_entities.get(&key) else {
+                    // A block entity saved away by the spill (a depot's, say).
+                    return crate::game::spill::saved_entity(&self.world, *p)
+                        .ok_or_else(|| err("commands.data.block.invalid", &[]));
+                };
                 // BlockEntity.saveWithFullMetadata: no chunk-only keepPacked,
                 // and the lock and custom name the model does not hold.
                 let mut tag = save::block_entity_data(key, e, &name, self.world.block_lock(key));
@@ -1087,7 +1077,6 @@ impl Game<'_> {
                 Self::restore_loot_table(&self.world, key, &mut tag);
                 Ok(tag)
             }
->>>>>>> arismoko/main:crates/horizon-client/src/game/administration/commands/data.rs
             DataRef::Storage(id) => Ok(self.score.storage.get(id)),
         }
     }

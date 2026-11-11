@@ -268,14 +268,10 @@ mod tests {
             entity_tags: Default::default(),
             pois: Default::default(),
             species_placements: Default::default(),
-<<<<<<< HEAD
             armor_atlases: Default::default(),
             equipment: Default::default(),
-||||||| c98a51a664
-=======
             mod_spawns: Default::default(),
             pathfindable_overrides: Default::default(),
->>>>>>> arismoko/main
         }
     }
 

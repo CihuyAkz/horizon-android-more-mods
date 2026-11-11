@@ -2766,111 +2766,6 @@ impl Game<'_> {
                     .pack
                     .layer_names
                     .get(&face.layer)
-<<<<<<< HEAD:crates/horizon-client/src/game/minecarts.rs
-                    .and_then(|n| self.gui.atlas.sprites.get(n))
-                else {
-                    continue;
-                };
-                let n = normals.face(face.quad.facing);
-                let mut color = if diffuse {
-                    u32::MAX
-                } else {
-                    // The terrain's shade of the face as it points now, so a turning part's faces
-                    // darken and lighten as they go round: 1 up, 0.5 down, 0.8 north and south,
-                    // 0.6 east and west, blended between (a face that does not turn keeps its own).
-                    let s = n.x * n.x * 0.6
-                        + n.y * n.y * if n.y > 0.0 { 1.0 } else { 0.5 }
-                        + n.z * n.z * 0.8;
-                    let shade = ((s * 255.0 + 0.001) as u32).min(255);
-                    0xFF00_0000 | shade << 16 | shade << 8 | shade
-                };
-                if let Some(t) = tint(face.quad.tint_index) {
-                    color = horizon_client::hud_layout::multiply(
-                        color,
-                        horizon_client::mobs::render::abgr(t),
-                    );
-                }
-                let normal = if diffuse {
-                    let n = n.to_array().map(|v| (v.clamp(-1.0, 1.0) * 127.0) as i8);
-                    [n[0], n[1], n[2], 127]
-                } else {
-                    [0; 4]
-                };
-                let light = light(&face.quad);
-                let light = if diffuse {
-                    let emission = u32::from(face.quad.light_emission) * 16;
-                    (light & 0xFF) | (light >> 8 & 0xFF).max(emission) << 8
-                } else {
-                    light
-                };
-                for k in 0..4 {
-                    let p = face.quad.positions[k];
-                    let uv = face.quad.uv[k];
-                    out.push(Vertex {
-                        normal,
-                        pos: m.transform_point3(glam::Vec3::from_array(p)).to_array(),
-                        uv: [s.u0 + uv[0] * (s.u1 - s.u0), s.v0 + uv[1] * (s.v1 - s.v0)],
-                        layer: 0,
-                        color,
-                        light,
-                        glint_uv: [0.0, 0.0],
-                    });
-                }
-            }
-        }
-||||||| c98a51a664:crates/horizon-client/src/game/minecarts.rs
-                    .and_then(|n| self.gui.atlas.sprites.get(n))
-                else {
-                    continue;
-                };
-                use horizon_assets::model::Direction as D;
-                let shade: u32 = match face.quad.facing {
-                    D::Up => 255,
-                    D::Down => 127,
-                    D::North | D::South => 204,
-                    D::West | D::East => 153,
-                };
-                let mut color = if diffuse {
-                    u32::MAX
-                } else {
-                    0xFF00_0000 | shade << 16 | shade << 8 | shade
-                };
-                if let Some(t) = tint(face.quad.tint_index) {
-                    color = horizon_client::hud_layout::multiply(
-                        color,
-                        horizon_client::mobs::render::abgr(t),
-                    );
-                }
-                let normal = if diffuse {
-                    let n = normals.face(face.quad.facing);
-                    let n = n.to_array().map(|v| (v.clamp(-1.0, 1.0) * 127.0) as i8);
-                    [n[0], n[1], n[2], 127]
-                } else {
-                    [0; 4]
-                };
-                let light = light(&face.quad);
-                let light = if diffuse {
-                    let emission = u32::from(face.quad.light_emission) * 16;
-                    (light & 0xFF) | (light >> 8 & 0xFF).max(emission) << 8
-                } else {
-                    light
-                };
-                for k in 0..4 {
-                    let p = face.quad.positions[k];
-                    let uv = face.quad.uv[k];
-                    out.push(Vertex {
-                        normal,
-                        pos: m.transform_point3(glam::Vec3::from_array(p)).to_array(),
-                        uv: [s.u0 + uv[0] * (s.u1 - s.u0), s.v0 + uv[1] * (s.v1 - s.v0)],
-                        layer: 0,
-                        color,
-                        light,
-                        glint_uv: [0.0, 0.0],
-                    });
-                }
-            }
-        }
-=======
                     .and_then(|name| self.gui.atlas.sprites.get(name))?;
                 Some((
                     PreparedModelFace::new(&face.quad, *sprite),
@@ -2879,7 +2774,6 @@ impl Game<'_> {
             })
         });
         emit_model_faces(faces, m, diffuse, tint, out);
->>>>>>> arismoko/main:crates/horizon-client/src/game/entities/minecarts.rs
     }
 
     /// The block the cart shows: `None` for air (`AbstractMinecartRenderer`
@@ -3399,18 +3293,19 @@ pub(super) fn emit_model_faces(
     tint: impl Fn(i32) -> Option<u32>,
     out: &mut Vec<Vertex>,
 ) {
-    use horizon_assets::model::Direction as D;
     let mut normals = horizon_client::item_render::FaceNormals::new(m);
     for (quad, light) in faces {
-        let shade: u32 = match quad.facing {
-            D::Up => 255,
-            D::Down => 127,
-            D::North | D::South => 204,
-            D::West | D::East => 153,
-        };
+        let n = normals.face(quad.facing);
         let mut color = if diffuse {
             u32::MAX
         } else {
+            // The terrain's shade of the face as it points now, so a turning part's faces
+            // darken and lighten as they go round: 1 up, 0.5 down, 0.8 north and south,
+            // 0.6 east and west, blended between (a face that does not turn keeps its own).
+            let s = n.x * n.x * 0.6
+                + n.y * n.y * if n.y > 0.0 { 1.0 } else { 0.5 }
+                + n.z * n.z * 0.8;
+            let shade = ((s * 255.0 + 0.001) as u32).min(255);
             0xFF00_0000 | shade << 16 | shade << 8 | shade
         };
         if let Some(t) = tint(quad.tint_index) {
@@ -3418,10 +3313,8 @@ pub(super) fn emit_model_faces(
                 horizon_client::hud_layout::multiply(color, horizon_client::mobs::render::abgr(t));
         }
         let normal = if diffuse {
-            let n = normals
-                .face(quad.facing)
-                .to_array()
-                .map(|v| (v.clamp(-1.0, 1.0) * 127.0) as i8);
+            let n = n.to_array().map(|v| (v.clamp(-1.0, 1.0) * 127.0) as i8);
+
             [n[0], n[1], n[2], 127]
         } else {
             [0; 4]

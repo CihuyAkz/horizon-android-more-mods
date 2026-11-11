@@ -1669,23 +1669,9 @@ impl Game<'_> {
                 .get_or_init(|| Arc::new(horizon_client::save::SaveTables::new(&self.pack.assets)))
                 .clone(),
         );
-<<<<<<< HEAD:crates/horizon-client/src/game/lan.rs
         // Content mods' machines: their block entities go to the players too.
         encoder.mark_machines(self.res.kinetics().entity_states().map(|s| s.0));
-        encoder.mod_update_tag = Some(|pos, entity| {
-            let mut tag = None;
-            Game::native_block_entity_update_tag(pos, entity, &mut tag);
-            tag
-        });
-||||||| c98a51a664:crates/horizon-client/src/game/lan.rs
-        encoder.mod_update_tag = Some(|pos, entity| {
-            let mut tag = None;
-            Game::native_block_entity_update_tag(pos, entity, &mut tag);
-            tag
-        });
-=======
         self.lan_update_tag_sources(&mut encoder);
->>>>>>> arismoko/main:crates/horizon-client/src/game/network/lan/mod.rs
         let far = (net.lod_distance > 0)
             .then(|| horizon_client::lod_net::Service::new(net.lod_distance, biome_names.clone()));
         let lan = Lan::start_with(sync.clone(), net)?;

@@ -955,6 +955,7 @@ impl Game<'_> {
         }
         rest
     }
+
     /// Remove one item from a slot (`removeItem(slot, 1)`).
     fn take_one(&mut self, view: &View, slot: usize) -> Option<ItemStack> {
         let target = self.slot_mut_at(view, slot)?;
@@ -1288,6 +1289,12 @@ impl Game<'_> {
             return false;
         };
         let front = offset(pos, facing);
+        if let Some(took) = self.eject_into_crusher(front, hopper) {
+            return took;
+        }
+        if let Some(took) = self.eject_into_machine(front, hopper) {
+            return took;
+        }
         let face = facing.opposite();
         if let Some(part) = self.item_part_at(front, face) {
             let at = [front.0, front.1, front.2];
@@ -1324,6 +1331,7 @@ impl Game<'_> {
             }
         }
     }
+
     /// Where a container is in the world for the mods: its block, or the block a chest
     /// boat or minecart is in (its view sits under a placeholder key).
     fn container_world_pos(&self, view: &View) -> [i32; 3] {
@@ -1397,6 +1405,9 @@ impl Game<'_> {
             f64::from(pos.1) + 1.5,
             f64::from(pos.2) + 0.5,
         ];
+        if let Some(took) = self.suck_from_machine(above, hopper) {
+            return took;
+        }
         if let Some(took) = self.suck_from_container(above, at, hopper) {
             return took;
         }
@@ -1433,6 +1444,7 @@ impl Game<'_> {
         }
         self.suck_item_entities(Some(pos), hopper, min, max)
     }
+
     /// The container half of `HopperBlockEntity.suckInItems`: one item from the
     /// container at `above`, through its bottom face; with no block container
     /// there, from a container entity whose box meets the one around `at`
