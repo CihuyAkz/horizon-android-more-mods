@@ -15,7 +15,7 @@ use horizon_world::{
         FluidSections, FluidTagId,
     },
     fluid::{FluidHeightWorld, FluidKind, FluidState},
-    fluid_flow::FluidFlowWorld,
+    fluid_flow::{FluidFlowWorld, flow_at},
     registry::BlockStateId,
 };
 type Error = std::convert::Infallible;

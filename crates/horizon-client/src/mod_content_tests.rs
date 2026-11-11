@@ -2812,7 +2812,7 @@ fn a_declared_shape_is_each_states_outline_and_collision() {
         ],
     );
     let root = scratch.join("root");
-    build(&base, &[m], &root).unwrap();
+    build_fixture(&base, &base.join("jars"), &[m], &root).unwrap();
     let assets = Assets::load(&root).unwrap();
     let registry = assets.registry;
     let facts = BlockFacts::load(&root, registry).unwrap();

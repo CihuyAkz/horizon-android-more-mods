@@ -1449,7 +1449,7 @@ pub fn machine_tag(chunk: &Chunk, pos: (i32, i32, i32)) -> Option<Tag> {
     }
     let mut fields = fields.clone();
     for k in ["x", "y", "z"] {
-        fields.remove(&horizon_world::nbt::JavaString::from(k));
+        fields.remove(&horizon_core::nbt::JavaString::from(k));
     }
     Some(Tag::Compound(fields))
 }

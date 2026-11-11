@@ -70,7 +70,7 @@ pub fn classify(path: &Path) -> (Kind, String) {
     }
     if names
         .iter()
-        .any(|n| n == horizon_mod_package::index::native::MANIFEST)
+        .any(|n| n == "horizon-native.json")
     {
         return (Kind::NativeMod, String::new());
     }

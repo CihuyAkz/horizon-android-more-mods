@@ -8077,7 +8077,7 @@ mod tests {
     #[test]
     fn slider_vertical_swipe_scrolls_without_changing_its_value() {
         let atlas = HudAtlas::boot();
-        let mut batch = HudBatch::new([1280, 720]);
+        let mut batch = HudBatch::new([1280, 720], crate::hud::GuiScale { requested: 0, unicode: false });
         let (w, h, density, scale) = {
             let ui = crate::android_control_theme::Ui::mobile(&atlas, &mut batch, (0., 0.));
             (ui.w, ui.h, ui.density, ui.batch.scale)

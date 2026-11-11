@@ -26,9 +26,11 @@ pub const DIFFICULTIES: [&str; 4] = ["peaceful", "easy", "normal", "hard"];
 pub struct WorldOptions {
     /// Selected data-pack preset; none selects `world_type`.
     pub custom_preset: Option<String>,
-    /// Committed editor output, saved as the world's dimension stems.
+    /// Committed editor output, saved as the world's dimension stems (not kept across a restart).
+    #[serde(skip)]
     pub preset_dimensions: Option<horizon_core::nbt::Tag>,
     /// Available enabled data-pack presets, refreshed when the pack selection changes.
+    #[serde(skip)]
     pub presets: std::collections::BTreeMap<String, horizon_core::nbt::Tag>,
     /// The enabled `minecraft:normal` world-preset tag's selection order.
     pub preset_order: Vec<String>,
@@ -70,7 +72,7 @@ pub struct WorldOptions {
 ///
 /// [`GameRules::set_string`]: crate::gamerules::GameRules::set_string
 mod rules_text {
-    use crate::gamerules::{GameRules, rule};
+    use crate::gamerules::GameRules;
     use std::collections::BTreeMap;
 
     pub fn serialize<S: serde::Serializer>(rules: &GameRules, s: S) -> Result<S::Ok, S::Error> {
@@ -87,7 +89,8 @@ mod rules_text {
     pub fn deserialize<'de, D: serde::Deserializer<'de>>(d: D) -> Result<GameRules, D::Error> {
         let text: BTreeMap<String, String> = serde::Deserialize::deserialize(d)?;
         let mut rules = GameRules::default();
-        for (name, value) in text.iter().filter(|(name, _)| rule(name).is_some()) {
+        // A name this game doesn't know is left out (set_string says so).
+        for (name, value) in &text {
             rules.set_string(name, value);
         }
         Ok(rules)

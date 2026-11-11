@@ -3765,11 +3765,11 @@ pub mod later {
             match self {
                 Job::Bytes(b) => Some(b.clone()),
                 Job::Dat(tag) => {
-                    let named = horizon_world::nbt::NamedTag {
+                    let named = horizon_core::nbt::NamedTag {
                         name: "".into(),
                         tag: tag.clone(),
                     };
-                    horizon_world::nbt::write_named(&named, horizon_world::nbt::Limits::default())
+                    horizon_core::nbt::write_named(&named, horizon_core::nbt::Limits::default())
                         .ok()
                 }
             }

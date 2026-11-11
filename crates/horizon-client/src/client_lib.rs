@@ -29,7 +29,7 @@ pub use horizon_client_render::{
     preedit, providers, pvp, pvp_hud, random_source, resource_source, screen_draw, screen_effects,
     sculk, section_mask, server_terrain, settings, shader_options, shader_pack_list, signs, skins,
     social, sound_engine, sound_events, sound_preview, spans, split_layout, split_map,
-    split_profiles, sprites, streaming, structure_block, system_stats, tab_list, telemetry,
+    split_profiles, sprites, streaming, structure_block, system_stats, tab_list,
     terrain_model, test_block, test_instance_block, testgen, title_edition, trims, ui, vault,
     weather, widgets, world, worldborder, zip,
 };
@@ -149,7 +149,6 @@ pub mod scoreboard_cmd;
 pub mod screen_layout;
 pub mod screen_narrator;
 pub mod social_screen;
-pub mod sound_playback;
 pub mod starling_releases;
 pub mod world_geometry;
 pub use horizon_server_files as server;

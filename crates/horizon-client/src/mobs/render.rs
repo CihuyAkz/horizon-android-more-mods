@@ -1006,7 +1006,7 @@ fn own_equipment(m: &Mob, layer: &mut Layer, kind: &str, equipment: &crate::equi
     };
     layer.texture = texture.clone().into();
     if let Some(undyed) = undyed {
-        layer.color = armor_tint(Some(*undyed), stack.as_ref());
+        layer.color = armor_tint(Some(*undyed), stack);
     }
 }
 
@@ -2962,6 +2962,8 @@ mod tests {
             species_placements: Default::default(),
             pathfindable_overrides: Default::default(),
             mod_spawns: Default::default(),
+            armor_atlases: Default::default(),
+            equipment: Default::default(),
         };
         (mob, data)
     }

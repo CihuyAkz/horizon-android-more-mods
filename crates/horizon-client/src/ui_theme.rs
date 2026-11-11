@@ -792,12 +792,12 @@ mod tests {
     fn control_editor_and_starling_share_ui_pixels_without_overwriting_each_other() {
         reset_atlas();
         let atlas = HudAtlas::boot();
-        let mut first = HudBatch::new([1280, 720]);
+        let mut first = HudBatch::new([1280, 720], crate::hud::GuiScale { requested: 0, unicode: false });
         let mut ui = Ui::new(&atlas, &mut first, (-1., -1.));
-        ui.text(Face::Regular, 16., 10., 10., color::TEXT, "Starling");
+        ui.text(Face::Regular, 16., 10., 10., color::text(), "Starling");
         ui.finish();
         let before = first.patches.clone();
-        let mut second = HudBatch::new([1280, 720]);
+        let mut second = HudBatch::new([1280, 720], crate::hud::GuiScale { requested: 0, unicode: false });
         let mut controls =
             crate::android_control_theme::Ui::mobile(&atlas, &mut second, (-1., -1.));
         controls.icon(
@@ -805,14 +805,14 @@ mod tests {
             10.,
             10.,
             32.,
-            color::TEXT,
+            color::text(),
         );
         controls.text(
             crate::android_control_theme::Face::Regular,
             16.,
             50.,
             10.,
-            color::TEXT,
+            color::text(),
             "Controls",
         );
         controls.finish();
@@ -827,9 +827,9 @@ mod tests {
                 );
             }
         }
-        let mut third = HudBatch::new([1280, 720]);
+        let mut third = HudBatch::new([1280, 720], crate::hud::GuiScale { requested: 0, unicode: false });
         let mut ui = Ui::new(&atlas, &mut third, (-1., -1.));
-        ui.text(Face::Regular, 16., 10., 10., color::TEXT, "Starling");
+        ui.text(Face::Regular, 16., 10., 10., color::text(), "Starling");
         ui.finish();
         assert!(third.patches.is_empty());
     }
