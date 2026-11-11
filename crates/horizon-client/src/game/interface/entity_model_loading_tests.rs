@@ -346,7 +346,7 @@ fn equipment_layers_read_resolved_resources_and_retain_the_source() {
     assets.apply_resources(ArmorStandAssets::load(&source, None));
     assert!(!assets.equipment.contains_key("example:old"));
     assert_eq!(
-        assets.equipment["example:nested/cloth"]["humanoid"][0].0,
+        assets.equipment_layers["example:nested/cloth"]["humanoid"][0].0,
         "example:entity/equipment/humanoid/cloth"
     );
     assert!(assets.root.same_generation(&source));
