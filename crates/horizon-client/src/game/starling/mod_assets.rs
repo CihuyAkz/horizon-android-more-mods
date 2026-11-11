@@ -1,8 +1,8 @@
-//! A content mod's assets from Modrinth (Starling; `horizon_mods::fetch`): the jar its manifest
+//! A content mod's assets from Modrinth (Starling; `horizon_mod_package::fetch`): the jar its manifest
 //! names, downloaded on the player's device when the mod is first on, checked by its SHA-512 and
 //! unpacked into the cache. Nothing of the jar but the folders the manifest takes is kept, and
 //! none of its code runs.
-use horizon_mods::{Manifest, fetch};
+use horizon_mod_package::{Manifest, fetch};
 use sha2::{Digest, Sha512};
 use std::io::{Read, Write};
 use std::path::Path;
@@ -65,7 +65,7 @@ pub(super) fn get(
 fn fetch_part(
     agent: &ureq::Agent,
     name: &str,
-    fetch: &horizon_mods::manifest::Fetch,
+    fetch: &horizon_mod_package::manifest::Fetch,
     url: &mut Option<String>,
     part: &Path,
     have: u64,

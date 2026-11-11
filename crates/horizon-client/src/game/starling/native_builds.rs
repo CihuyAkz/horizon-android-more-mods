@@ -278,7 +278,7 @@ fn folder_mods_on(off: &BTreeSet<String>) -> BTreeSet<String> {
         .flatten()
         .map(|e| e.path())
         .filter(|p| p.extension().is_some_and(|e| e == "hnmod"))
-        .filter_map(|p| horizon_mods::index::native::Bundle::read(&p).ok())
+        .filter_map(|p| horizon_mod_package::index::native::Bundle::read(&p).ok())
         .map(|bundle| bundle.manifest.id)
         .filter(|id| !off.contains(id))
         .collect()
@@ -441,7 +441,7 @@ fn bundles_body() -> Result<Vec<u8>, String> {
     paths.retain(|p| p.extension().is_some_and(|e| e == "hnmod"));
     let mut mods = Vec::new();
     for path in paths {
-        let Ok(bundle) = horizon_mods::index::native::Bundle::read(&path) else {
+        let Ok(bundle) = horizon_mod_package::index::native::Bundle::read(&path) else {
             continue;
         };
         if off.contains(&bundle.manifest.id) {

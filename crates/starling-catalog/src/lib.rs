@@ -382,9 +382,6 @@ mod backend {
         let _ = HOME.set(home);
     }
 
-    pub fn game_mod_api_level() -> Option<u32> {
-        Some(horizon_mods::api_level::LEVEL)
-    }
 }
 
 /// Where the browser keeps its cache and packs: the game's folder. Called once, at start.

@@ -70,7 +70,7 @@ pub fn classify(path: &Path) -> (Kind, String) {
     }
     if names
         .iter()
-        .any(|n| n == horizon_mods::index::native::MANIFEST)
+        .any(|n| n == horizon_mod_package::index::native::MANIFEST)
     {
         return (Kind::NativeMod, String::new());
     }
@@ -212,7 +212,7 @@ pub fn install(path: &Path, name: &str, places: &Places) -> Result<Installed, St
             )
         }
         Kind::NativeMod => {
-            let bundle = horizon_mods::index::native::Bundle::read(path)
+            let bundle = horizon_mod_package::index::native::Bundle::read(path)
                 .map_err(|e| format!("{name} can't be added: {e}"))?;
             let id = bundle.manifest.id;
             let dir = places.game.join("horizon-native-mods");

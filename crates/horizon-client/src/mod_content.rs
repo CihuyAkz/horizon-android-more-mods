@@ -701,12 +701,12 @@ fn turned_shapes<'a>(
                 })
         };
         let toward = match (value("facing"), value("axis")) {
-            (Some(facing), _) => horizon_mods::content::direction(&facing),
+            (Some(facing), _) => horizon_mod_package::content::direction(&facing),
             (None, Some(axis)) if axis == "x" => Some([1, 0, 0]),
             (None, Some(axis)) if axis == "z" => Some([0, 0, 1]),
             _ => None,
         };
-        let turns = toward.map_or([0; 3], |f| horizon_mods::content::turns_from([0, 1, 0], f));
+        let turns = toward.map_or([0; 3], |f| horizon_mod_package::content::turns_from([0, 1, 0], f));
         let mut shape = VoxelShape::empty();
         for b in boxes {
             let b = turn_box(b, [turns[0], turns[1]]);
@@ -3552,7 +3552,7 @@ pub fn build(
     }
     // The blocks' kinetic parts, by block id: the game's networks (kinetics.rs) and the models
     // it turns (the model catalog bakes those no blockstate names).
-    let kinetic: BTreeMap<&str, &horizon_mods::content::Kinetic> = mods
+    let kinetic: BTreeMap<&str, &horizon_mod_package::content::Kinetic> = mods
         .iter()
         .flat_map(|m| &m.content.blocks)
         .filter_map(|b| Some((b.id.as_str(), b.kinetic.as_ref()?)))
@@ -3561,7 +3561,7 @@ pub fn build(
         overlay.write(KINETIC, &serde_json::to_vec(&kinetic)?)?;
     }
     // The machines keeping items of their own, by block id (game/kinetic_machines.rs).
-    let machines: BTreeMap<&str, horizon_mods::content::Machine> = mods
+    let machines: BTreeMap<&str, horizon_mod_package::content::Machine> = mods
         .iter()
         .flat_map(|m| &m.content.blocks)
         .filter_map(|b| Some((b.id.as_str(), b.machine?)))

@@ -166,7 +166,7 @@ fn is_hex(text: &str, len: usize) -> bool {
     text.len() == len && text.bytes().all(|b| b.is_ascii_hexdigit())
 }
 
-/// A registry id: what `horizon_mods::index::valid_id` takes, and no space or line break.
+/// A registry id: what `horizon_mod_package::index::valid_id` takes, and no space or line break.
 fn is_id(text: &str) -> bool {
     (1..=64).contains(&text.len())
         && text
