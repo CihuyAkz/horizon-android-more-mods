@@ -973,7 +973,6 @@ impl Game<'_> {
         // A spectator preview still draws its own model: the poses'
         // visibility hides body parts, leaving the head and its layers.
         let body = self.own_body_visible() || self.spectator();
-        let data = self.res.mob_data();
         let armour = if in_world {
             self.player_armor_layers()
         } else {

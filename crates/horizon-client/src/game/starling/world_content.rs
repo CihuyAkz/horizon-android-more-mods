@@ -257,6 +257,52 @@ fn last_from(text: &str, enabled_now: &BTreeSet<String>) -> Option<BTreeSet<Stri
     (ids(&value["enabled"]) == *enabled_now).then(|| ids(&value["mods"]))
 }
 
+/// The content mods this start loads (`ModsState::select` takes them for Options > Mods' own):
+/// the ones turned on there, but for the mods adding blocks or items (`Capability::Registries`)
+/// the set a restart asked for (`next_start`), else the last world's while Options > Mods turns
+/// on the same ones as then (`last_start`). Keeps which of those are installed and turned on, for
+/// `entry`.
+pub(super) fn start_set(
+    game_dir: &Path,
+    enabled: &BTreeSet<String>,
+    dev: &[PathBuf],
+) -> BTreeSet<String> {
+    use horizon_mod_package::{Capability, Package, find, mod_list::DIR};
+    let mut paths = find(&game_dir.join(DIR));
+    paths.retain(|p| !dev.contains(p));
+    paths.extend(dev.iter().cloned());
+    let (mut installed, mut turned_on) = (BTreeSet::new(), BTreeSet::new());
+    for path in &paths {
+        let Ok(package) = Package::read(path) else {
+            continue;
+        };
+        let m = &package.manifest;
+        if package.is_native() || !m.capabilities.contains(&Capability::Registries) {
+            continue;
+        }
+        installed.insert(m.id.clone());
+        if enabled.contains(&m.id) || dev.contains(path) {
+            turned_on.insert(m.id.clone());
+        }
+    }
+    let asked = match next_start() {
+        Some(next) => Some(next.content.clone()),
+        None => last_start(&turned_on).inspect(|last| {
+            log::info!("Horizon: starting with the last world's mods {last:?}");
+        }),
+    };
+    set_enabled(turned_on);
+    set_installed(installed.clone());
+    match asked {
+        Some(set) => (enabled.iter())
+            .filter(|id| !installed.contains(*id))
+            .cloned()
+            .chain(set)
+            .collect(),
+        None => enabled.clone(),
+    }
+}
+
 /// Writes the next start's request: world `folder` with `content`.
 pub(super) fn request_restart(folder: &str, content: &BTreeSet<String>) -> std::io::Result<()> {
     write_next(serde_json::json!({ "world": folder, "content": content }))

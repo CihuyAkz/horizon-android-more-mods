@@ -23,8 +23,16 @@ use std::{
 
 /// Read filesystem-bound package declarations concurrently, retaining dependency order and
 /// keeping an individual package's refusal attached to that package.
+/// Each request: the package, its manifest, the items its native code declares, and (Starling) the
+/// folder its assets were fetched into from Modrinth (`mod_assets.rs`).
+#[allow(clippy::type_complexity)]
 fn read_contents(
-    requests: &[(&Path, &horizon_mod_package::Manifest, Vec<String>)],
+    requests: &[(
+        &Path,
+        &horizon_mod_package::Manifest,
+        Vec<String>,
+        Option<PathBuf>,
+    )],
 ) -> Vec<Result<horizon_mod_package::Content, String>> {
     use std::sync::atomic::{AtomicUsize, Ordering};
     let next = AtomicUsize::new(0);
@@ -36,11 +44,15 @@ fn read_contents(
                     let mut done = Vec::new();
                     loop {
                         let index = next.fetch_add(1, Ordering::Relaxed);
-                        let Some((path, manifest, declared)) = requests.get(index) else {
+                        let Some((path, manifest, declared, fetched)) = requests.get(index) else {
                             return done;
                         };
-                        let content =
-                            horizon_mod_package::Content::read_declaring(path, manifest, declared);
+                        let content = horizon_mod_package::Content::read_with(
+                            path,
+                            manifest,
+                            declared,
+                            fetched.as_deref(),
+                        );
                         if declared.is_empty()
                             && let Ok(content) = &content
                         {
@@ -105,6 +117,9 @@ pub(super) struct ModsState {
     /// The entries a table load decoded and checked, until its world open or reload takes them
     /// to publish.
     pub(super) datapack_candidate: Option<mod_api::DatapackCandidate>,
+    /// Starling: what the content build tells the loading screen while it works
+    /// ([`ContentNote`]'s line), and `None` once it is done. The menu's loader sets it.
+    pub(super) note: Option<Arc<dyn Fn(Option<String>) + Send + Sync>>,
 }
 
 impl ModsState {
@@ -642,6 +657,35 @@ pub(super) struct ContentOverlay {
     pub(super) announce: bool,
 }
 
+/// Starling: the folder mod `m`'s assets from Modrinth are unpacked in (`mod_assets.rs`), fetched
+/// now when they are not there yet, with `note` hearing how far the download is; the Mods page
+/// says why one failed (`mod_assets::failed`).
+fn fetched_assets(
+    m: &horizon_mod_package::Manifest,
+    cache: &Path,
+    note: &dyn Fn(Option<String>),
+) -> Option<PathBuf> {
+    let a = m.assets.as_ref()?;
+    let dir = horizon_mod_package::fetch::dir(cache, &a.fetch);
+    if !horizon_mod_package::fetch::ready(&dir, &a.fetch) {
+        log::info!(
+            "Horizon: fetching {}'s assets: {} from Modrinth ({} bytes)",
+            m.id,
+            a.fetch.file,
+            a.fetch.size
+        );
+        let name = m.name.as_str();
+        let got = super::mod_assets::get(m, &dir, &mut |done, total| {
+            note(Some(ContentNote::Fetching { name, done, total }.text()))
+        });
+        match got {
+            Ok(n) => log::info!("Horizon: {n} assets of {} unpacked", m.id),
+            Err(e) => log::warn!("Horizon: {}'s assets not fetched: {e}", m.id),
+        }
+    }
+    Some(dir)
+}
+
 /// Builds the content overlay: every enabled or dev content mod's files
 /// merged over `root`. Registration of what the mods declare is
 /// [`content_root`]'s step.
@@ -735,13 +779,22 @@ pub(super) fn content_overlay(
         .order;
     // Hooks are queried on the calling thread, never from a content reader.
     let native_items = &native_declared().items;
+    let note = |text: Option<String>| {
+        if let Some(note) = &sources.note {
+            note(text);
+        }
+    };
+    // Starling: a mod's assets from Modrinth, fetched here (one at a time, before the reads) the
+    // first time it is on.
+    let assets_cache = horizon_client::logging::cache_dir();
     let requests: Vec<_> = order
         .iter()
         .map(|&index| {
             let source = &packages[index];
             let declared =
                 super::native_content_items::owned_item_ids(source.manifest, native_items);
-            (source.path, source.manifest, declared)
+            let fetched = fetched_assets(source.manifest, &assets_cache, &note);
+            (source.path, source.manifest, declared, fetched)
         })
         .collect();
     let read = read_contents(&requests);
@@ -823,7 +876,14 @@ pub(super) fn content_overlay(
     // Content admission and the live code-dispatch boundary jointly determine
     // what loaded. Namespaces and raw startup metadata cannot answer this.
     let inventory = sources.enabled_inventory(|id| mods.iter().any(|loaded| loaded.id == id));
-    let prepared = mod_content::resource_root(root, jar_store, &mods, &cache, &inventory)?;
+    // Starling: a build (none when the root is reused) says so on the loading screen.
+    let names = (mods.iter().map(|m| m.id.as_str()))
+        .collect::<Vec<_>>()
+        .join(", ");
+    let prepared =
+        mod_content::resource_root_with(root, jar_store, &mods, &cache, &inventory, &mut || {
+            note(Some(ContentNote::Building(&names).text()))
+        })?;
     let root = mod_content::resolved_resources(root, prepared, jar_store, &mods, cache)?;
     let _ = sources.content_base.set(original_base);
     Ok(ContentOverlay {
@@ -974,6 +1034,17 @@ pub(super) fn content_root(
     register_menu_types(&overlay.mods)?;
     register_iterated_registries(overlay.root.prepared())?;
     horizon_client::mod_content::set_fluid_looks(&overlay.mods);
+    // Starling: the mods adding blocks or items this process loaded, which a world's own set is
+    // compared with (world_content.rs).
+    super::world_content::set_running(
+        (overlay.mods.iter())
+            .filter(|m| !m.content.blocks.is_empty() || !m.content.items.is_empty())
+            .map(|m| m.id.clone())
+            .collect(),
+    );
+    if let Some(note) = &sources.note {
+        note(None);
+    }
     Ok(overlay.root)
 }
 
@@ -1537,11 +1608,25 @@ impl Game<'_> {
                     m.id.clone(),
                     mod_list::ModInfo::of(m, package.icon.as_ref()),
                 );
+                // Starling: a mod whose assets come from Modrinth says so, and why they could
+                // not be downloaded at this start (mod_assets.rs).
+                let fetched = m.assets.as_ref().map_or_else(String::new, |a| {
+                    format!(
+                        "Its textures, models and sounds come from Modrinth ({}, {:.1} MB), \
+                         downloaded the first time it is on. ",
+                        a.fetch.file,
+                        a.fetch.size as f64 / 1_000_000.0
+                    )
+                });
+                let problem = refused.map(|why| format!("Not loaded: {why}")).or_else(|| {
+                    super::mod_assets::failed(&m.id)
+                        .map(|e| format!("Its assets could not be downloaded: {e}"))
+                });
                 Installed {
                     id: m.id.clone(),
                     title: format!("{} {}", m.name, m.version),
-                    description: m.description.clone(),
-                    problem: refused.map(|why| format!("Not loaded: {why}")),
+                    description: format!("{fetched}{}", m.description).trim().to_owned(),
+                    problem,
                     dev: self.mods.dev.contains(path),
                     native: None,
                 }
@@ -2966,7 +3051,7 @@ mod concurrent_content_tests {
             .collect();
         let requests: Vec<_> = packages
             .iter()
-            .map(|(path, package)| (path.as_path(), &package.manifest, Vec::new()))
+            .map(|(path, package)| (path.as_path(), &package.manifest, Vec::new(), None))
             .collect();
         let read = read_contents(&requests);
         assert_eq!(read.len(), 12);

@@ -1,3 +1,4 @@
+// game-module-cfg: not(target_os = "android")
 //! A game started without its prepared files (the game build run by hand, not
 //! through the launcher): a window that says where to get the launcher
 //! (`horizon_client::no_resources`) and quits when it is closed. No loader, no

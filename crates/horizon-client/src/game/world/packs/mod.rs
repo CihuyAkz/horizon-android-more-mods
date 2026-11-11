@@ -506,6 +506,22 @@ impl Game<'_> {
         ] = frame_models;
         self.waypoint_styles = waypoint_styles;
         self.armor_stand_assets.apply_resources(armor_stand_assets);
+        // Starling: mobs and other players wear the reloaded packs' armour too (ItemsAdder's
+        // custom pieces, and every namespace's equipment assets).
+        *self
+            .res
+            .mob_data()
+            .armor_atlases
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) =
+            self.armor_stand_assets.atlases.clone();
+        *self
+            .res
+            .mob_data()
+            .equipment
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) =
+            self.armor_stand_assets.equipment.clone();
         self.random_tick_sections.clear();
         self.portals.sections.clear();
         self.options.resources = root.clone();
@@ -605,7 +621,9 @@ impl Game<'_> {
         }
         // Horizon's own shader pack is built again: its sprite tags name the old atlas's
         // layers, and a new renderer runs no pack.
-        self.native_shaders = Default::default();
+        self.native_shaders = super::native_shaders::NativeShaders::picking(&std::mem::take(
+            &mut self.native_shaders.picked,
+        ));
         self.ui.chat.rescale(&self.gui.atlas);
         // The screen survives reload, but names and mod-collected contents may change.
         self.creative_screen.invalidate_build();

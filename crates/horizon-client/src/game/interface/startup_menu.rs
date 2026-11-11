@@ -410,6 +410,27 @@ pub(super) fn spawn_loader(
     let vanilla_root = vanilla_root.to_path_buf();
     let mut mod_sources = options.mods.clone();
     mod_sources.capture_code_switches(&settings.mods.disabled);
+    // Starling: a content build takes a while (about 40 s on a phone for Create), and a mod's
+    // assets may come from Modrinth first: the menu bundle goes ahead at the first word of it, so
+    // the loading screen can say what it waits for.
+    {
+        let progress = progress.clone();
+        let sender = sender.clone();
+        let vanilla = vanilla_root.clone();
+        let menu_sent = std::sync::atomic::AtomicBool::new(false);
+        mod_sources.note = Some(std::sync::Arc::new(move |line: Option<String>| {
+            let first =
+                line.is_some() && !menu_sent.swap(true, std::sync::atomic::Ordering::Relaxed);
+            progress.note(line);
+            if first
+                && let Ok(ui) = UiResources::load(
+                    &horizon_assets::resource_source::ResourceSource::directory(vanilla.clone()),
+                )
+            {
+                let _ = sender.send(LoaderMsg::Ui(ui, vanilla.clone()));
+            }
+        }));
+    }
     let world = launch_world(options).map(str::to_owned);
     let role = options.execution_role;
     let progress = progress.clone();
@@ -423,6 +444,7 @@ pub(super) fn spawn_loader(
                         pack_error = Some(error.to_string());
                         mods::content_root(&vanilla_root, &mod_sources)
                     });
+            progress.note(None);
             let result = root
                 .and_then(|root| {
                     load_resources(
@@ -616,7 +638,13 @@ impl Loading {
         if !self.menu.options_open || self.gui.is_none() {
             return false;
         }
-        let batch = HudBatch::new(self.menu_size(), horizon_client::hud::GuiScale { requested: 0, unicode: false });
+        let batch = HudBatch::new(
+            self.menu_size(),
+            horizon_client::hud::GuiScale {
+                requested: 0,
+                unicode: false,
+            },
+        );
         let cursor = (
             touch.location.x as f32 / batch.scale,
             touch.location.y as f32 / batch.scale,

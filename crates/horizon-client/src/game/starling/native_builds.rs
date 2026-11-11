@@ -424,11 +424,6 @@ pub(super) fn density(w: f32, h: f32) -> f32 {
     (w / 1040.0).min(h / 700.0).clamp(1.0, 4.0)
 }
 
-/// What the build this game runs says of itself (its `build.json`: the mods in it).
-pub(super) fn running_build_info() -> Option<String> {
-    std::fs::read_to_string(dir().join(running()?).join("build.json")).ok()
-}
-
 /// The `horizon-native-mods` folder's mods that are on (Options > Mods), each a length and what the
 /// service needs of it: nothing else on the phone goes with them. In an order of their own, not
 /// their files' names, so the same mods always make the same request.
@@ -883,28 +878,6 @@ impl Game<'_> {
         self.refresh_native_game();
     }
 
-    /// A button of the native mod page `i` of Options > Mods: true when it was the Native mods
-    /// row's, which opens the card.
-    pub(super) fn native_builds_button(&mut self, i: usize) -> bool {
-        if !SERVICE_SUPPORTED {
-            return false;
-        }
-        let Some(row) = self.settings.mods.installed.get(i) else {
-            return false;
-        };
-        if row.id == ID {
-            self.open_native_builds();
-            return true;
-        }
-        // A row's Compile: the mods that are on, as the page's top Compile (one under way comes
-        // back).
-        if row.problem.as_deref() == Some(horizon_client::mod_list::NOT_BUILT) {
-            self.native_game_act(NativeGameAct::Compile);
-            return true;
-        }
-        false
-    }
-
     /// Shows the card: the builds for this version, looked up now.
     pub(super) fn open_native_builds(&mut self) {
         if !SERVICE_SUPPORTED {
@@ -1170,7 +1143,14 @@ impl Game<'_> {
         let (x, y) = ((w - card_w) / 2.0, ((h - card_h) / 2.0).max(4.0));
         ui.rounded(x, y, card_w, card_h, 14.0, color::bg());
         ui.border(x, y, card_w, card_h, 14.0, color::border());
-        ui.text(Face::Semibold, 17.0, x + pad, y + pad, color::text(), &title);
+        ui.text(
+            Face::Semibold,
+            17.0,
+            x + pad,
+            y + pad,
+            color::text(),
+            &title,
+        );
         let mut ty = y + pad + 24.0 + 10.0;
         for line in &danger_lines {
             ui.text(Face::Semibold, 14.0, x + pad, ty, color::DANGER, line);

@@ -14136,7 +14136,9 @@ impl Game<'_> {
         self.pending_uploads.clear();
         let context = self.worker_context();
         self.streaming.reload_resources(&mut self.world, context);
-        self.native_shaders = Default::default();
+        self.native_shaders = native_shaders::NativeShaders::picking(&std::mem::take(
+            &mut self.native_shaders.picked,
+        ));
         self.apply_ui_settings();
     }
     /// `LevelExtractor.allChanged`: displayed sections and mesh work are
@@ -17764,9 +17766,12 @@ pub(crate) fn run_with(
     options
         .mods
         .capture_code_switches(&early_settings.mods.disabled);
-    options
-        .mods
-        .select(&std::env::current_dir()?, &early_settings.mods.enabled);
+    // Starling: the mods adding blocks or items are those of the world a restart was made for, or
+    // the last world's (world_content.rs), so a world plays with the set it was made with.
+    let game_dir = std::env::current_dir()?;
+    let content_set =
+        world_content::start_set(&game_dir, &early_settings.mods.enabled, &options.mods.dev);
+    options.mods.select(&game_dir, &content_set);
     let mod_phase = mod_api::__private::PhaseOwner::new(mod_api::__private::ModPhase::Packages);
     api_values::install_packages(options.mods.native.packages(), &options.mods.selected);
     mods::install_registration_data(&vanilla_root)?;

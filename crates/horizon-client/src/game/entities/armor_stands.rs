@@ -259,8 +259,8 @@ impl ArmorStandAssets {
             small: load("minecraft:armor_stand_small#main").map(Arc::new),
             layers,
             player,
-            // Custom (ItemsAdder) armour atlases read the prepared folder: see FOLLOWUPS.
-            atlases: HashMap::new(),
+            // Custom (ItemsAdder) armour: the packs' entity shader picks its piece by dye colour.
+            atlases: horizon_client::custom_armor::load_from(root),
             equipment,
             equipment_layers,
             trim_overrides,
