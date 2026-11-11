@@ -194,14 +194,25 @@ impl Loading {
             });
         let offscreen = self.options.as_ref().is_some_and(|o| o.offscreen);
         let boot_step = startup::step("renderer.boot");
-        match loading_renderer(
+        // The menu bundle may have come before the window (Android's setup puts its skin on
+        // while the surface is still on its way; `set_ui` then had no window to build for):
+        // its atlas, not the boot screen's, is the one its screens' text and sprites name.
+        let (atlas, panorama) = match &self.gui {
+            Some(gui) => (&gui.atlas, Some(&gui.panorama)),
+            None => (&self.boot, None),
+        };
+        let built = loading_renderer(
             window.clone(),
             offscreen,
-            Some(&self.boot),
-            None,
+            Some(atlas),
+            panorama,
             None,
             self.settings.horizon.api,
-        ) {
+        );
+        if self.gui.is_some() {
+            self.ui_at = Some(Instant::now());
+        }
+        match built {
             Ok(r) => self.renderer = Some(r),
             Err(e) => {
                 #[cfg(target_os = "windows")]
@@ -514,7 +525,12 @@ impl Loading {
                 && let Some(registry) = self.sound_registry.take()
             {
                 let registry = registry.join().unwrap_or_default();
-                let mut audio = Audio::with_registry(&horizon_assets::resource_source::ResourceSource::directory(self.vanilla_root.clone()), registry);
+                let mut audio = Audio::with_registry(
+                    &horizon_assets::resource_source::ResourceSource::directory(
+                        self.vanilla_root.clone(),
+                    ),
+                    registry,
+                );
                 audio.master = self.settings.master_volume;
                 // As Game::apply_ui_settings: the master volume is the engine's own.
                 let mut volumes = self.settings.volumes;
