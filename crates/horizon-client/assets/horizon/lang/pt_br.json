@@ -229,6 +229,7 @@
   "Quality": "Qualidade",
   "Raise it until the logo just disappears into the bright square.": "Levante-o até que o logotipo desapareça no quadrado brilhante.",
   "Reduced": "Reduzido",
+  "Mobile": "Celular",
   "Reduced draws far terrain coarser, for GPUs it slows down.": "Reduzido atrai terrenos muito mais grosseiros, para GPUs ele fica mais lento.",
   "Reduced draws far terrain coarser: faster on this integrated GPU.": "Redução de desenhos em terrenos mais grosseiros: mais rápido nesta GPU integrada.",
   "Renders the world smaller and rebuilds it with TAA. Faster, softer.": "Torna o mundo menor e o reconstrói com TAA. Mais rápido, mais suave.",
