@@ -63,6 +63,9 @@ CHANGED = (
     (r"extra: &\[\(&Part, \[f32; 4\], u32, u32\)\]", "extra: &[(&Part, [f32; 4], u32, u32, bool)]"),
     (r"crate::game::Game::tooltip_box\(batch, atlas, ", "game.tooltip_box(batch, None, "),
     (r"= self\.guest_hit\(\) \{", "= None::<(u32, _)> {"),
+    # The camera type is the mod API's now, and asks `is_first_person`.
+    (r"\bcrate::game::perspective::CameraType\b", "::mod_api::CameraType"),
+    (r"\.first_person\(\)", ".is_first_person()"),
     (r"game\.native_is_multiplayer\(\)", "game.server_address().is_some()"),
     (r"game\.native_server_address\(\)", "game.server_address().map(|a| a.to_string())"),
     (r"game\.native_world_folder\(\)", "game.native_world_dir().map(|d| d.display().to_string())"),

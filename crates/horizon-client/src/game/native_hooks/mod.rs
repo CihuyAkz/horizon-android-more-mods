@@ -71,8 +71,8 @@ pub use mod_api::game::{PhantomSpawnResult, Shake, SleepProblem};
 // Starling: the old names mods made for the old hooks use (game/starling/native_compat.rs).
 #[allow(unused_imports)]
 pub use horizon_client::starling_mod_api::{
-    NativeMinimap, NativeMod, NativePanelEvent, NativeScreenView, NativeShake, NativeStack,
-    NativeZoom,
+    NativeCommand, NativeDispensed, NativeLifecycleContext, NativeMinimap, NativeMod,
+    NativePanelEvent, NativeScreenView, NativeServerPlayer, NativeShake, NativeStack, NativeZoom,
 };
 use mod_api::{
     self, Answered, BlockPlacement, BlockTintSources, CameraDrawContext, ClientAudioOptions,

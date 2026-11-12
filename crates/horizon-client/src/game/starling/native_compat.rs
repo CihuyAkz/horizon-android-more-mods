@@ -16,7 +16,7 @@ use horizon_client::{
     mod_list::{
         Installed, KeyConflictContext, KeyMapping, NativePage, NativeSetting, NativeSettingValue,
     },
-    starling_mod_api::NativeMod,
+    starling_mod_api::{NativeMod, NativeStack},
     text::Text,
 };
 use horizon_core::position::BlockPos;
@@ -25,6 +25,31 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 use winit::event::MouseButton;
+
+// The names the old native_hooks.rs had in scope: a mod's helper is written into the hook's body,
+// so it names them as they were there (`Corner::TopLeft`, `NativeLifecycleContext`, `mod_api` for
+// the old module).
+#[allow(unused_imports)]
+use super::Screen;
+#[allow(unused_imports)]
+use ::mod_api::{ServerTickPhase, WorldPhase};
+#[allow(unused_imports)]
+use horizon_client::starling_mod_api::{
+    self as mod_api, NativeCommand, NativeDataMapType, NativeDispensed, NativeFalling,
+    NativeHeightmap, NativeLifecycleContext, NativeMinimap, NativeMobRender, NativeModEvent,
+    NativePanelEvent, NativePlayerRender, NativeScreenView, NativeServerPlayer, NativeShake,
+    NativeZoom,
+};
+#[allow(unused_imports)]
+use horizon_client::{
+    extras::Corner, fast_hash::FxHashMap, first_person::Hand, hud::rgba, keybinds, mod_list,
+};
+#[allow(unused_imports)]
+use horizon_core::{geometry::Direction, nbt::Compound};
+#[allow(unused_imports)]
+use std::{collections::HashMap, fs, path::Path};
+#[allow(unused_imports)]
+use winit::keyboard::KeyCode;
 
 /// The key an old mod's button `j` has as a setting on Horizon's page.
 const OLD_BUTTON: &str = "starling.old-button.";
@@ -291,7 +316,7 @@ impl Game<'_> {
         self.send_chat(message)
     }
     /// The world's clock: its game time and its time of day, while in a world.
-    pub(in crate::game) fn native_clock(&self) -> Option<mod_api::game::Clock> {
+    pub(in crate::game) fn native_clock(&self) -> Option<::mod_api::game::Clock> {
         self.clock()
     }
     /// The rain and thunder levels of the world in place, each 0.0 to 1.0.
@@ -343,6 +368,41 @@ impl Game<'_> {
         if self.native_window() {
             self.titles.set_overlay(text, animate);
         }
+    }
+    /// A movement or interaction mapping (`key.forward`, `key.jump`, `key.attack`...): whether it
+    /// is held, and the name of the key it is bound to.
+    pub(in crate::game) fn native_mapping(&mut self, name: &str) -> Option<(bool, String)> {
+        let mapping = self.mapping(name).ok()??;
+        let label = keybinds::display_name(self.settings.keys.get(name)).plain();
+        Some((mapping.down, label))
+    }
+    /// The size of a GUI atlas sprite in its own pixels, if present.
+    pub(in crate::game) fn native_sprite_size(&self, name: &str) -> Option<[f32; 2]> {
+        self.gui_sprite_pixels(name)
+    }
+    /// Gives the player `count` of `item`, as the recipe book's give does.
+    pub(in crate::game) fn native_give(&mut self, item: &str, count: u32) -> Result<(), String> {
+        self.recipe_give(item, count)
+    }
+    /// The items mod `mod_id`'s panel shows; an item the game doesn't know is left out.
+    pub(in crate::game) fn native_panel_items(&mut self, mod_id: &str, items: Vec<NativeStack>) {
+        let items = items
+            .into_iter()
+            .filter_map(|stack| {
+                let id = ::mod_api::Identifier::parse(&stack.item).ok()?;
+                Some(::mod_api::Stack {
+                    item: self.item_key(&id)?,
+                    count: stack.count,
+                    components: stack.components,
+                })
+            })
+            .collect();
+        self.panel_items(mod_id, items);
+    }
+    /// The most of `item` one stack holds.
+    pub(in crate::game) fn native_max_stack_size(&self, item: &str) -> Option<u32> {
+        let id = ::mod_api::Identifier::parse(item).ok()?;
+        self.max_stack_size(self.item_key(&id)?)
     }
     /// Whether the player left mod `mod_id` on in Options > Mods.
     pub(in crate::game) fn native_on(&self, mod_id: &str) -> bool {
