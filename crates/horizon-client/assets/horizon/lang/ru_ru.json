@@ -60,7 +60,7 @@
   "Chunk loading": "Загрузка чанков",
   "Chunk loading, culling and power use.": "Загрузка чанков, отсечение и энергопотребление.",
   "Cloud layer: off, flat (fast) or 3D (fancy).": "Слой облаков: выключен, плоский (быстро) или 3D (красиво).",
-  "Coarse distant terrain in local worlds. Integrated GPUs stop at 128 chunks.": "Грубый дальний рельеф в локальных мирах. На встроенной графике — не дальше 128 чанков.",
+  "Coarse distant terrain. Integrated GPUs stop at 128 chunks, 256 at Mobile.": "Грубый дальний рельеф в локальных мирах. На встроенной графике — не дальше 128 чанков.",
   "Controller": "Контроллер",
   "Copper Golem Statues": "Статуи медного голема",
   "Culling": "Отсечение",

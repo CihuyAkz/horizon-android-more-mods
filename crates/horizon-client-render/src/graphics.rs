@@ -1455,6 +1455,9 @@ pub fn apply_mobile_defaults(tier: crate::system_stats::Tier, s: &mut crate::set
     // Gen 2 at render distance 8 and LOD distance 128, Full drew the frame in 29 to 31 ms of GPU
     // and Mobile in 19 (render distance 8 alone, 15.5).
     g.far_detail = FarDetail::Mobile;
+    // Leaf faces behind two leaf layers go, the crowns look the same: render distance 8 with
+    // LOD distance 128 at Mobile went from 18.7 to 15.5 ms of GPU on the same phone.
+    g.leaf_culling = LeafCullingMode::Hidden;
 }
 
 #[cfg(test)]
@@ -1589,6 +1592,8 @@ mod tests {
             (low.horizon.far_detail, high.horizon.far_detail),
             (FarDetail::Mobile, FarDetail::Mobile)
         );
+        // Leaf faces no one sees left out, crowns as they were.
+        assert_eq!(high.horizon.leaf_culling, LeafCullingMode::Hidden);
         // What the options screens read back.
         let file = high.to_file();
         let back = crate::settings::Settings::from_file(file);

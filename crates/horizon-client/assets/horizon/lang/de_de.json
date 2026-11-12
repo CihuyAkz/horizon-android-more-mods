@@ -60,7 +60,7 @@
   "Chunk loading": "Chunk-Laden",
   "Chunk loading, culling and power use.": "Chunk-Laden, Culling und Stromverbrauch.",
   "Cloud layer: off, flat (fast) or 3D (fancy).": "Wolkenschicht: aus, flach (schnell) oder 3D (schön).",
-  "Coarse distant terrain in local worlds. Integrated GPUs stop at 128 chunks.": "Grobes fernes Gelände in lokalen Welten. Integrierte GPUs: max. 128.",
+  "Coarse distant terrain. Integrated GPUs stop at 128 chunks, 256 at Mobile.": "Grobes fernes Gelände in lokalen Welten. Integrierte GPUs: max. 128.",
   "Controller": "Controller",
   "Copper Golem Statues": "Kupfergolem-Statuen",
   "Culling": "Culling",

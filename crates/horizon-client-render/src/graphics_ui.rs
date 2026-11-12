@@ -198,7 +198,7 @@ pub fn rows() -> Vec<(Page, Vec<(&'static str, Vec<Setting>)>)> {
                         h(
                             H::LodDistance,
                             Medium,
-                            "Coarse distant terrain in local worlds. Integrated GPUs stop at 128 chunks.",
+                            "Coarse distant terrain. Integrated GPUs stop at 128 chunks, 256 at Mobile.",
                         ),
                         h(H::FarDetail, Medium, far),
                         h(

@@ -60,7 +60,7 @@
   "Chunk loading": "Chunk loading",
   "Chunk loading, culling and power use.": "Chunk loading, culling and power use.",
   "Cloud layer: off, flat (fast) or 3D (fancy).": "Cloud layer: off, flat (fast) or 3D (fancy).",
-  "Coarse distant terrain in local worlds. Integrated GPUs stop at 128 chunks.": "Coarse distant terrain in local worlds. Integrated GPUs stop at 128 chunks.",
+  "Coarse distant terrain. Integrated GPUs stop at 128 chunks, 256 at Mobile.": "Coarse distant terrain. Integrated GPUs stop at 128 chunks, 256 at Mobile.",
   "Controller": "Controller",
   "Copper Golem Statues": "Copper Golem Statues",
   "Culling": "Culling",
