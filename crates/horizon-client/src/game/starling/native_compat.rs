@@ -9,6 +9,7 @@
 //!
 //! Hook bodies have no `cfg` and no macros: horizon-mixins refuses a target with either.
 use super::{Game, GameLevel, LevelDimension};
+use horizon_client::lan::data::component_nbt;
 use horizon_client::{
     extras_hud::Corners,
     hud::HudBatch,
@@ -20,6 +21,7 @@ use horizon_client::{
     text::Text,
 };
 use horizon_core::position::BlockPos;
+use horizon_protocol::packets::play::{self, Clientbound as C};
 use horizon_world::registry::BlockStateId;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -403,6 +405,53 @@ impl Game<'_> {
     pub(in crate::game) fn native_max_stack_size(&self, item: &str) -> Option<u32> {
         let id = ::mod_api::Identifier::parse(item).ok()?;
         self.max_stack_size(self.item_key(&id)?)
+    }
+    /// The players on this server, in the order they joined, as the old helper listed them
+    /// (Horizon's `native_server_players` gives handles now). Empty on a client and in a world
+    /// nobody else can join.
+    pub(in crate::game) fn native_server_players_old(&self) -> Vec<NativeServerPlayer> {
+        let Some(host) = &self.lan else {
+            return Vec::new();
+        };
+        host.hub
+            .online_players()
+            .map(|g| {
+                ::mod_api::__private::built::ServerPlayer {
+                    uuid: g.uuid,
+                    name: g.name.clone(),
+                    permission: g.permission,
+                    dimension: g.dimension.clone(),
+                    position: g.position,
+                    game_mode: g.game_mode,
+                    health: g.health,
+                    yaw: g.yaw,
+                    pitch: g.pitch,
+                    entity_id: g.entity_id,
+                    address: g.address.ip().to_string(),
+                }
+                .into()
+            })
+            .collect()
+    }
+    /// A system line in that player's chat, also inside a player's hook for the acting player;
+    /// false when they aren't on.
+    pub(in crate::game) fn native_tell(&mut self, uuid: u128, line: Text) -> bool {
+        let content = component_nbt(&line.component());
+        let packet = C::SystemChat(play::SystemChat {
+            content,
+            overlay: false,
+        });
+        self.native_send(uuid, packet)
+    }
+    /// A line over that player's hotbar (the action bar), also inside a player's hook for the
+    /// acting player; false when they aren't on.
+    pub(in crate::game) fn native_action_bar(&mut self, uuid: u128, line: Text) -> bool {
+        let content = component_nbt(&line.component());
+        let packet = C::SystemChat(play::SystemChat {
+            content,
+            overlay: true,
+        });
+        self.native_send(uuid, packet)
     }
     /// Whether the player left mod `mod_id` on in Options > Mods.
     pub(in crate::game) fn native_on(&self, mod_id: &str) -> bool {

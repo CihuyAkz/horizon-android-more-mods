@@ -36,6 +36,12 @@ class Calls(unittest.TestCase):
         self.assertEqual(said, "Break(content_root(root, enabled, &with, None, &mut |_| {}))")
 
 
+class Batch(unittest.TestCase):
+    def test_a_batch_gets_the_games_gui_scale(self):
+        said = adapt.code("let batch = HudBatch::new([r.config.width, r.config.height]);")
+        self.assertEqual(said, "let batch = HudBatch::new([r.config.width, r.config.height], game.settings.gui_scale_inputs());")
+
+
 class OldShapes(unittest.TestCase):
     def test_a_call_in_the_old_shape_goes_to_the_old_helper(self):
         said = adapt.code("let w = game.native_text_width(&line.text) + 4.0;")
@@ -44,6 +50,10 @@ class OldShapes(unittest.TestCase):
     def test_a_call_in_the_new_shape_stays(self):
         line = "let w = game.native_text_width(batch, f(a, b));"
         self.assertEqual(adapt.code(line), line)
+
+    def test_the_mods_crate_is_horizon_mod_package(self):
+        said = adapt.code("if horizon_mods::evanders_config::enabled() {}")
+        self.assertEqual(said, "if horizon_mod_package::evanders_config::enabled() {}")
 
     def test_nbt_is_horizon_cores(self):
         self.assertEqual(adapt.code("use horizon_world::nbt::Tag;"), "use horizon_core::nbt::Tag;")

@@ -33,6 +33,8 @@ CALLS = (
     ("ui::slider(", 9, "false"),
     ("super::build_renderer(", 7, "false, false"),
     ("content_root(", 3, "None, &mut |_| {}"),
+    # A batch is laid out with the view's GUI scale settings now (the game's, in a mod's helper).
+    ("HudBatch::new(", 1, "game.settings.gui_scale_inputs()"),
 )
 # What became something else. Some of it gives a little up: a LAN guest as the F3 target, `/dh` in the
 # chat's completion, a camera's own eye height, the bounds of a dimension lower than the overworld, a
@@ -63,6 +65,8 @@ CHANGED = (
     (r"extra: &\[\(&Part, \[f32; 4\], u32, u32\)\]", "extra: &[(&Part, [f32; 4], u32, u32, bool)]"),
     (r"crate::game::Game::tooltip_box\(batch, atlas, ", "game.tooltip_box(batch, None, "),
     (r"= self\.guest_hit\(\) \{", "= None::<(u32, _)> {"),
+    # The players as the old helper listed them (Horizon's gives handles now).
+    (r"\.native_server_players\(\)", ".native_server_players_old()"),
     # The camera type is the mod API's now, and asks `is_first_person`.
     (r"\bcrate::game::perspective::CameraType\b", "::mod_api::CameraType"),
     (r"\.first_person\(\)", ".is_first_person()"),
@@ -132,6 +136,9 @@ def old_api(text):
     crate). NBT moved from horizon-world to horizon-core."""
     text = re.sub(r"\buse (horizon_client|crate)::mod_api;", r"use \1::starling_mod_api as mod_api;", text)
     text = re.sub(r"\bhorizon_world::nbt\b", "horizon_core::nbt", text)
+    # The mods crate is horizon-mod-package now, with the same modules.
+    text = re.sub(r"\bhorizon_mods(?=::)", "horizon_mod_package", text)
+    text = text.replace("crates/horizon-mods/", "crates/horizon-mod-package/")
     return re.sub(r"\b(horizon_client|crate)::mod_api\b", r"\1::starling_mod_api", text)
 
 
