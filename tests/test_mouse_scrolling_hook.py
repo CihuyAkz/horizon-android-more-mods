@@ -39,7 +39,7 @@ fn glfw_modifiers(bits: u32) -> u32 { bits }
 struct Game { screen: Screen, overlay: bool, sleeping: Option<()>, player: Option<Player>,
     cancel: bool, mouse: mouse::MouseLook, selected: usize,
     settings: Settings, physical_buttons: HashSet<MouseButton>, cursor: (f32, f32), modifiers: u32,
-    spectator: bool, spectator_gui: SpectatorGui, menu_scrolls: Vec<i32>,
+    spectator: bool, spectator_gui: SpectatorGui, menu_scrolls: Vec<i32>, claim: bool, wheels: Vec<f32>,
     calls: Vec<([f64; 2], [i32; 2], [bool; 3], [f32; 2], u32)> }
 impl Game {
     fn new() -> Self { Self { screen: Screen::Playing, overlay: false, sleeping: None,
@@ -48,10 +48,12 @@ impl Game {
         settings: Settings { discrete_scroll: false, mouse_wheel_sensitivity: 1.0 },
         physical_buttons: HashSet::from([MouseButton::Left, MouseButton::Right]),
         cursor: (10.0, 20.0), modifiers: 5, spectator: false, spectator_gui: SpectatorGui { active: false },
-        menu_scrolls: vec![], calls: vec![] } }
+        menu_scrolls: vec![], claim: false, wheels: vec![], calls: vec![] } }
     fn screen_over_playing(&self) -> bool { self.overlay }
     fn spectator(&self) -> bool { self.spectator }
     fn spectator_scroll(&mut self, steps: i32) { self.menu_scrolls.push(steps); }
+    // Starling's old wheel hook (game/starling/native_compat.rs): a claim keeps the steps from the hotbar.
+    fn native_wheel_event(&mut self, steps: f32) -> bool { self.wheels.push(steps); self.claim }
     fn native_mouse_scrolling(&mut self, scroll: [f64;2], accumulated: [i32;2], buttons: [bool;3],
         cursor: [f32;2], modifiers: u32, canceled: &mut bool) {
         self.calls.push((scroll, accumulated, buttons, cursor, modifiers)); *canceled = self.cancel;
@@ -97,6 +99,18 @@ fn cancellation_consumes_steps_and_preserves_gameplay() {
             else { assert!(game.player.as_ref().unwrap().flying_speed > 0.1); }
         }
     }
+}
+#[test]
+fn the_old_wheel_hook_hears_the_steps_first_and_may_keep_them() {
+    let mut game = Game::new();
+    game.wheel(MouseScrollDelta::LineDelta(0.0,1.0)).unwrap();
+    assert_eq!(game.wheels.len(), 1);
+    assert_eq!(game.selected, 3);
+    let mut game = Game::new(); game.claim = true;
+    game.wheel(MouseScrollDelta::LineDelta(0.0,1.0)).unwrap();
+    assert_eq!(game.wheels.len(), 1);
+    assert!(game.calls.is_empty());
+    assert_eq!(game.selected, 4);
 }
 #[test]
 fn gameplay_gates() {

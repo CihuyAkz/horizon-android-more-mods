@@ -25,9 +25,11 @@ mod keybinds {
     }
 }
 #[derive(Default)]
-struct Game { calls: Vec<&'static str> }
+struct Game { calls: Vec<&'static str>, keys: Vec<(String, bool)> }
 impl Game {
     fn native_panel_key(&mut self, name: &'static str) { self.calls.push(name); }
+    // Starling's old key hook (game/starling/native_compat.rs).
+    fn native_key(&mut self, key: &str, pressed: bool) { self.keys.push((key.to_owned(), pressed)); }
     METHOD
 }
 #[test]
@@ -38,6 +40,8 @@ fn panel_receives_only_named_nonrepeat_presses() {
     game.native_panel_key_event(1, false, false);
     game.native_panel_key_event(2, true, false);
     assert_eq!(game.calls, ["key.keyboard.a"]);
+    // The old hook hears the named key going down and up, never a repeat.
+    assert_eq!(game.keys, [("key.keyboard.a".to_owned(), true), ("key.keyboard.a".to_owned(), false)]);
 }
 """.replace("METHOD", actual)
         target = ROOT / "target"
