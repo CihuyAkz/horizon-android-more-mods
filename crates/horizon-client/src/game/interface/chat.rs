@@ -1421,8 +1421,20 @@ impl Game<'_> {
             );
         }
     }
+    /// The pointer where the chat lays its parts out: over the on-screen keyboard the chat is
+    /// drawn higher (`lift_over_keyboard`), so the point under a finger is that much lower in it.
+    fn chat_pointer(&self) -> (f32, f32) {
+        let scale = self.renderer.as_ref().map_or(1.0, |r| {
+            HudBatch::new(
+                [r.config.width, r.config.height],
+                self.settings.gui_scale_inputs(),
+            )
+            .scale
+        });
+        (self.cursor.0, self.cursor.1 + self.chat_lift(scale))
+    }
     pub(super) fn chat_scroll(&mut self, amount: f32) {
-        let cursor = self.cursor;
+        let cursor = self.chat_pointer();
         let height = self.renderer.as_ref().map_or(720.0, |r| {
             HudBatch::new(
                 [r.config.width, r.config.height],
@@ -1443,7 +1455,7 @@ impl Game<'_> {
         self.ui.chat.scroll_by(amount as i32, true);
     }
     pub(super) fn chat_click(&mut self) {
-        let cursor = self.cursor;
+        let cursor = self.chat_pointer();
         let height = self.renderer.as_ref().map_or(720.0, |r| {
             HudBatch::new(
                 [r.config.width, r.config.height],
@@ -1766,7 +1778,9 @@ impl Game<'_> {
         } else {
             self.settings.text_background(0.0) as i32
         };
-        let mouse = (self.cursor.0.floor() as i32, self.cursor.1.floor() as i32);
+        // Where the chat lays out what the pointer is over (`chat_pointer`).
+        let pointer = (self.cursor.0, self.cursor.1 + self.chat_lift(batch.scale));
+        let mouse = (pointer.0.floor() as i32, pointer.1.floor() as i32);
         let blink = self
             .ui
             .chat_opened
@@ -1781,7 +1795,7 @@ impl Game<'_> {
         // The hovered message part's tooltip (`renderComponentHoverEffect`),
         // or the text of the message tag under the cursor.
         let height = batch.height as i32;
-        let (cx, cy) = (f64::from(self.cursor.0), f64::from(self.cursor.1));
+        let (cx, cy) = (f64::from(pointer.0), f64::from(pointer.1));
         // handleTagIcon: the chat-modified icons over the cursor or its message.
         let (tag_tooltip, tag_icons) =
             self.ui
@@ -1796,11 +1810,11 @@ impl Game<'_> {
                     horizon_client::widgets::Cursor::PointingHand,
                 );
             }
-            self.component_hover_effect(batch, &style, self.cursor);
+            self.component_hover_effect(batch, &style, pointer);
         } else if let Some(tag) = &tag_tooltip {
             // The message tag's text, split at 210.
             let lines = self.wrapped_rows(tag, 210);
-            self.draw_tooltip_lines(batch, &lines, self.cursor.0, self.cursor.1);
+            self.draw_tooltip_lines(batch, &lines, pointer.0, pointer.1);
         }
     }
     /// `GuiGraphicsExtractor.componentHoverEffect`: the hover of the text component under the

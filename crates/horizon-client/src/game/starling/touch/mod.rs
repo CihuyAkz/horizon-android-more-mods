@@ -1698,13 +1698,24 @@ impl Game<'_> {
         0
     }
 
-    /// With the chat open over the on-screen keyboard, the HUD moves up above it.
+    /// How far, in GUI pixels at `scale`, [`Self::lift_over_keyboard`] moves the chat up: what a
+    /// point on the screen adds to its height to be where the chat lays it out (#245, #226).
+    pub(in crate::game) fn chat_lift(&self, scale: f32) -> f32 {
+        let height = self.keyboard_height();
+        if self.screen != Screen::Chat || height == 0 || scale <= 0.0 {
+            return 0.0;
+        }
+        height as f32 / scale
+    }
+
+    /// With the chat open over the on-screen keyboard, the HUD moves up above it. What reads the
+    /// pointer over it takes [`Self::chat_lift`] back.
     pub(super) fn lift_over_keyboard(&self, batch: &mut HudBatch) {
         let height = self.keyboard_height();
         if self.screen != Screen::Chat || height == 0 {
             return;
         }
-        let lift = height as f32 / batch.scale;
+        let lift = self.chat_lift(batch.scale);
         for vertex in &mut batch.vertices {
             vertex.pos[1] -= lift;
         }
