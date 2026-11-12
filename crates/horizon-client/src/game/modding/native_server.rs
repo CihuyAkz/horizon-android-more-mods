@@ -2113,6 +2113,12 @@ impl Game<'_> {
         use super::commands::err;
         let command = self.resolve_native_command(context)?;
         let origin = self.native_command_origin(self.ui.registries.permission)?;
+        // Starling: a mod made for the old hooks hears the command's line first (native_compat.rs).
+        if let mod_api::CommandSource::Player { player, .. } = &origin
+            && self.old_perform_command(player.uuid(), self.ui.registries.permission)
+        {
+            return Ok(1);
+        }
         let mut ran = false;
         self.native_run_mod_command(&origin, &command, &mut ran);
         if ran {

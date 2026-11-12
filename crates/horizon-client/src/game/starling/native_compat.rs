@@ -10,6 +10,7 @@
 //! Hook bodies have no `cfg` and no macros: horizon-mixins refuses a target with either.
 use super::{Game, GameLevel, LevelDimension, lan::LanHost};
 use horizon_client::lan::data::component_nbt;
+use horizon_client::lan::guest::Guest;
 use horizon_client::{
     extras_hud::Corners,
     hud::HudBatch,
@@ -26,6 +27,7 @@ use horizon_world::registry::BlockStateId;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Mutex, PoisonError};
 use std::time::Duration;
 use winit::event::MouseButton;
 
@@ -240,6 +242,35 @@ impl Game<'_> {
         self.lan = Some(host);
         on
     }
+}
+
+/// A guest of the hub as the old helpers gave a player, at `permission`.
+fn old_server_player(g: &Guest, permission: u8) -> NativeServerPlayer {
+    ::mod_api::__private::built::ServerPlayer {
+        uuid: g.uuid,
+        name: g.name.clone(),
+        permission,
+        dimension: g.dimension.clone(),
+        position: g.position,
+        game_mode: g.game_mode,
+        health: g.health,
+        yaw: g.yaw,
+        pitch: g.pitch,
+        entity_id: g.entity_id,
+        address: g.address.ip().to_string(),
+    }
+    .into()
+}
+
+/// The command line being run, for the old `native_perform_command`: Horizon's typed commands no
+/// longer pass it on, so it is kept where a line comes in (`set_command_line`).
+static COMMAND_LINE: Mutex<String> = Mutex::new(String::new());
+
+/// The command line about to be run (a slash in front or not).
+pub(in crate::game) fn set_command_line(line: &str) {
+    let mut kept = COMMAND_LINE.lock().unwrap_or_else(PoisonError::into_inner);
+    kept.clear();
+    kept.push_str(line.trim_start_matches('/'));
 }
 
 /// The old level hooks.
@@ -499,23 +530,42 @@ impl Game<'_> {
         };
         host.hub
             .online_players()
-            .map(|g| {
-                ::mod_api::__private::built::ServerPlayer {
-                    uuid: g.uuid,
-                    name: g.name.clone(),
-                    permission: g.permission,
-                    dimension: g.dimension.clone(),
-                    position: g.position,
-                    game_mode: g.game_mode,
-                    health: g.health,
-                    yaw: g.yaw,
-                    pitch: g.pitch,
-                    entity_id: g.entity_id,
-                    address: g.address.ip().to_string(),
-                }
-                .into()
-            })
+            .map(|g| old_server_player(g, g.permission))
             .collect()
+    }
+    /// The online player `uuid` as the old helpers gave a player, at `permission`.
+    fn old_server_player_by(&self, uuid: u128, permission: u8) -> Option<NativeServerPlayer> {
+        let host = self.lan.as_ref()?;
+        let g = host.hub.online_players().find(|g| g.uuid == uuid)?;
+        Some(old_server_player(g, permission))
+    }
+    /// A player's command on the server, without its slash, for a command a mod registered and
+    /// the player's level allows (`native_register_commands`): set `ran` when it is yours. The
+    /// player's state is swapped in for the call, so the helpers read that player.
+    pub(in crate::game) fn native_perform_command(
+        &mut self,
+        player: &NativeServerPlayer,
+        command: &str,
+        ran: &mut bool,
+    ) {
+        let _ = (player, command, ran);
+    }
+    /// The old command hook for the line being run by `uuid` at `permission`: whether a mod made
+    /// for it ran it.
+    pub(in crate::game) fn old_perform_command(&mut self, uuid: u128, permission: u8) -> bool {
+        let line = COMMAND_LINE
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone();
+        if line.is_empty() {
+            return false;
+        }
+        let Some(player) = self.old_server_player_by(uuid, permission) else {
+            return false;
+        };
+        let mut ran = false;
+        self.native_perform_command(&player, &line, &mut ran);
+        ran
     }
     /// A system line in that player's chat, also inside a player's hook for the acting player;
     /// false when they aren't on.

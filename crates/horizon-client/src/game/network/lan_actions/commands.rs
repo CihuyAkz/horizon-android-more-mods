@@ -10,7 +10,9 @@ impl Game<'_> {
         command: &str,
         signed: Option<Vec<(String, horizon_client::lan::hub::chat::ChatMessage)>>,
     ) {
-        // Starling: the mods made for the old hooks first, which may stop it (native_compat.rs).
+        // Starling: the mods made for the old hooks first, which may stop it, and the line for
+        // their command hook (native_compat.rs).
+        crate::game::native_compat::set_command_line(command);
         if !self.old_guest_command_went_on(conn, command) {
             return;
         }
