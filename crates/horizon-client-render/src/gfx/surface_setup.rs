@@ -57,8 +57,12 @@ pub(super) fn set_up_surface(
         });
     if log_step {
         startup_step(format_args!(
-            "device ready; configuring the surface ({}x{} {:?}, {:?})",
-            config.width, config.height, config.format, config.present_mode
+            "device ready; configuring the surface ({}x{} {:?}, {:?}){}",
+            config.width,
+            config.height,
+            config.format,
+            config.present_mode,
+            super::memory_note()
         ));
     }
     Renderer::configure(device, surface, &config, None, device_lost)?;
@@ -199,7 +203,10 @@ pub(super) async fn open_adapter(
         if reason == wgpu::DeviceLostReason::Destroyed {
             return;
         }
-        log::warn!("Horizon renderer: the graphics device was lost ({reason:?}: {message})");
+        log::warn!(
+            "Horizon renderer: the graphics device was lost ({reason:?}: {message}){}",
+            super::memory_note()
+        );
         lost.store(true, std::sync::atomic::Ordering::Relaxed);
     });
     let configured = match (surface, caps) {

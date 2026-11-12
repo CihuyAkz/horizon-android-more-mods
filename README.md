@@ -13,10 +13,12 @@
   <a href="https://github.com/ludovic111/horizon"><img src="https://img.shields.io/badge/fork%20of-Horizon-F0795A" alt="Fork of Horizon"></a>
   <img src="https://img.shields.io/badge/platform-Android-2A2470" alt="Android">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-3B2F7E" alt="MIT license"></a>
+  <a href="https://discord.gg/7xcp8Y5nkv"><img src="https://img.shields.io/badge/Discord-join-5865F2?logo=discord&logoColor=white" alt="Discord"></a>
 </p>
 
 <p align="center">
   <a href="#download"><b>Download</b></a> ·
+  <a href="https://discord.gg/7xcp8Y5nkv"><b>Discord</b></a> ·
   <a href="#android-status"><b>Android status</b></a> ·
   <a href="roadmap/starling.md"><b>Roadmap</b></a> ·
   <a href="#mods"><b>Mods</b></a> ·
@@ -32,6 +34,8 @@
 > Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft. Starling contains no Minecraft code, assets or data: you need your own legally obtained copy of Minecraft: Java Edition 26.3.
 
 ## Download
+
+**Join us on [Discord](https://discord.gg/7xcp8Y5nkv)** for help, bug reports and news.
 
 **[Starling v0.8.0](https://github.com/JuanLuci/starling/releases/latest)**. Already have Starling? Tap **Update** inside the game. New here? Download `starling-0.8.0-arm64-v8a.apk` from [the releases page](https://github.com/JuanLuci/starling/releases) and open it on the phone (Android asks you to allow installing apps from your browser or file manager).
 

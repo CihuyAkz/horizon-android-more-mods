@@ -2,6 +2,19 @@
 //! boot screen's frame, and `start_game`, which turns the loaded resources into a `Game`.
 use super::*;
 
+/// A driver that dies while the first renderer starts leaves this marker behind, and the next
+/// start opens with OpenGL ES (`graphics::RENDERER_MARKER`). A renderer made on a device that
+/// has shown frames already (`previous`) writes none.
+#[cfg(target_os = "android")]
+fn start_marker(previous: Option<&Renderer>) -> Option<std::path::PathBuf> {
+    previous.is_none().then(|| {
+        let marker =
+            Game::options_path().with_file_name(horizon_client::graphics::RENDERER_MARKER);
+        let _ = std::fs::write(&marker, "the renderer was starting\n");
+        marker
+    })
+}
+
 /// CPU mip chains for the block sprites and world border.
 pub(super) fn prepare_renderer_textures(
     pack: &PackResources,
@@ -57,6 +70,8 @@ pub(super) fn build_renderer(
         "renderer_init",
         || serde_json::json!({"api":format!("{:?}",api)}),
     );
+    #[cfg(target_os = "android")]
+    let marker = start_marker(previous);
     let mut renderer = pollster::block_on(Renderer::new(
         window,
         offscreen,
@@ -84,6 +99,10 @@ pub(super) fn build_renderer(
         shader_pack.frame(),
         display,
     ))?;
+    #[cfg(target_os = "android")]
+    if let Some(marker) = marker {
+        renderer.forget_start_marker(marker);
+    }
     let (prepared_vertices, prepared_ranges) =
         native_block_entity_draw::StandaloneGeometry::new(pack, gui).prepared_upload();
     renderer.install_prepared_models(
@@ -147,6 +166,8 @@ pub(super) fn loading_renderer(
         "renderer_init",
         || serde_json::json!({"api":format!("{:?}",api)}),
     );
+    #[cfg(target_os = "android")]
+    let marker = start_marker(previous);
     let mut renderer = pollster::block_on(Renderer::new(
         window,
         offscreen,
@@ -172,6 +193,10 @@ pub(super) fn loading_renderer(
         Default::default(),
         previous.map(|r| r.display_reading()).unwrap_or_default(),
     ))?;
+    #[cfg(target_os = "android")]
+    if let Some(marker) = marker {
+        renderer.forget_start_marker(marker);
+    }
     if let Some(atlas) = atlas {
         renderer.hud.sprite_animations = atlas
             .sprite_animations

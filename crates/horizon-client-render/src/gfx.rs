@@ -229,6 +229,8 @@ pub use prepared_model::{
 #[cfg(test)]
 mod inter_stage_tests;
 #[cfg(test)]
+mod inter_stage_tests;
+#[cfg(test)]
 mod sprite_arrays_tests;
 mod terrain_model;
 #[cfg(test)]
@@ -1706,6 +1708,9 @@ pub struct Renderer {
     hdr_driver: Option<String>,
     /// The HDR Lighting setting, kept for the HDR output made when HDR turns on.
     hdr_lighting_setting: bool,
+    /// The marker file of a renderer start that has not presented a frame yet
+    /// (`graphics::RENDERER_MARKER`), removed with the first frame.
+    start_marker: Option<std::path::PathBuf>,
     /// The shader pack's post-processing, and the dimension (legacy id) it was loaded for.
     pack_post: Option<(i32, Option<pack_post::PackPost>)>,
     /// A `shaders/` pack whose pipelines build on a thread of their own (`load_shader_pack`).
@@ -2543,9 +2548,24 @@ async fn open_device(
     layers: u32,
 ) -> Result<Opened> {
     let wgpu_backend = std::env::var_os("WGPU_BACKEND").is_some();
+    let mut api = api.with_env();
+    if api == GraphicsApi::Auto
+        && !wgpu_backend
+        && cfg!(target_os = "android")
+        && let Some(gpu) = vulkan_gpu_name(window)
+            .await
+            .filter(|name| rogue_vulkan_crashes(name))
+    {
+        log::warn!(
+            "Horizon renderer: {gpu}'s Vulkan driver crashes in its first frame (GE8320 drivers \
+             1.15 and 24.2) or draws terrain in pieces (#326); Auto uses OpenGL ES here, and \
+             Video Settings can still choose Vulkan"
+        );
+        api = GraphicsApi::OpenGl;
+    }
     let mut first = None;
     for (order, allow_cpu) in device_search(
-        api.with_env(),
+        api,
         std::env::consts::OS,
         // The machine's: the x64 build emulated on a Windows ARM64 PC has its GPU too (#7513).
         horizon_system::machine_arch(),
@@ -2571,6 +2591,33 @@ async fn open_device(
         }
     }
     Err(first.unwrap_or_else(|| NO_GPU_DRIVER.into()))
+}
+/// The name of the GPU Vulkan would give, asked before any device exists: no surface, no
+/// device, so nothing reaches the driver's queue.
+async fn vulkan_gpu_name(window: &Arc<Window>) -> Option<String> {
+    let instance = wgpu::Instance::new(instance_descriptor(
+        wgpu::Backends::VULKAN,
+        Some(window),
+        false,
+        wgpu::Dx12Compiler::Fxc,
+    ));
+    let adapter = instance
+        .request_adapter(&wgpu::RequestAdapterOptions {
+            power_preference: wgpu::PowerPreference::HighPerformance,
+            force_fallback_adapter: false,
+            ..Default::default()
+        })
+        .await
+        .ok()?;
+    Some(adapter.get_info().name)
+}
+/// PowerVR Rogue (GE8320, GE8322, GE8300...) on Vulkan. Diagnostic reports from 0.8.0: the
+/// GE8320's driver 1.15 (an HONOR GFY-LX2) and 24.2 (a Xiaomi 23129RN51X) die with SIGSEGV
+/// inside `vkQueueSubmit` on the very first submission, `clear_surface`'s black frame, every
+/// start; 1.13 (a vivo 1901) gets past it but draws terrain in patches with broken water,
+/// which OpenGL ES doesn't (#326, #327). The B-Series (BXM) is not Rogue and keeps Vulkan.
+fn rogue_vulkan_crashes(gpu: &str) -> bool {
+    gpu.contains("PowerVR Rogue")
 }
 /// The tries `open_device` makes, in turn: the chosen API's backends (`backend_order`) on a
 /// real GPU; when the player chose one API, the other backends `Auto` would try, on a real
@@ -2896,6 +2943,10 @@ fn startup_step(step: std::fmt::Arguments) {
     log::info!("Horizon renderer: {step}");
     log::logger().flush();
 }
+/// "; memory: process 412 MiB, ..." for a log line (`system_stats::memory_note`), or nothing.
+fn memory_note() -> String {
+    crate::system_stats::memory_note().map_or_else(String::new, |m| format!("; memory: {m}"))
+}
 /// How far the first frame on a new device got, for `startup_step`.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum FirstFrame {
@@ -3207,10 +3258,13 @@ impl Renderer {
         };
         // Until its first frame the window shows what was behind it (on Android, the
         // launcher through the app's empty window): clear it now, before the pipelines
-        // take their few hundred milliseconds.
+        // take their few hundred milliseconds. Its own step: a driver that dies here
+        // (PowerVR Rogue's, in this first submit) is told apart from one that dies
+        // configuring.
         if previous.is_none()
             && let (Some(surface), Some((config, _))) = (&surface, &configured)
         {
+            startup_step(format_args!("clearing the window"));
             clear_surface(&device, &queue, surface, config.format);
         }
         let (config, present_modes, hdr_output) = if let Some((config, caps)) = configured {
@@ -5337,7 +5391,7 @@ impl Renderer {
         }
         if previous.is_none() {
             startup_step(format_args!(
-                "pipelines ready (multi-draw {}, occlusion culling {}, GPU culling {}, GPU timer {})",
+                "pipelines ready (multi-draw {}, occlusion culling {}, GPU culling {}, GPU timer {}){}",
                 on_off(multi_draw),
                 on_off(cull_on),
                 if gpu_culling_offer == crate::graphics::GpuCullingOffer::Offered {
@@ -5346,6 +5400,7 @@ impl Renderer {
                     "unavailable"
                 },
                 on_off(gpu_timer.is_some()),
+                memory_note(),
             ));
         }
         let mut world_primitives = world_primitives::WorldPrimitives::new(&device, frame_format);
@@ -5596,6 +5651,7 @@ impl Renderer {
             frame_kept_logged: false,
             hdr_marker: None,
             hdr_driver,
+            start_marker: None,
             pack_post: None,
             pack_loading: None,
             native: None,
@@ -7435,6 +7491,11 @@ impl Renderer {
             ),
             None => "HDR: not offered by this display".into(),
         }
+    }
+    /// Removes `marker` (`graphics::RENDERER_MARKER`, written before this renderer opened its
+    /// device) once a frame has been presented: the start went through.
+    pub fn forget_start_marker(&mut self, marker: std::path::PathBuf) {
+        self.start_marker = Some(marker);
     }
     /// The HDR Lighting setting (`Hdr::look`).
     pub fn set_hdr_lighting(&mut self, on: bool) {
@@ -12641,6 +12702,9 @@ impl Renderer {
                 let _ = std::fs::remove_file(marker);
                 log::info!("Horizon renderer: HDR output presented its first frame");
             }
+            if let Some(marker) = self.start_marker.take() {
+                let _ = std::fs::remove_file(marker);
+            }
             if reconfigure {
                 self.configure_surface();
             }
@@ -14292,6 +14356,19 @@ mod tests {
         assert!(!super::renders_depth(features(
             TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_SRC
         )));
+    }
+    /// PowerVR Rogue starts on OpenGL ES with Auto; the B-Series keeps Vulkan (#381).
+    #[test]
+    fn auto_leaves_vulkan_on_powervr_rogue_only() {
+        use super::rogue_vulkan_crashes;
+        assert!(rogue_vulkan_crashes("PowerVR Rogue GE8320"));
+        assert!(rogue_vulkan_crashes("PowerVR Rogue GE8322"));
+        assert!(
+            !rogue_vulkan_crashes("PowerVR BXM-8-256"),
+            "the B-Series keeps Vulkan"
+        );
+        assert!(!rogue_vulkan_crashes("Mali-G57 MC2"));
+        assert!(!rogue_vulkan_crashes("Adreno (TM) 610"));
     }
 
     #[test]

@@ -22,6 +22,11 @@ fn marker_driver(text: &str) -> &str {
         .unwrap_or_default()
         .trim()
 }
+/// Written beside it on Android before the renderer opens its device, and removed once it has
+/// presented a frame (`gfx::Renderer::forget_start_marker`). Found at the next start, the
+/// graphics driver took the game down while starting (a native crash the game can't catch,
+/// like the PowerVR GE8320's in `vkQueueSubmit`), so Auto and Vulkan become OpenGL ES.
+pub const RENDERER_MARKER: &str = "horizon-renderer-pending";
 
 /// What the system reports for the display HDR output goes to, in nits in HDR output's
 /// scale: where its SDR white sits (the desktop's white) and the peak. Each renderer keeps its
@@ -991,6 +996,15 @@ impl Default for Graphics {
         }
     }
 }
+/// The graphics API a start uses after the last one died in the driver before its first frame
+/// (`RENDERER_MARKER`): Vulkan's, chosen or by Auto, gives way to OpenGL ES; a player who chose
+/// OpenGL keeps it, so the setting never swings back.
+fn after_driver_crash(api: GraphicsApi) -> GraphicsApi {
+    match api {
+        GraphicsApi::Auto | GraphicsApi::Vulkan => GraphicsApi::OpenGl,
+        other => other,
+    }
+}
 fn bool_text(v: bool) -> &'static str {
     if v { "true" } else { "false" }
 }
@@ -1016,6 +1030,17 @@ impl Graphics {
             g.save(dir);
             log::warn!(
                 "the last start ended before HDR output showed a frame; HDR output stays off with that graphics driver until the HDR mode is changed (graphics option hdrFailedStart, in {FILE})"
+            );
+        }
+        if fs::remove_file(dir.join(RENDERER_MARKER)).is_ok()
+            && cfg!(target_os = "android")
+            && after_driver_crash(g.api) != g.api
+        {
+            g.api = after_driver_crash(g.api);
+            g.save(dir);
+            log::warn!(
+                "the last start ended inside the graphics driver before its first frame; the \
+                 graphics API is OpenGL ES now (Video Settings, or graphicsApi in {FILE})"
             );
         }
         g
@@ -1516,6 +1541,13 @@ mod tests {
         assert_eq!(Graphics::parse("hdr:true\nhdr:unknown\n").hdr, HdrMode::On);
     }
 
+    #[test]
+    fn a_driver_crash_at_start_leaves_vulkan_for_opengl() {
+        assert_eq!(after_driver_crash(GraphicsApi::Auto), GraphicsApi::OpenGl);
+        assert_eq!(after_driver_crash(GraphicsApi::Vulkan), GraphicsApi::OpenGl);
+        assert_eq!(after_driver_crash(GraphicsApi::OpenGl), GraphicsApi::OpenGl);
+        assert_eq!(after_driver_crash(GraphicsApi::Dx12), GraphicsApi::Dx12);
+    }
     #[test]
     fn phones_start_lighter_by_tier() {
         use crate::system_stats::Tier;

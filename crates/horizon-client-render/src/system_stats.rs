@@ -167,6 +167,32 @@ impl Tier {
     }
 }
 
+/// What this process holds and what the device has left, for the log at the steps of a start and
+/// when the graphics device is lost: a phone that runs out ends the game with no crash of its own
+/// (the system kills it, or the driver loses the device), and a 32-bit game can also run out of
+/// address space with memory to spare. None where /proc says nothing (not Linux or Android).
+pub fn memory_note() -> Option<String> {
+    let status = fs::read_to_string("/proc/self/status").ok()?;
+    let meminfo = fs::read_to_string("/proc/meminfo").unwrap_or_default();
+    memory_text(&status, &meminfo)
+}
+
+/// "process 412 MiB, address space 1830 MiB, device 640 of 1880 MiB free".
+fn memory_text(status: &str, meminfo: &str) -> Option<String> {
+    let mib = |kib: u64| kib / 1024;
+    let mut text = format!("process {} MiB", mib(kib_field(status, "VmRSS:")?));
+    if let Some(size) = kib_field(status, "VmSize:") {
+        text += &format!(", address space {} MiB", mib(size));
+    }
+    if let (Some(free), Some(total)) = (
+        kib_field(meminfo, "MemAvailable:"),
+        kib_field(meminfo, "MemTotal:"),
+    ) {
+        text += &format!(", device {} of {} MiB free", mib(free), mib(total));
+    }
+    Some(text)
+}
+
 /// A `Name:   1234 kB` line's number.
 fn kib_field(text: &str, name: &str) -> Option<u64> {
     text.lines()
@@ -267,6 +293,23 @@ mod tests {
             Some(1092)
         );
         assert_eq!(kib_field(status, "Pss:"), None);
+    }
+
+    #[test]
+    fn the_memory_note_says_the_process_its_address_space_and_the_device() {
+        let status = "Name:\thorizon\nVmSize:\t 1874000 kB\nVmRSS:\t  421888 kB\n";
+        let meminfo =
+            "MemTotal:        1925120 kB\nMemFree:  80000 kB\nMemAvailable:     655360 kB\n";
+        assert_eq!(
+            memory_text(status, meminfo).as_deref(),
+            Some("process 412 MiB, address space 1830 MiB, device 640 of 1880 MiB free")
+        );
+        // What the system doesn't say is left out; with no RSS there is nothing to say.
+        assert_eq!(
+            memory_text("VmRSS:\t 2048 kB\n", "").as_deref(),
+            Some("process 2 MiB")
+        );
+        assert_eq!(memory_text("Name:\thorizon\n", meminfo), None);
     }
 
     #[test]
