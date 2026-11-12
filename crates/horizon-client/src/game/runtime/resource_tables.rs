@@ -132,6 +132,7 @@ impl UiResources {
             Ok(Self {
                 atlas: atlas?,
                 panorama: Arc::new(panorama),
+                source: Some(root.clone()),
             })
         })
     }
@@ -141,6 +142,7 @@ impl UiResources {
         Ok(Self {
             atlas: HudAtlas::fonts(root)?,
             panorama: Arc::new(horizon_client::gfx::panorama::Faces::colour([0; 4])),
+            source: Some(root.clone()),
         })
     }
 }

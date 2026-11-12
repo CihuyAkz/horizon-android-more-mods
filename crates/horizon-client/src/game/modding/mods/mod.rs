@@ -1394,7 +1394,8 @@ fn not_built(
     let mut paths: Vec<PathBuf> = std::fs::read_dir(dir)
         .map(|d| d.flatten().map(|e| e.path()).collect())
         .unwrap_or_default();
-    paths.retain(|p| p.extension().is_some_and(|e| e == "hmod"));
+    // Starling's `.hnmod` (the catalog's and Open with's, as in 0.8.0) and Horizon's `.hmod`.
+    paths.retain(|p| p.extension().is_some_and(|e| e == "hnmod" || e == "hmod"));
     paths.sort();
     let mut out: Vec<Installed> = Vec::new();
     for path in paths {

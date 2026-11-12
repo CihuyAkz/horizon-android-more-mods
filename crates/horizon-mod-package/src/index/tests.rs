@@ -145,6 +145,23 @@ fn refuses_broken_indexes() {
     assert!(e.contains("is not"), "{e}");
 }
 
+/// Starling: the registry publishes native mods as `.hnmod` files (0.8.0's extension), which pass
+/// as Horizon's `.hmod` ones do; another extension still doesn't.
+#[test]
+fn a_native_mod_may_be_an_hnmod() {
+    let named = |name: &str| {
+        let mut index = sample();
+        index.projects[0].kind = Kind::NativeMod;
+        index.projects[0].versions[0].file.name = name.into();
+        index.check().err().unwrap_or_default()
+    };
+    for name in ["coords_hud-0.1.0.hnmod", "coords_hud-0.1.0.hmod"] {
+        let e = named(name);
+        assert!(!e.contains("plain file name"), "{name}: {e}");
+    }
+    assert!(named("coords_hud.zip").contains("plain file name"));
+}
+
 #[test]
 fn resource_packs_need_a_pack_mcmeta() {
     use std::io::Write;

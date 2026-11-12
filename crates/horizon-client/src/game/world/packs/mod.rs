@@ -703,6 +703,7 @@ pub(super) fn stage_pack(
     let gui = UiResources {
         atlas,
         panorama: Arc::new(panorama.unwrap_or_else(|p| std::panic::resume_unwind(p))),
+        source: Some(source.clone()),
     };
     progress.set(2);
     let mut pack = PackResources::load(

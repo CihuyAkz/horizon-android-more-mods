@@ -426,8 +426,11 @@ mod native_fit {
 /// Which installed files are native mods (the launcher's `native_status::is_native_file`).
 mod native_status {
     pub fn is_native_file(file: &str) -> bool {
+        // Starling's `.hnmod` (what the catalog installs), or Horizon's `.hmod`.
         file.strip_prefix(super::native_mods::INSTALLED)
-            .is_some_and(|rest| rest.starts_with('/') && rest.ends_with(".hmod"))
+            .is_some_and(|rest| {
+                rest.starts_with('/') && (rest.ends_with(".hnmod") || rest.ends_with(".hmod"))
+            })
     }
 }
 

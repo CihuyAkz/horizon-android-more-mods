@@ -102,19 +102,21 @@ impl StartupMenu {
         Ok(menu)
     }
 
+    /// `source`: what the menu bundle was read from (`UiResources::source`), the packs over the
+    /// game's own folder `root`; the folder alone without one.
     pub(super) fn set_root(
         &mut self,
         root: PathBuf,
+        source: Option<horizon_assets::resource_source::ResourceSource>,
         settings: &Settings,
         additional_data: Arc<[Arc<horizon_client::datapack::DataPack>]>,
     ) {
-        horizon_client::ui::load_metadata(
-            &horizon_assets::resource_source::ResourceSource::directory(root.to_path_buf()),
-        );
+        let source = source.unwrap_or_else(|| {
+            horizon_assets::resource_source::ResourceSource::directory(root.clone())
+        });
+        horizon_client::ui::load_metadata(&source);
         horizon_client::lang::set(horizon_client::lang::Language::load(
-            &[&horizon_assets::resource_source::ResourceSource::directory(
-                root.clone(),
-            )],
+            &[&source],
             &settings.language,
         ));
         self.root = root;
@@ -1767,6 +1769,7 @@ mod tests {
             panorama: Arc::new(horizon_client::gfx::panorama::Faces::colour([
                 96, 110, 111, 255,
             ])),
+            source: None,
         }
     }
 

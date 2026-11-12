@@ -2244,6 +2244,11 @@ pub struct UiResources {
     pub atlas: HudAtlas,
     /// The title screen's panorama faces.
     pub panorama: Arc<horizon_client::gfx::panorama::Faces>,
+    /// Starling: what it was read from, the packs over the game's own, whose sprites' nine-slice
+    /// metadata and translations the title takes with it (`StartupMenu::set_root`). The loader
+    /// names only the game's own folder, and a 20 x 20 pack button nine-sliced as vanilla's
+    /// 200 x 20 one stretched its ends tenfold. None where it was read from no source.
+    pub source: Option<horizon_assets::resource_source::ResourceSource>,
 }
 
 /// What a resource pack reload replaces (`Minecraft.reloadResourcePacks`):

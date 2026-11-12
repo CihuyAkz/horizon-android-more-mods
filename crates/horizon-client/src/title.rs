@@ -5193,14 +5193,10 @@ mod classic_tests {
             "gui/title/edition".into(),
             crate::hud::Rect { w: 128, h: 16, ..r },
         );
-        for (i, icon) in [
-            "icon/mods",
-            "friends/friends",
-            "icon/language",
-            "icon/accessibility",
-        ]
-        .into_iter()
-        .enumerate()
+        // Starling: three icons, its Mods in Options (as in 0.8.0).
+        for (i, icon) in ["friends/friends", "icon/language", "icon/accessibility"]
+            .into_iter()
+            .enumerate()
         {
             atlas.sprites.insert(
                 format!("gui/sprites/{icon}"),
@@ -5223,7 +5219,7 @@ mod classic_tests {
         assert_eq!(batch.vertices[6].pos, [cx - 64.0, 67.0]);
         assert_eq!(batch.vertices[8].pos, [cx + 64.0, 81.0]);
         assert_eq!(batch.vertices[8].uv, [1.0, 14.0 / 16.0]);
-        for i in 0..4 {
+        for i in 0..3 {
             let quad = batch
                 .vertices
                 .as_chunks::<6>()
@@ -5231,7 +5227,7 @@ mod classic_tests {
                 .iter()
                 .find(|quad| quad[0].uv == [0.25 + i as f32 * 0.125, 0.0])
                 .unwrap();
-            let x = cx - 46.0 + i as f32 * 24.0 + 3.0;
+            let x = cx - 34.0 + i as f32 * 24.0 + 3.0;
             let y = (batch.height / 4.0).floor() + 48.0 + 72.0 + 3.0;
             assert_eq!(quad[0].pos, [x, y]);
             assert_eq!(quad[2].pos, [x + 15.0, y + 15.0]);

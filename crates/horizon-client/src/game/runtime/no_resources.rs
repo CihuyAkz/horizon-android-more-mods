@@ -29,6 +29,7 @@ pub(super) fn show(looked_in: &std::path::Path, settings: &Settings) -> Result<(
                 looked_in.to_path_buf(),
             ))?,
             panorama: Arc::new(horizon_client::gfx::panorama::Faces::colour([0; 4])),
+            source: None,
         },
         screen: NoResources::new(looked_in),
         pointer: (0.0, 0.0),

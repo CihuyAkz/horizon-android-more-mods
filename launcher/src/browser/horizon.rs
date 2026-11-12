@@ -924,10 +924,13 @@ fn install_version_guarded(
 }
 
 /// The mod id of an installed mod (`horizon-mods/<id>`, `horizon-mods/<id>.hmod` or
-/// `horizon-native-mods/<id>.hmod`).
+/// `horizon-native-mods/<id>.hnmod`, or `.hmod` there as Horizon installs them).
 pub fn mod_id(entry: &installed::Entry) -> Option<&str> {
     if let Some(rest) = entry.file.strip_prefix(crate::native_mods::INSTALLED) {
-        return rest.strip_prefix('/')?.strip_suffix(".hmod");
+        let file = rest.strip_prefix('/')?;
+        return file
+            .strip_suffix(".hnmod")
+            .or_else(|| file.strip_suffix(".hmod"));
     }
     let rest = entry.file.strip_prefix(java::MODS_DIR)?.strip_prefix('/')?;
     Some(rest.strip_suffix(".hmod").unwrap_or(rest))

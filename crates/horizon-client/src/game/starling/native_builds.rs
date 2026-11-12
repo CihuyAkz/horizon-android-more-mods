@@ -269,6 +269,12 @@ impl OnPhone {
     }
 }
 
+/// A file of `horizon-native-mods/` a native mod may be: Starling's `.hnmod` (Open with) or the
+/// `.hmod` Horizon's catalog installs a native mod as. `Bundle::read` tells the rest apart.
+fn native_file(path: &std::path::Path) -> bool {
+    path.extension().is_some_and(|e| e == "hnmod" || e == "hmod")
+}
+
 /// The native mods in the folder that are on: what Compile sends (`bundles_body`).
 fn folder_mods_on(off: &BTreeSet<String>) -> BTreeSet<String> {
     let folder = Game::game_dir().join(horizon_client::mod_list::NATIVE_DIR);
@@ -277,7 +283,7 @@ fn folder_mods_on(off: &BTreeSet<String>) -> BTreeSet<String> {
         .flatten()
         .flatten()
         .map(|e| e.path())
-        .filter(|p| p.extension().is_some_and(|e| e == "hnmod"))
+        .filter(|p| native_file(p))
         .filter_map(|p| horizon_mod_package::index::native::Bundle::read(&p).ok())
         .map(|bundle| bundle.manifest.id)
         .filter(|id| !off.contains(id))
@@ -433,13 +439,16 @@ fn bundles_body() -> Result<Vec<u8>, String> {
     let mut paths: Vec<PathBuf> = std::fs::read_dir(&folder)
         .map(|d| d.flatten().map(|e| e.path()).collect())
         .unwrap_or_default();
-    paths.retain(|p| p.extension().is_some_and(|e| e == "hnmod"));
+    paths.retain(|p| native_file(p));
+    // The `.hnmod` before a `.hmod` of the same mod: each goes once.
+    paths.sort_by_key(|p| (p.extension().is_some_and(|e| e == "hmod"), p.clone()));
+    let mut seen = BTreeSet::new();
     let mut mods = Vec::new();
     for path in paths {
         let Ok(bundle) = horizon_mod_package::index::native::Bundle::read(&path) else {
             continue;
         };
-        if off.contains(&bundle.manifest.id) {
+        if off.contains(&bundle.manifest.id) || !seen.insert(bundle.manifest.id.clone()) {
             continue;
         }
         mods.push(

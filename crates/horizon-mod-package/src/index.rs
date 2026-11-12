@@ -362,10 +362,14 @@ impl Index {
                         .map_err(|e| at(format!("native signature: {e}")))?;
                 }
                 let f = &v.file;
+                // Starling: a native mod may also be the `.hnmod` the registry's index publishes and
+                // Starling compiles (0.8.0's extension): one refused entry left the whole catalog
+                // empty.
                 let extension_ok = p
                     .kind
                     .extension()
-                    .is_none_or(|e| f.name.ends_with(&format!(".{e}")));
+                    .is_none_or(|e| f.name.ends_with(&format!(".{e}")))
+                    || (p.kind == Kind::NativeMod && f.name.ends_with(".hnmod"));
                 if !plain_name(&f.name) || !extension_ok {
                     return Err(at(format!(
                         "{:?} is not a plain file name for a {}",
