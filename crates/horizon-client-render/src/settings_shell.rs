@@ -1473,6 +1473,9 @@ pub(crate) trait Hosted {
     /// track a moving finger drags): such a finger scrolls the list once it moves, as on the
     /// menus' other lists (`OptionsUi::list_button_at`).
     fn pressable_at(&mut self, s: &Settings, size: (f32, f32), at: (f32, f32)) -> bool;
+    /// Starling: whether a finger at `at` is on a slider's row: it takes the slider only when it
+    /// moves clearly sideways, and scrolls the list otherwise (touch.rs, `prefer_slider`).
+    fn slider_at(&mut self, s: &Settings, size: (f32, f32), at: (f32, f32)) -> bool;
     /// `waiting`: the binding the host waits on.
     fn draw(
         &mut self,
@@ -2313,6 +2316,11 @@ impl<S: Screen + Default> Hosted for Shell<S> {
                 Value::Slider { .. } | Value::Note | Value::Read(_)
             )
         })
+    }
+    fn slider_at(&mut self, s: &Settings, size: (f32, f32), at: (f32, f32)) -> bool {
+        let view = self.view(s, size);
+        self.row_at(&view, at)
+            .is_some_and(|(row, _)| matches!(row.value, Value::Slider { .. }))
     }
     fn draw(
         &mut self,

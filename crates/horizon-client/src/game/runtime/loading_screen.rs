@@ -306,6 +306,11 @@ impl Loading {
                     && self.menu_options_button_at(touch)
                 {
                     self.touch_pointer.prefer_scroll();
+                } else if touch.phase == winit::event::TouchPhase::Started
+                    && !self.touch_pointer.down()
+                    && self.menu_options_slider_at(touch)
+                {
+                    self.touch_pointer.prefer_slider();
                 }
                 self.touch_pointer.event(touch, slop, Instant::now())
             }

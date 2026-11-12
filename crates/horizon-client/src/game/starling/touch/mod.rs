@@ -839,6 +839,11 @@ impl Game<'_> {
                 && self.on_options_button(p)
             {
                 self.touch.pointer.prefer_scroll();
+            } else if t.phase == TouchPhase::Started
+                && !self.touch.pointer.down()
+                && self.on_options_slider(p)
+            {
+                self.touch.pointer.prefer_slider();
             }
             // Lists follow the finger one to one at this GUI scale.
             let gui_scale = HudBatch::new(
@@ -1268,6 +1273,29 @@ impl Game<'_> {
         self.ui
             .options
             .list_button_at(&self.settings, (batch.width, batch.height), cursor)
+    }
+
+    /// Whether a finger landing at window pixel `p` is on a slider of the settings pages, which
+    /// it takes only moving clearly sideways (`TouchPointer::prefer_slider`).
+    fn on_options_slider(&mut self, p: [f32; 2]) -> bool {
+        if self.screen != Screen::Options {
+            return false;
+        }
+        let size = self
+            .renderer
+            .as_ref()
+            .map_or([1280, 720], |r| [r.config.width, r.config.height]);
+        let batch = HudBatch::new(
+            size,
+            horizon_client::hud::GuiScale {
+                requested: 0,
+                unicode: false,
+            },
+        );
+        let cursor = (p[0] / batch.scale, p[1] / batch.scale);
+        self.ui
+            .options
+            .list_slider_at(&self.settings, (batch.width, batch.height), cursor)
     }
 
     fn touch_apply(&mut self, actions: Vec<Action>) {

@@ -6751,6 +6751,15 @@ impl OptionsUi {
                 && !(wd.list && (cursor.1 < top || cursor.1 >= bottom))
         })
     }
+    /// Whether `cursor` is on a slider of the settings shell's pages, which a finger takes only
+    /// moving clearly sideways (touch.rs, `prefer_slider`).
+    pub fn list_slider_at(&mut self, s: &Settings, size: (f32, f32), cursor: (f32, f32)) -> bool {
+        if self.resource_error.is_some() || self.painting() {
+            return false;
+        }
+        self.shell_mut()
+            .is_some_and(|shell| shell.slider_at(s, size, cursor))
+    }
     /// `VideoSettingsScreen.mouseScrolled`: with Ctrl held the wheel steps the GUI scale
     /// (auto counts as one past the maximum) and the list goes back to the top.
     pub fn video_wheel_gui_scale(
