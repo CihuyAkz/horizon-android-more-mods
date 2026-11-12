@@ -5649,7 +5649,10 @@ impl Renderer {
             frame_kept_logged: false,
             hdr_marker: None,
             hdr_driver,
-            start_marker: None,
+            // The start goes on in this renderer: the loading screen's is replaced by the
+            // world's before it presents a frame when the game opens a world at once
+            // (`--world`), and its marker would stay behind, every next start in OpenGL ES.
+            start_marker: previous.and_then(|p| p.start_marker.clone()),
             pack_post: None,
             pack_loading: None,
             native: None,
@@ -12579,6 +12582,8 @@ impl Renderer {
             && !first_frame
             && !reconfigure
             && self.hdr_marker.is_none()
+            // The frame that removes the start's marker presents here (below).
+            && self.start_marker.is_none()
             && (surface_frame.is_none() || self.config.present_mode != wgpu::PresentMode::Fifo)
         {
             let offscreen = surface_frame.is_none();
