@@ -739,17 +739,17 @@ const FIRST_CHUNKS: i32 = 4;
 impl Plan {
     #[cfg(test)]
     fn new(camera: [i32; 2], detail: i32, distance: u32) -> Self {
-        Self::with_previous(camera, detail, distance, &Self::default(), 0, false, None)
+        Self::with_previous(camera, detail, distance, &Self::default(), 0, 0, None)
     }
-    /// `reduced`: Reduced far detail (`graphics::FarDetail`), each level from
-    /// half the distance.
+    /// `coarseness`: far detail coarser than Full (`graphics::FarDetail::coarseness`),
+    /// each level from half the distance per step (1 Reduced, 2 Mobile).
     fn with_previous(
         camera: [i32; 2],
         detail: i32,
         distance: u32,
         previous: &Self,
         elevation: i32,
-        reduced: bool,
+        coarseness: u8,
         aim: Option<ZoomAim>,
     ) -> Self {
         let range = distance.min(MAX_CHUNKS) as i32 * 16;
@@ -770,7 +770,7 @@ impl Plan {
             for x in (camera[0] - range).div_euclid(size)..=(camera[0] + range).div_euclid(size) {
                 let key = TileKey { x, z, level };
                 result.roots.push(key);
-                result.visit(key, camera, detail, range, previous, reduced);
+                result.visit(key, camera, detail, range, previous, coarseness);
             }
         }
         result
@@ -782,7 +782,7 @@ impl Plan {
         detail: i32,
         range: i32,
         previous: &Self,
-        reduced: bool,
+        coarseness: u8,
     ) {
         // The range is a circle, as the renderer's: a tile leaves it, and
         // fades out (gfx/lod.rs), as the player moves.
@@ -793,11 +793,16 @@ impl Plan {
             self.by_level[key.level as usize].push(key);
         }
         // Keep distant cells small on screen; finest tiles retain individual
-        // blocks. Reduced keeps them twice as large (a quarter of the cells).
+        // blocks. Each step of coarseness keeps them twice as large (a quarter
+        // of the cells): Reduced one, Mobile two.
         let held = previous.split.contains(&key);
-        let split = if held { 10 } else { 8 };
-        // Beyond the old 1024-chunk limit the cells are as large as `reduced`'s:
-        // the whole world is 22 levels, not all of them worth full cells.
+        // How many tile sizes away a tile splits at Full detail, doubled: 8,
+        // and 10 once split.
+        let doubled: i64 = if held { 20 } else { 16 };
+        let split = i64::from(key.size()) * doubled / (2 << coarseness.min(4));
+        // Beyond the old 1024-chunk limit the cells are at least as large as
+        // Reduced's: the whole world is 22 levels, not all of them worth full
+        // cells.
         let world = key.distance(camera) >= WORLD_START;
         // A zoomed view magnifies the tiles its cone covers, so those split
         // further; every other tile keeps the plan it would have had
@@ -807,16 +812,12 @@ impl Plan {
             Some(aim) if aim.covers(key, camera) => i64::from(aim.boost),
             _ => 1,
         };
-        let threshold = i64::from(key.size())
-            * i64::from(if world {
-                WORLD_SPLIT
-            } else if reduced {
-                split / 2
-            } else {
-                split
-            })
-            * boost;
-        // The 8 to 10 band above is wide already. The ring of full detail
+        let threshold = if world {
+            split.min(i64::from(key.size()) * i64::from(WORLD_SPLIT))
+        } else {
+            split
+        } * boost;
+        // The 8 to 10 band above (scaled with it) is wide already. The ring of full detail
         // around the camera and the world-wide threshold have none: a tile
         // split last plan stays split until it is 5% past them, or it
         // flickered between two levels as the camera moved a block to and
@@ -836,7 +837,7 @@ impl Plan {
         {
             self.split.insert(key);
             for child in key.children() {
-                self.visit(child, camera, detail, range, previous, reduced);
+                self.visit(child, camera, detail, range, previous, coarseness);
             }
         }
     }
@@ -1242,10 +1243,10 @@ pub struct Lod {
     context: Option<Arc<WorkerContext>>,
     /// A finished mesh job may have changed the selection of its ancestors.
     reselect: bool,
-    area: Option<([i32; 2], i32, u32, i32, bool, Option<ZoomAim>)>,
+    area: Option<([i32; 2], i32, u32, i32, u8, Option<ZoomAim>)>,
     plan: Plan,
-    /// Reduced far detail (`set_reduced_detail`).
-    reduced_detail: bool,
+    /// How much coarser than Full far detail is (`set_far_coarseness`).
+    far_coarseness: u8,
     pending: FxHashSet<TileKey>,
     detail_masks: FxHashMap<TileKey, [u64; 4]>,
     detail_request_pending: bool,
@@ -1660,7 +1661,7 @@ impl Lod {
             context: lod_context,
             reselect: true,
             area: None,
-            reduced_detail: false,
+            far_coarseness: 0,
             plan: Plan::default(),
             pending: FxHashSet::default(),
             detail_masks: FxHashMap::default(),
@@ -2388,12 +2389,14 @@ impl Lod {
             self.shared.mesh_wake.notify_all();
         }
     }
-    /// Reduced far detail (`graphics::FarDetail::Reduced`): the next update
-    /// replans when it changes, and tiles sampled from then on approximate
-    /// wide cells (`GeneratorWorker::lod_grid`).
-    pub fn set_reduced_detail(&mut self, reduced: bool) {
-        self.reduced_detail = reduced;
-        self.shared.approximate.store(reduced, Ordering::Relaxed);
+    /// Far detail coarser than Full (`graphics::FarDetail::coarseness`: 1
+    /// Reduced, 2 Mobile): the next update replans when it changes, and tiles
+    /// sampled from then on approximate wide cells (`GeneratorWorker::lod_grid`).
+    pub fn set_far_coarseness(&mut self, coarseness: u8) {
+        self.far_coarseness = coarseness;
+        self.shared
+            .approximate
+            .store(coarseness > 0, Ordering::Relaxed);
     }
     fn held(&self) -> bool {
         self.small && self.near_loading
@@ -2497,7 +2500,7 @@ impl Lod {
             detail,
             distance,
             elevation,
-            self.reduced_detail,
+            self.far_coarseness,
             aim,
         );
         if self.area != Some(area) {
@@ -2543,7 +2546,7 @@ impl Lod {
             distance,
             &self.plan,
             elevation,
-            self.reduced_detail,
+            self.far_coarseness,
             aim,
         );
         // A tile that leaves the range before it was drawn stops being
@@ -3477,14 +3480,14 @@ mod tests {
     #[test]
     fn the_plan_is_finer_ahead_and_untouched_behind() {
         let camera = [0, 0];
-        let plain = Plan::with_previous(camera, 12, 256, &Plan::default(), 0, false, None);
+        let plain = Plan::with_previous(camera, 12, 256, &Plan::default(), 0, 0, None);
         let zoomed = Plan::with_previous(
             camera,
             12,
             256,
             &Plan::default(),
             0,
-            false,
+            0,
             ZoomAim::new(0.0, 7.0, 10.0),
         );
         // Finer somewhere: the zoomed plan holds tiles the plain one split
@@ -3584,23 +3587,34 @@ mod tests {
             for distance in [64, 128, 512, 1024] {
                 let full = Plan::new(camera, 12, distance);
                 let reduced =
-                    Plan::with_previous(camera, 12, distance, &Plan::default(), 0, true, None);
-                // Never finer than Full anywhere, and as fine next to the
-                // full-detail area, whose edge the finest tiles match.
+                    Plan::with_previous(camera, 12, distance, &Plan::default(), 0, 1, None);
+                let mobile =
+                    Plan::with_previous(camera, 12, distance, &Plan::default(), 0, 2, None);
+                // Never finer than Full anywhere (Mobile than Reduced), and as
+                // fine next to the full-detail area, whose edge the finest
+                // tiles match.
                 assert!(reduced.split.is_subset(&full.split));
+                assert!(mobile.split.is_subset(&reduced.split));
                 assert_eq!(reduced.roots, full.roots);
-                for key in reduced.nodes.iter().filter(|k| !reduced.split.contains(k)) {
-                    if key.distance(camera) < 12 * 16 + 16 {
-                        assert_eq!(key.level, 0, "{key:?}");
+                assert_eq!(mobile.roots, full.roots);
+                for plan in [&reduced, &mobile] {
+                    for key in plan.nodes.iter().filter(|k| !plan.split.contains(k)) {
+                        if key.distance(camera) < 12 * 16 + 16 {
+                            assert_eq!(key.level, 0, "{key:?}");
+                        }
                     }
                 }
-                let (full, reduced) = (leaves(&full), leaves(&reduced));
+                let (full, reduced, mobile) = (leaves(&full), leaves(&reduced), leaves(&mobile));
                 // At 64 chunks most tiles are the near area's finest, the
                 // same in both: about half there, well under from 128.
                 let bound = if distance == 64 { full * 21 / 20 } else { full };
                 assert!(
                     reduced * 2 < bound,
                     "{reduced} of {full} tiles at {distance}"
+                );
+                assert!(
+                    mobile <= reduced && (distance < 128 || mobile < reduced),
+                    "{mobile} of {reduced} tiles at {distance}"
                 );
             }
         }
@@ -3644,24 +3658,10 @@ mod tests {
             ([115, 135], 49_000_000),
             ([-30_000_000, 29_999_000], 90),
         ] {
-            let plan = Plan::with_previous(
-                camera,
-                12,
-                MAX_CHUNKS,
-                &Plan::default(),
-                elevation,
-                false,
-                None,
-            );
-            let reduced = Plan::with_previous(
-                camera,
-                12,
-                MAX_CHUNKS,
-                &Plan::default(),
-                elevation,
-                true,
-                None,
-            );
+            let plan =
+                Plan::with_previous(camera, 12, MAX_CHUNKS, &Plan::default(), elevation, 0, None);
+            let reduced =
+                Plan::with_previous(camera, 12, MAX_CHUNKS, &Plan::default(), elevation, 1, None);
             let top = plan.nodes.iter().map(|k| k.level).max().unwrap();
             assert_eq!(top, MAX_LEVEL, "{camera:?} y={elevation}: roots stop short");
             assert!(
@@ -3688,7 +3688,7 @@ mod tests {
     #[test]
     fn aerial_distance_avoids_unseen_full_detail_outside_the_near_area() {
         let ground = Plan::new([0, 0], 12, 1024);
-        let high = Plan::with_previous([0, 0], 12, 1024, &Plan::default(), 1024, false, None);
+        let high = Plan::with_previous([0, 0], 12, 1024, &Plan::default(), 1024, 0, None);
         assert!(high.nodes.len() < ground.nodes.len());
         assert!(
             high.nodes.contains(&TileKey {
@@ -3743,7 +3743,7 @@ mod tests {
         // stand-in for a covered column, and only the roots are sampled.
         let camera = [8, 8];
         let before = Plan::new(camera, 64, 64);
-        let after = Plan::with_previous(camera, 8, 64, &before, 0, false, None);
+        let after = Plan::with_previous(camera, 8, 64, &before, 0, 0, None);
         let mut ready: FxHashMap<TileKey, ()> = before
             .nodes
             .iter()
@@ -3782,7 +3782,7 @@ mod tests {
     #[test]
     fn detail_survives_movement_across_a_split_threshold() {
         let before = Plan::new([0, 0], 2, 256);
-        let after = Plan::with_previous([16, 0], 2, 256, &before, 0, false, None);
+        let after = Plan::with_previous([16, 0], 2, 256, &before, 0, 0, None);
         let mut retained = 0;
         let range = i64::from(256 * 16);
         for key in &before.split {
@@ -3807,12 +3807,12 @@ mod tests {
         let before = Plan::new([0, 0], 40, 256);
         assert!(before.split.contains(&tile));
         // 670 blocks: past the ring, inside 5% of it.
-        let held = Plan::with_previous([-30, 0], 40, 256, &before, 0, false, None);
+        let held = Plan::with_previous([-30, 0], 40, 256, &before, 0, 0, None);
         assert!(held.split.contains(&tile));
         // Not held without having been split: it was never in the ring.
         assert!(!Plan::new([-30, 0], 40, 256).split.contains(&tile));
         // 700 blocks: past the margin.
-        let gone = Plan::with_previous([-60, 0], 40, 256, &before, 0, false, None);
+        let gone = Plan::with_previous([-60, 0], 40, 256, &before, 0, 0, None);
         assert!(!gone.split.contains(&tile));
     }
     #[test]
@@ -4628,7 +4628,7 @@ mod tests {
         // Exercise the actual worker/update seam: a parent stays displayed
         // until all four child meshes have arrived, possibly over several updates.
         let camera = [-256.0, 100.0, -256.0];
-        lod.area = Some(([-16, -16], 2, 64, 0, false, None));
+        lod.area = Some(([-16, -16], 2, 64, 0, 0, None));
         lod.plan.roots = vec![key];
         lod.plan.nodes.insert(key);
         // As a replan does (`update` only selects after a change).
@@ -4835,7 +4835,15 @@ mod tests {
         // Leaves' cells: 1 block to 256 blocks out, 2 to 512 (Full); Reduced
         // keeps 1 to the near terrain's edge and 2 to 256.
         for (reduced, [one, two]) in [(false, [256, 512]), (true, [208, 256])] {
-            let plan = Plan::with_previous([8, 8], 12, 128, &Plan::default(), 0, reduced, None);
+            let plan = Plan::with_previous(
+                [8, 8],
+                12,
+                128,
+                &Plan::default(),
+                0,
+                u8::from(reduced),
+                None,
+            );
             for key in plan.nodes.iter().filter(|key| !plan.split.contains(key)) {
                 let distance = key.distance([8, 8]);
                 if distance < one {
@@ -4865,8 +4873,15 @@ mod tests {
                 }
             }
         }
-        let plan =
-            Plan::with_previous(camera, detail, distance, &Plan::default(), 0, reduced, None);
+        let plan = Plan::with_previous(
+            camera,
+            detail,
+            distance,
+            &Plan::default(),
+            0,
+            u8::from(reduced),
+            None,
+        );
         let leaf = |x: i32, z: i32| {
             (0..=MAX_LEVEL)
                 .map(|level| TileKey {

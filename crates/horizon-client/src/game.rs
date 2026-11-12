@@ -16051,7 +16051,7 @@ impl Game<'_> {
         if self.remote.is_none() {
             self.sync_tick_chunks();
         }
-        let (far_distance, far_reduced) = self.far_terrain_choice();
+        let (far_distance, far_coarseness) = self.far_terrain_choice();
         // Terrain still on its way from the server (single player's integrated one
         // too): the view's outermost columns not all in, or its events not all handled.
         let radius = match &self.remote {
@@ -16179,7 +16179,7 @@ impl Game<'_> {
                 let lod_distance =
                     horizon_client::graphics::lod_distance_capped(far_distance, &renderer.info);
                 lod.set_near_loading(self.streaming.terrain_loading());
-                lod.set_reduced_detail(far_reduced);
+                lod.set_far_coarseness(far_coarseness);
                 // The covered columns change only with the complete ones and
                 // the render area: rebuilt then, not every frame.
                 let at = (

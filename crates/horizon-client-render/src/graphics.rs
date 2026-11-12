@@ -362,25 +362,41 @@ pub enum FarDetail {
     /// Coarser levels start at half that distance: about a quarter of the
     /// far quads, for GPUs that far terrain slows down. Changes the picture.
     Reduced,
+    /// At a quarter of it: about a sixteenth of Full's far quads, for phones,
+    /// whose GPUs are held back by geometry (on an Adreno 740, Full at LOD
+    /// distance 128 drew 2.5 million far quads for 11 ms a frame). Far cells
+    /// span 1/64 to 1/32 of their distance.
+    Mobile,
 }
 impl FarDetail {
     pub fn name(self) -> &'static str {
         match self {
             FarDetail::Full => "full",
             FarDetail::Reduced => "reduced",
+            FarDetail::Mobile => "mobile",
         }
     }
     pub fn label(self) -> &'static str {
         match self {
             FarDetail::Full => "Full",
             FarDetail::Reduced => "Reduced",
+            FarDetail::Mobile => "Mobile",
         }
     }
     fn parse(s: &str) -> Self {
-        if s == "reduced" {
-            FarDetail::Reduced
-        } else {
-            FarDetail::Full
+        match s {
+            "reduced" => FarDetail::Reduced,
+            "mobile" => FarDetail::Mobile,
+            _ => FarDetail::Full,
+        }
+    }
+    /// How many times far terrain's levels start at half Full's distance
+    /// (`lod::Plan`): each time, about a quarter of the far quads.
+    pub fn coarseness(self) -> u8 {
+        match self {
+            FarDetail::Full => 0,
+            FarDetail::Reduced => 1,
+            FarDetail::Mobile => 2,
         }
     }
 }
@@ -2035,6 +2051,14 @@ mod tests {
             Graphics::parse("farDetail:reduced\n").far_detail,
             FarDetail::Reduced
         );
+        assert_eq!(
+            Graphics::parse("farDetail:mobile\n").far_detail,
+            FarDetail::Mobile
+        );
+        for detail in [FarDetail::Full, FarDetail::Reduced, FarDetail::Mobile] {
+            let text = format!("farDetail:{}\n", detail.name());
+            assert_eq!(Graphics::parse(&text).far_detail, detail);
+        }
         for text in ["farDetail:full\n", "farDetail:other\n", ""] {
             assert_eq!(Graphics::parse(text).far_detail, FarDetail::Full);
         }
