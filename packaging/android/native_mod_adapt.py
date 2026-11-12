@@ -412,18 +412,28 @@ def inline_includes(source):
     `include!`). Horizon moved most of the old native_hooks.rs into one of those (helpers mods
     hook); the included files have no inner attributes, and their `#[path]`s are from the same
     folder."""
-    for path in (source / "crates/horizon-client/src/game").rglob("*.rs"):
+    # Only the hooks' folder: Horizon's generator wants the `Game` methods of another folder's
+    # shared.rs (lan_actions) where they are.
+    for path in list((source / "crates/horizon-client/src/game/native_hooks").glob("*.rs")):
+        if not path.is_file():
+            continue
         text = path.read_text(encoding="utf-8")
         if "include!(\"" not in text:
             continue
 
+        written = []
+
         def inlined(match, folder=path.parent):
-            included = (folder / match[1]).read_text(encoding="utf-8")
+            written.append(folder / match[1])
+            included = written[-1].read_text(encoding="utf-8")
             return included if included.endswith("\n") else included + "\n"
 
         new = INCLUDE.sub(inlined, text)
         if new != text:
             path.write_text(new, encoding="utf-8")
+            # Horizon's generator reads the hook files one by one: the same items twice are refused.
+            for file in written:
+                file.unlink()
 
 
 def main():

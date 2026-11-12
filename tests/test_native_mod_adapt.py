@@ -156,6 +156,8 @@ class Includes(unittest.TestCase):
                 (folder / "mod.rs").read_text(),
                 'mod fire;\ninclude!(concat!(env!("OUT_DIR"), "/x.rs"));\nfn shared() {}\nfn after() {}\n',
             )
+            # Horizon's generator would read its items twice.
+            self.assertFalse((folder / "shared.rs").exists())
 
 
 if __name__ == "__main__":
