@@ -133,6 +133,24 @@ class Relocate(unittest.TestCase):
             "horizon_client::game::native_hooks::base::Game<'_>::native_frame",
         )
 
+    def test_a_trait_method_moves_with_its_impl_never_to_a_free_function(self):
+        handler, _ = adapt.module_items(
+            "impl ApplicationHandler for Game<'_> {\n"
+            "    fn window_event(&mut self, event_loop: &ActiveEventLoop, event: WindowEvent) {\n"
+            "    }\n"
+            "}\n"
+        )
+        touch, _ = adapt.module_items("fn window_event(step: Pointer) -> WindowEvent {\n}\n")
+        modules = {
+            "horizon_client::game": adapt.Module(),
+            "horizon_client::game::window_handler": handler,
+            "horizon_client_lib::touch": touch,
+        }
+        self.assertEqual(
+            adapt.relocate("horizon_client::game::<Game<'_> as ApplicationHandler>::window_event", modules),
+            "horizon_client::game::window_handler::<Game<'_> as ApplicationHandler>::window_event",
+        )
+
     def test_what_is_nowhere_stays_as_it_was(self):
         target = "horizon_client::game::native_hooks::Game<'_>::native_gone"
         self.assertEqual(adapt.relocate(target, tree()), target)

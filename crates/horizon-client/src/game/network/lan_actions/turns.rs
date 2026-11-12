@@ -85,6 +85,8 @@ impl Game<'_> {
     /// stays in `self.lan`, so the guest can reach other players. Guest turns
     /// can nest: the acting guest and their queued packets are restored.
     pub(in crate::game) fn enter_guest(&mut self, conn: u32) -> Option<GuestSwap> {
+        // Starling: the old hook, for the mods made for it (native_compat.rs).
+        self.old_enter_guest(conn);
         self.enter_guest_in_dimension(conn, self.dim)
     }
 

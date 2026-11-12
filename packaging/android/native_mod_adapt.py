@@ -258,8 +258,8 @@ def module_items(text):
             attributes.append(line)
             continue
         if line.startswith("impl") and line.rstrip().endswith("{") and (m := IMPL.match(line)):
-            # A trait's methods are named `<Type as Trait>::name`, which nothing here moves.
-            inside = "" if m[1] else m[2]
+            # A trait's methods are named `<Type as Trait>::name`.
+            inside = trait_marker(m[2], m[1]) if m[1] else m[2]
         elif m := DECLARED.match(line):
             path = next((p[1] for a in attributes if (p := ATTRIBUTE.search(a))), None)
             declared.append((m[1], path))
@@ -299,12 +299,27 @@ def module_tree(source):
     return tree
 
 
+def trait_marker(kind, trait):
+    """How a trait's methods are indexed: `<Game as ApplicationHandler>` (the trait by its last name)."""
+    return f"<{kind} as {re.sub(r'<.*', '', trait.split('::')[-1]).strip()}>"
+
+
+TRAIT_PART = re.compile(r"<\s*(\w+)(?:<[^>]*>)?\s+as\s+([\w:]+)(?:<[^>]*>)?\s*>")
+
+
 def split_target(target):
-    """`crate::module::Type<'_>::name` as (module, type with its generics, type, name), or
-    `crate::module::name` as (module, None, None, name); None for a trait's `<T as Trait>::name`."""
+    """`crate::module::Type<'_>::name` as (module, type with its generics, type, name),
+    `crate::module::<Type<'_> as Trait>::name` as (module, that part, its trait marker, name), or
+    `crate::module::name` as (module, None, None, name); None for a trait's `<T as Trait>::name` at
+    the crate's root."""
     if target.startswith("<"):
         return None
     parts = re.split(r"::(?![^<]*>)", target)
+    if len(parts) >= 3 and parts[-2].startswith("<"):
+        m = TRAIT_PART.fullmatch(parts[-2])
+        if not m:
+            return None
+        return "::".join(parts[:-2]), parts[-2], trait_marker(m[1], m[2]), parts[-1]
     if len(parts) >= 3 and parts[-2][:1].isupper():
         return "::".join(parts[:-2]), parts[-2], re.sub(r"<.*", "", parts[-2]), parts[-1]
     return "::".join(parts[:-1]), None, None, parts[-1]

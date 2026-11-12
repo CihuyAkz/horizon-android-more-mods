@@ -8,7 +8,7 @@
 //! here; the old types are in `horizon_client::starling_mod_api`.
 //!
 //! Hook bodies have no `cfg` and no macros: horizon-mixins refuses a target with either.
-use super::{Game, GameLevel, LevelDimension};
+use super::{Game, GameLevel, LevelDimension, lan::LanHost};
 use horizon_client::lan::data::component_nbt;
 use horizon_client::{
     extras_hud::Corners,
@@ -25,6 +25,7 @@ use horizon_protocol::packets::play::{self, Clientbound as C};
 use horizon_world::registry::BlockStateId;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 use winit::event::MouseButton;
 
@@ -58,6 +59,16 @@ const OLD_BUTTON: &str = "starling.old-button.";
 
 /// The old hooks. Each does nothing in Starling.
 impl Game<'_> {
+    /// A real window key event after handling, including repeats and consumed shortcuts, as the
+    /// window gave it (Horizon's `input_key` names the key now). Modifier bits use the screen
+    /// hooks' GLFW encoding. Not cancellable.
+    pub(in crate::game) fn native_input_key_old(
+        &mut self,
+        event: &winit::event::KeyEvent,
+        modifiers: u32,
+    ) {
+        let _ = (event, modifiers);
+    }
     /// Once a tick, in every `Game`: the window's (in single player, on LAN
     /// and on servers), and the server's own (`native_window` is false
     /// there: the single player server thread, a dedicated server).
@@ -137,6 +148,11 @@ impl Game<'_> {
     ) {
         let _ = (stack, pos, face, claimed);
     }
+    /// A player uses `stack` (right click) with `self.hand` in the air or where nothing took the
+    /// click: set `claimed` to take the use (Horizon's `use_item` takes a call now).
+    pub(in crate::game) fn native_use_item_old(&mut self, stack: &ItemStack, claimed: &mut bool) {
+        let _ = (stack, claimed);
+    }
     /// After a successful authoritative server level tick pass of `dimension`
     /// (`minecraft:overworld`); Horizon's `level_tick_post` names the level by a handle now.
     pub(in crate::game) fn native_level_tick_post_old(&mut self, dimension: &str) {
@@ -155,6 +171,74 @@ impl Game<'_> {
     /// Button `button` of mod `mod_id`'s settings page was clicked.
     pub(in crate::game) fn native_settings_click(&mut self, mod_id: &str, button: usize) {
         let _ = (mod_id, button);
+    }
+}
+
+/// Set at the end of an old hook's body: a mod's injection that left it early (its cancel) never
+/// gets there. A static, not a thread-local: horizon-mixins refuses the macros of an injection in a
+/// file that invokes a macro at its top.
+static WENT_ON: AtomicBool = AtomicBool::new(false);
+
+/// The end of an old hook's body.
+fn went_on() {
+    WENT_ON.store(true, Ordering::Relaxed);
+}
+
+/// Runs an old hook: whether it got to its end, no mod's injection having stopped it.
+fn ran_through(call: impl FnOnce()) -> bool {
+    WENT_ON.store(false, Ordering::Relaxed);
+    call();
+    WENT_ON.swap(false, Ordering::Relaxed)
+}
+
+/// The old LAN hooks, which had the host as a parameter (it is in the game now): called with the
+/// host taken out for them, as it was then.
+impl Game<'_> {
+    /// A LAN guest's command, before the server runs it: leave early (a cancellable injection) to
+    /// stop it.
+    pub(in crate::game) fn guest_command_old(
+        &mut self,
+        host: &mut LanHost,
+        conn: u32,
+        command: &str,
+    ) {
+        let _ = (host, conn, command);
+        went_on();
+    }
+    /// A LAN guest's turn starts: its state is about to be swapped in.
+    pub(in crate::game) fn enter_guest_old(&mut self, host: &mut LanHost, conn: u32) {
+        let _ = (host, conn);
+        went_on();
+    }
+    /// A LAN guest's vehicle ticks: leave early to stop it.
+    pub(in crate::game) fn guest_vehicle_tick_old(&mut self, host: &mut LanHost, conn: u32) {
+        let _ = (host, conn);
+        went_on();
+    }
+    /// `guest_command_old` with the host out for it: false when a mod stopped the command.
+    pub(in crate::game) fn old_guest_command_went_on(&mut self, conn: u32, command: &str) -> bool {
+        let Some(mut host) = self.lan.take() else {
+            return true;
+        };
+        let on = ran_through(|| self.guest_command_old(&mut host, conn, command));
+        self.lan = Some(host);
+        on
+    }
+    /// `enter_guest_old` with the host out for it.
+    pub(in crate::game) fn old_enter_guest(&mut self, conn: u32) {
+        if let Some(mut host) = self.lan.take() {
+            self.enter_guest_old(&mut host, conn);
+            self.lan = Some(host);
+        }
+    }
+    /// `guest_vehicle_tick_old` with the host out for it: false when a mod stopped the tick.
+    pub(in crate::game) fn old_guest_vehicle_tick_went_on(&mut self, conn: u32) -> bool {
+        let Some(mut host) = self.lan.take() else {
+            return true;
+        };
+        let on = ran_through(|| self.guest_vehicle_tick_old(&mut host, conn));
+        self.lan = Some(host);
+        on
     }
 }
 

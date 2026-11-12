@@ -10,6 +10,10 @@ impl Game<'_> {
         command: &str,
         signed: Option<Vec<(String, horizon_client::lan::hub::chat::ChatMessage)>>,
     ) {
+        // Starling: the mods made for the old hooks first, which may stop it (native_compat.rs).
+        if !self.old_guest_command_went_on(conn, command) {
+            return;
+        }
         // The mods hear every command first, and may stop it.
         let mut canceled = false;
         let mut replies = Vec::new();
