@@ -383,7 +383,6 @@ mod backend {
     pub(super) fn set_game_home(home: PathBuf) {
         let _ = HOME.set(home);
     }
-
 }
 
 /// Where the browser keeps its cache and packs: the game's folder. Called once, at start.

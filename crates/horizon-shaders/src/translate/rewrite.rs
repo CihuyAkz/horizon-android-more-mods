@@ -7,8 +7,8 @@ use std::fmt::Write;
 use naga::ShaderStage;
 
 use super::scan::{
-    LATER_KEYWORDS, NOT_CONSTANT, Stage, UNIFORM_STATE, VERTEX_INPUTS, is_ident,
-    is_sampler_type, significant,
+    LATER_KEYWORDS, NOT_CONSTANT, Stage, UNIFORM_STATE, VERTEX_INPUTS, is_ident, is_sampler_type,
+    significant,
 };
 use super::{Sampler, split_sampler};
 

@@ -15216,8 +15216,7 @@ impl Game<'_> {
             self.entity_targeted(),
             can_build,
             self.shows_panorama(),
-        )
-            && !self.touch_hides_outline()
+        ) && !self.touch_hides_outline()
         {
             self.pick()
                 .filter(|h| {
@@ -17602,7 +17601,9 @@ fn run_loading(
         std::thread::spawn(move || {
             // Starling: a phone's setup before 0.1.6 left the sounds out.
             horizon_client::preparer::complete_sounds(&root);
-            horizon_client::sound_events::SoundRegistry::load(&horizon_assets::resource_source::ResourceSource::directory(root))
+            horizon_client::sound_events::SoundRegistry::load(
+                &horizon_assets::resource_source::ResourceSource::directory(root),
+            )
         })
     });
     let loading = Loading {

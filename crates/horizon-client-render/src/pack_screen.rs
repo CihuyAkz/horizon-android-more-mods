@@ -2108,7 +2108,10 @@ mod catalog_button_tests {
     use std::path::Path;
 
     fn atlas() -> HudAtlas {
-        HudAtlas::build(&horizon_assets::resource_source::ResourceSource::directory(Path::new("/nonexistent/horizon-test-assets").to_path_buf())).unwrap()
+        HudAtlas::build(&horizon_assets::resource_source::ResourceSource::directory(
+            Path::new("/nonexistent/horizon-test-assets").to_path_buf(),
+        ))
+        .unwrap()
     }
 
     #[test]

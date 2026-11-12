@@ -68,10 +68,7 @@ pub fn classify(path: &Path) -> (Kind, String) {
     if let Some(prefix) = found("horizon-resources.json") {
         return (Kind::Resources, prefix);
     }
-    if names
-        .iter()
-        .any(|n| n == "horizon-native.json")
-    {
+    if names.iter().any(|n| n == "horizon-native.json") {
         return (Kind::NativeMod, String::new());
     }
     if let Some(prefix) = found("horizon-mod.toml") {

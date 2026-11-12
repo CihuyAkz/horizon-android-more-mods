@@ -706,7 +706,9 @@ fn turned_shapes<'a>(
             (None, Some(axis)) if axis == "z" => Some([0, 0, 1]),
             _ => None,
         };
-        let turns = toward.map_or([0; 3], |f| horizon_mod_package::content::turns_from([0, 1, 0], f));
+        let turns = toward.map_or([0; 3], |f| {
+            horizon_mod_package::content::turns_from([0, 1, 0], f)
+        });
         let mut shape = VoxelShape::empty();
         for b in boxes {
             let b = turn_box(b, [turns[0], turns[1]]);
