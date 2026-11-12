@@ -235,10 +235,12 @@ impl Game<'_> {
         let res = std::sync::Arc::clone(&self.res);
         let context = std::sync::Arc::clone(&self.loop_context);
         let cooked = |kind: &str| {
-            res.recipes().cook(&context, kind, stack).map(|c| ItemStack {
-                count: c.result.count * stack.count,
-                ..c.result.clone()
-            })
+            res.recipes()
+                .cook(&context, kind, stack)
+                .map(|c| ItemStack {
+                    count: c.result.count * stack.count,
+                    ..c.result.clone()
+                })
         };
         let by_recipe = |game: &mut Self, kind: &str| {
             let recipe = res.create_recipes().find(kind, &stack.item)?;

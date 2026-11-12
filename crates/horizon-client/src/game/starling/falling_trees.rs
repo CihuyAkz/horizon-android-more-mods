@@ -6,8 +6,8 @@
 use super::Game;
 use horizon_client::items::ItemStack;
 use horizon_client::mesher::Vertex;
-use horizon_core::position::BlockPos;
 use horizon_core::nbt::Tag;
+use horizon_core::position::BlockPos;
 use horizon_world::registry::{BlockRegistry, BlockStateId};
 
 /// The ticks a felled tree takes to drop onto the log cut from under it, before it tips.

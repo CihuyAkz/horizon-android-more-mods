@@ -683,7 +683,12 @@ impl super::Loading {
             return;
         }
         let audio = self.audio.get_or_insert_with(|| {
-            let mut audio = super::Audio::with_registry(&horizon_assets::resource_source::ResourceSource::directory(self.vanilla_root.clone()), Default::default());
+            let mut audio = super::Audio::with_registry(
+                &horizon_assets::resource_source::ResourceSource::directory(
+                    self.vanilla_root.clone(),
+                ),
+                Default::default(),
+            );
             audio.master = self.settings.master_volume;
             audio
         });

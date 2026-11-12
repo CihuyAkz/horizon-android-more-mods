@@ -8,8 +8,7 @@ use super::*;
 #[cfg(target_os = "android")]
 fn start_marker(previous: Option<&Renderer>) -> Option<std::path::PathBuf> {
     previous.is_none().then(|| {
-        let marker =
-            Game::options_path().with_file_name(horizon_client::graphics::RENDERER_MARKER);
+        let marker = Game::options_path().with_file_name(horizon_client::graphics::RENDERER_MARKER);
         let _ = std::fs::write(&marker, "the renderer was starting\n");
         marker
     })

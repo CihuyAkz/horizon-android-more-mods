@@ -381,7 +381,13 @@ impl Game<'_> {
     ) {
         self.mobile_init();
         let [w, h] = self.touch_size();
-        let mut b = HudBatch::new([w, h], horizon_client::hud::GuiScale { requested: 0, unicode: false });
+        let mut b = HudBatch::new(
+            [w, h],
+            horizon_client::hud::GuiScale {
+                requested: 0,
+                unicode: false,
+            },
+        );
         let p = [t.location.x as f32 / b.scale, t.location.y as f32 / b.scale];
         let n = [
             t.location.x as f32 / w.max(1) as f32,
@@ -795,7 +801,13 @@ impl Game<'_> {
             }
             let default = horizon_client::keybinds::KeyBinds::default_of(mapping);
             let result = if let Some(key) = horizon_client::keybinds::key_code(default) {
-                self.mapped_key(key, down, false, key, horizon_client::held::Source::Keyboard)
+                self.mapped_key(
+                    key,
+                    down,
+                    false,
+                    key,
+                    horizon_client::held::Source::Keyboard,
+                )
             } else if let Some(button) = horizon_client::keybinds::mouse_button(default) {
                 self.android_custom_mouse(button, down)
             } else {
@@ -917,7 +929,13 @@ impl Game<'_> {
                                 | KeyCode::ControlRight
                         ) =>
                     {
-                        let _ = self.mapped_key(code, down, false, code, horizon_client::held::Source::Keyboard);
+                        let _ = self.mapped_key(
+                            code,
+                            down,
+                            false,
+                            code,
+                            horizon_client::held::Source::Keyboard,
+                        );
                     }
                     Err(button) => {
                         let _ = self.android_custom_mouse(button, down);
@@ -986,7 +1004,13 @@ impl Game<'_> {
         } else {
             for mapped in translated {
                 let result = match mapped {
-                    Ok(code) => self.mapped_key(code, down, false, code, horizon_client::held::Source::Keyboard),
+                    Ok(code) => self.mapped_key(
+                        code,
+                        down,
+                        false,
+                        code,
+                        horizon_client::held::Source::Keyboard,
+                    ),
                     Err(button) => self.android_custom_mouse(button, down),
                 };
                 if let Err(error) = result {
@@ -1097,7 +1121,9 @@ impl Game<'_> {
             for item in mapped {
                 match item {
                     Err(b) => self.play_mouse(b, down)?,
-                    Ok(k) => self.mapped_key(k, down, false, k, horizon_client::held::Source::Keyboard)?,
+                    Ok(k) => {
+                        self.mapped_key(k, down, false, k, horizon_client::held::Source::Keyboard)?
+                    }
                 }
             }
             return Ok(());
@@ -1225,7 +1251,13 @@ impl Game<'_> {
         } else {
             return Ok(false);
         };
-        let mut b = HudBatch::new([size.width, size.height], horizon_client::hud::GuiScale { requested: 0, unicode: false });
+        let mut b = HudBatch::new(
+            [size.width, size.height],
+            horizon_client::hud::GuiScale {
+                requested: 0,
+                unicode: false,
+            },
+        );
         let p = [t.location.x as f32 / b.scale, t.location.y as f32 / b.scale];
         if !self.mobile.ui.owns_relative(t.id)
             && !self.mobile.ui.owns_gesture(t.id)
@@ -1668,7 +1700,13 @@ impl Game<'_> {
                                 self.mobile.ui.toggle_modifier(key)
                             };
                             if !self.pad_in_menu() {
-                                self.mapped_key(key, down, false, key, horizon_client::held::Source::Keyboard)?;
+                                self.mapped_key(
+                                    key,
+                                    down,
+                                    false,
+                                    key,
+                                    horizon_client::held::Source::Keyboard,
+                                )?;
                             }
                         } else {
                             if !self.mobile.ui.key_down(t.id, key) {

@@ -750,10 +750,13 @@ impl Game<'_> {
         state: horizon_world::registry::BlockStateId,
     ) -> super::Result<()> {
         let registry = self.pack.assets.registry;
-        let drops = self
-            .res
-            .items()
-            .block_drops(registry, state, Default::default(), &mut self.world.random, None);
+        let drops = self.res.items().block_drops(
+            registry,
+            state,
+            Default::default(),
+            &mut self.world.random,
+            None,
+        );
         let air = self.world.air;
         let at = BlockPos::new(pos[0], pos[1], pos[2]);
         self.with_level(|b, level, ticks| b.set_block(level, ticks, at, air, 3));

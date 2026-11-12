@@ -273,7 +273,8 @@ impl OnPhone {
 /// `.hmod` Horizon's catalog installs a native mod as, in either format (`native::Any`), which
 /// tells the rest apart.
 fn native_file(path: &std::path::Path) -> bool {
-    path.extension().is_some_and(|e| e == "hnmod" || e == "hmod")
+    path.extension()
+        .is_some_and(|e| e == "hnmod" || e == "hmod")
 }
 
 /// The native mods in the folder that are on: what Compile sends (`bundles_body`).

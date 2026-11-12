@@ -8,9 +8,9 @@
 //! puts the blocks back, turned to the nearest quarter, when it stops; a windmill one is
 //! assembled with an empty hand and is a source, 1 RPM for every 8 sails (16 at most).
 use super::Game;
+use horizon_core::nbt::Tag;
 use horizon_core::position::BlockPos;
 use horizon_world::level::flags;
-use horizon_core::nbt::Tag;
 use horizon_world::registry::BlockStateId;
 use std::collections::{HashMap, HashSet, VecDeque};
 
@@ -275,10 +275,13 @@ impl Game<'_> {
                 let f = flags::UPDATE_ALL | flags::UPDATE_MOVE_BY_PISTON;
                 self.with_level(|b, level, ticks| b.set_block(level, ticks, p, state, f));
             } else {
-                let drops =
-                    self.res
-                        .items()
-                        .block_drops(registry, state, Default::default(), &mut self.world.random, None);
+                let drops = self.res.items().block_drops(
+                    registry,
+                    state,
+                    Default::default(),
+                    &mut self.world.random,
+                    None,
+                );
                 for stack in drops {
                     self.spawn_item(stack, at.map(|v| f64::from(v) + 0.5), [0.0; 3], 10);
                 }

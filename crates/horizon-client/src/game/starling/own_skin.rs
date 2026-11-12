@@ -206,7 +206,10 @@ impl Game<'_> {
     }
 
     /// `name`'s skin on Ely.by, where Skin Customization has Ely.by Skins on and it answered.
-    pub(in crate::game) fn elyby_textures(&mut self, name: &str) -> Option<horizon_client::skins::Textures> {
+    pub(in crate::game) fn elyby_textures(
+        &mut self,
+        name: &str,
+    ) -> Option<horizon_client::skins::Textures> {
         if !self.elyby_enabled() {
             return None;
         }
@@ -216,7 +219,9 @@ impl Game<'_> {
     /// The playing Ely.by account's own skin: the one Ely.by named with the account, else its
     /// name's once Ely.by answered. Ely.by is where that account keeps it, whether or not Skin
     /// Customization looks other names up there. None for another account or none.
-    pub(in crate::game) fn own_elyby_textures(&mut self) -> Option<horizon_client::skins::Textures> {
+    pub(in crate::game) fn own_elyby_textures(
+        &mut self,
+    ) -> Option<horizon_client::skins::Textures> {
         let session = horizon_client::auth::current();
         if session.as_ref().is_some_and(|a| !a.is_ely()) {
             return None;
@@ -469,7 +474,13 @@ impl Game<'_> {
     /// The title screen's player's layout in the window as it is now.
     fn title_layout_now(&self) -> Option<TitleLayout> {
         let r = self.renderer.as_ref()?;
-        let b = HudBatch::new([r.config.width, r.config.height], horizon_client::hud::GuiScale { requested: 0, unicode: false });
+        let b = HudBatch::new(
+            [r.config.width, r.config.height],
+            horizon_client::hud::GuiScale {
+                requested: 0,
+                unicode: false,
+            },
+        );
         self.title_layout(b.width, b.height)
     }
 

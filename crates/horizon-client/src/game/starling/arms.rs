@@ -295,7 +295,10 @@ impl Game<'_> {
                 ("create.mechanical_arm.deselected", "Deselected")
             }
         };
-        self.message = Some((horizon_client::lang::get_or(key, fallback), std::time::Instant::now()));
+        self.message = Some((
+            horizon_client::lang::get_or(key, fallback),
+            std::time::Instant::now(),
+        ));
         true
     }
 

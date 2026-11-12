@@ -323,7 +323,14 @@ impl Game<'_> {
         let (x, y) = ((w - card_w) / 2.0, ((h - card_h) / 2.0).max(8.0));
         ui.rounded(x, y, card_w, card_h, 14.0, color::bg());
         ui.border(x, y, card_w, card_h, 14.0, color::border());
-        ui.text(Face::Semibold, 18.0, x + pad, y + pad, color::text(), &title);
+        ui.text(
+            Face::Semibold,
+            18.0,
+            x + pad,
+            y + pad,
+            color::text(),
+            &title,
+        );
         let mut ty = y + pad + 26.0 + 12.0;
         for line in &lines {
             ui.text(Face::Regular, 14.0, x + pad, ty, color::MUTED, line);

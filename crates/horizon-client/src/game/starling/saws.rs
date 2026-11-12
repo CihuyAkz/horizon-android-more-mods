@@ -356,10 +356,13 @@ impl Game<'_> {
                 self.level_event_at(2001, pos, state.0 as i32);
             }
             let registry = self.pack.assets.registry;
-            let drops = self
-                .res
-                .items()
-                .block_drops(registry, state, Default::default(), &mut self.world.random, None);
+            let drops = self.res.items().block_drops(
+                registry,
+                state,
+                Default::default(),
+                &mut self.world.random,
+                None,
+            );
             if falls_over {
                 fallen.push(super::falling_trees::Fallen {
                     pos,

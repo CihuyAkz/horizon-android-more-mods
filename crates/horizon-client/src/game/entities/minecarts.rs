@@ -3302,9 +3302,8 @@ pub(super) fn emit_model_faces(
             // The terrain's shade of the face as it points now, so a turning part's faces
             // darken and lighten as they go round: 1 up, 0.5 down, 0.8 north and south,
             // 0.6 east and west, blended between (a face that does not turn keeps its own).
-            let s = n.x * n.x * 0.6
-                + n.y * n.y * if n.y > 0.0 { 1.0 } else { 0.5 }
-                + n.z * n.z * 0.8;
+            let s =
+                n.x * n.x * 0.6 + n.y * n.y * if n.y > 0.0 { 1.0 } else { 0.5 } + n.z * n.z * 0.8;
             let shade = ((s * 255.0 + 0.001) as u32).min(255);
             0xFF00_0000 | shade << 16 | shade << 8 | shade
         };

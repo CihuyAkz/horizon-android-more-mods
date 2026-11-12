@@ -237,7 +237,14 @@ fn draw_confirm(ui: &mut Ui<'_>, title: &str, drawn: &mut Vec<([f32; 4], Act)>) 
     let width = CONFIRM_W.min(w - 2.0 * MARGIN);
     let panel = [(w - width) / 2.0, (h - CONFIRM_H) / 2.0, width, CONFIRM_H];
     ui.rounded(panel[0], panel[1], panel[2], panel[3], 14.0, color::bg());
-    ui.rounded(panel[0], panel[1], panel[2], panel[3], 14.0, color::raised());
+    ui.rounded(
+        panel[0],
+        panel[1],
+        panel[2],
+        panel[3],
+        14.0,
+        color::raised(),
+    );
     let inner = width - 48.0;
     let head = fitted(
         ui,
@@ -547,7 +554,11 @@ fn draw_foot(
         let done = (status_w * shared.fraction.clamp(0.0, 1.0)).max(12.0);
         ui.rounded(MARGIN, foot + 38.0, done, 12.0, 6.0, color::ACCENT);
     } else if let Some((notice, failed)) = &card.notice {
-        let ink = if *failed { color::DANGER } else { color::text() };
+        let ink = if *failed {
+            color::DANGER
+        } else {
+            color::text()
+        };
         let mut y = foot;
         for line in fitted_lines(ui, Face::Regular, BODY_TEXT, status_w, 2, notice) {
             ui.text(Face::Regular, BODY_TEXT, MARGIN, y, ink, &line);
