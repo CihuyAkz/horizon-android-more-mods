@@ -229,8 +229,6 @@ pub use prepared_model::{
 #[cfg(test)]
 mod inter_stage_tests;
 #[cfg(test)]
-mod inter_stage_tests;
-#[cfg(test)]
 mod sprite_arrays_tests;
 mod terrain_model;
 #[cfg(test)]
