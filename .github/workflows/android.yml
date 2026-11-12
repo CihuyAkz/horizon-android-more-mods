@@ -141,6 +141,14 @@ jobs:
           # A test build with the release key installs over a release: anyone may download a public
           # repository's artifacts, so it goes after a day.
           retention-days: ${{ inputs.release_key && 1 || 90 }}
+      # The library with its symbols, to read the frames of native crashes in diagnostic ZIPs
+      # (docs/android-diagnostics.md). Builds with native mods don't make one.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: starling-symbols-${{ matrix.abi }}
+          path: target/android/lib*-symbols.so
+          if-no-files-found: ignore
+          retention-days: 90
 
   release:
     # Publish once, only after every architecture has built and signed successfully.
