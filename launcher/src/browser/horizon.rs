@@ -878,9 +878,10 @@ fn install_version_guarded(
     let checked = index::check_file(index, p, v, &path).and_then(|trust| {
         // Only Rust and TOML sources, for the mod the index names: nothing in it runs here.
         match native {
-            true => index::native::Bundle::read(&path).and_then(|b| match b.manifest.id == p.id {
+            // Either format: Horizon's flat package or the registry's `.hnmod` bundle (Starling).
+            true => index::native::Any::read(&path).and_then(|b| match b.id() == p.id {
                 true => Ok(trust),
-                false => Err(format!("it is {}, not {}", b.manifest.id, p.id)),
+                false => Err(format!("it is {}, not {}", b.id(), p.id)),
             }),
             false => Ok(trust),
         }
