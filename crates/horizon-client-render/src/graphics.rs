@@ -727,19 +727,24 @@ pub const INTEGRATED_LOD_DISTANCE: u32 = 128;
 pub fn lod_capped(info: &wgpu::AdapterInfo) -> bool {
     info.device_type == wgpu::DeviceType::IntegratedGpu && !info.name.starts_with("Apple")
 }
-/// A LOD distance as far terrain uses it on this adapter.
-pub fn lod_distance_capped(distance: u32, info: &wgpu::AdapterInfo) -> u32 {
+/// `INTEGRATED_LOD_DISTANCE` at Mobile far detail, whose far terrain costs a fraction of Full's
+/// (on a Snapdragon 8 Gen 2 at LOD distance 128: 3 ms of GPU a frame against 14).
+pub const INTEGRATED_MOBILE_LOD_DISTANCE: u32 = 256;
+/// A LOD distance as far terrain uses it on this adapter, at `far_detail`.
+pub fn lod_distance_capped(distance: u32, info: &wgpu::AdapterInfo, far_detail: FarDetail) -> u32 {
     let distance = distance.min(crate::lod::MAX_CHUNKS);
-    if lod_capped(info) {
-        distance.min(INTEGRATED_LOD_DISTANCE)
-    } else {
+    if !lod_capped(info) {
         distance
+    } else if far_detail == FarDetail::Mobile {
+        distance.min(INTEGRATED_MOBILE_LOD_DISTANCE)
+    } else {
+        distance.min(INTEGRATED_LOD_DISTANCE)
     }
 }
 impl Graphics {
     /// `lod_distance` as far terrain uses it on this adapter.
     pub fn lod_distance_on(&self, info: &wgpu::AdapterInfo) -> u32 {
-        lod_distance_capped(self.lod_distance, info)
+        lod_distance_capped(self.lod_distance, info, self.far_detail)
     }
     /// Whether the selected packs leave vanilla's block models in place.
     /// Horizon's occlusion assumptions (entity and leaf culling) hold only
@@ -2019,6 +2024,14 @@ mod tests {
             assert_eq!(g.lod_distance_on(&hd620), capped);
             assert_eq!(g.lod_distance_on(&m4), distance);
             assert_eq!(g.lod_distance_on(&discrete), distance);
+            // Mobile far detail goes twice as far on an integrated GPU.
+            let mobile = Graphics {
+                far_detail: FarDetail::Mobile,
+                ..g
+            };
+            let twice = distance.min(INTEGRATED_MOBILE_LOD_DISTANCE);
+            assert_eq!(mobile.lod_distance_on(&hd620), twice);
+            assert_eq!(mobile.lod_distance_on(&discrete), distance);
         }
         assert!(
             crate::graphics_ui::rows()

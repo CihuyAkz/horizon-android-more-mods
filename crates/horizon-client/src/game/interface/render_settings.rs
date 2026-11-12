@@ -207,7 +207,11 @@ impl Game<'_> {
         let (distance, _) = self.far_terrain_choice();
         match &self.renderer {
             Some(renderer) => {
-                horizon_client::graphics::lod_distance_capped(distance, &renderer.info)
+                horizon_client::graphics::lod_distance_capped(
+                    distance,
+                    &renderer.info,
+                    self.settings.horizon.far_detail,
+                )
             }
             None => distance.min(horizon_client::lod::MAX_CHUNKS),
         }
