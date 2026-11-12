@@ -2322,6 +2322,13 @@ fn backends_name(backends: wgpu::Backends) -> &'static str {
 fn is_software(kind: wgpu::DeviceType) -> bool {
     kind == wgpu::DeviceType::Cpu
 }
+/// Whether an adapter whose Depth32Float has `features` can draw into it as a depth target,
+/// which every 3D pass does (`open_backend`).
+fn renders_depth(features: wgpu::TextureFormatFeatures) -> bool {
+    features
+        .allowed_usages
+        .contains(wgpu::TextureUsages::RENDER_ATTACHMENT)
+}
 /// A device and what it came from.
 struct Opened {
     instance: wgpu::Instance,
@@ -2712,6 +2719,19 @@ async fn open_backend(
     if !allow_cpu && is_software(adapter.get_info().device_type) {
         return Err(NoDevice::NoAdapter(format!(
             "{name}: only a software adapter ({})",
+            adapter.get_info().name
+        )));
+    }
+    // Starling: every 3D pass draws into a Depth32Float target, and a driver that can't (Adreno
+    // 506's Vulkan, #395) failed at the first pipeline with no way back: the next backend
+    // (OpenGL ES) is tried instead.
+    if !renders_depth(adapter.get_texture_format_features(wgpu::TextureFormat::Depth32Float)) {
+        log::warn!(
+            "Horizon renderer: skipping {} on {name}: it can't render to a Depth32Float target",
+            adapter.get_info().name
+        );
+        return Err(NoDevice::Failed(format!(
+            "{name}: {} can't render to a Depth32Float target",
             adapter.get_info().name
         )));
     }
@@ -14257,6 +14277,23 @@ mod tests {
         assert!(!is_software(wgpu::DeviceType::IntegratedGpu));
         assert!(!is_software(wgpu::DeviceType::VirtualGpu));
     }
+    /// Adreno 506's Vulkan can't draw into Depth32Float (#395): such an adapter is skipped, so
+    /// the next backend (OpenGL ES) opens instead of a pipeline failing at startup.
+    #[test]
+    fn an_adapter_that_cannot_draw_into_depth32float_is_skipped() {
+        use wgpu::{TextureFormatFeatureFlags, TextureFormatFeatures, TextureUsages};
+        let features = |allowed_usages| TextureFormatFeatures {
+            allowed_usages,
+            flags: TextureFormatFeatureFlags::empty(),
+        };
+        assert!(super::renders_depth(features(
+            TextureUsages::RENDER_ATTACHMENT | TextureUsages::TEXTURE_BINDING
+        )));
+        assert!(!super::renders_depth(features(
+            TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_SRC
+        )));
+    }
+
     #[test]
     fn auto_uses_directx_12_first_on_windows_arm64() {
         use super::{GraphicsApi, backend_order};
