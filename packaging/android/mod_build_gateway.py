@@ -23,6 +23,7 @@ brings the library here when it ends, so it is served as any other.
     GITHUB_BUILDS_PER_DAY  GitHub builds in any 24 hours, everyone's together, default 300
     CREDENTIALS_DIRECTORY  systemd's LoadCredential: github-token, allowed to run mod-builds' workflows
 """
+import base64
 import calendar
 import hashlib
 import http.client
@@ -97,6 +98,8 @@ GITHUB_NO_RUN_SECONDS = 15 * 60
 GITHUB_SECONDS = 75 * 60
 # A failure that wasn't the mods' fault is told for this long; asking again builds again.
 GITHUB_FAILURE_SECONDS = 60 * 60
+# How often mod-builds' versions.json is read again: the commit each version's builds are made from.
+RELEASES_SECONDS = 5 * 60
 ASK = re.compile(r"[0-9a-f]{32}")
 
 lock = threading.Lock()
@@ -115,6 +118,8 @@ proxying = 0
 # Jobs on GitHub, job to what it needs, and when and by whom each was asked for today.
 github_jobs = {}
 github_asked = []
+# versions.json as last read: when, and each version's commit (`release_commits`).
+releases = {"at": 0.0, "commits": {}}
 
 
 def power(action):
@@ -349,14 +354,19 @@ def failure_of(job):
 
 
 def answered_here(request):
-    """The job of a request that needs no machine: built and kept, or failed for the mods' own fault."""
+    """The job of a request that needs no machine: built and kept, or failed for the mods' own fault.
+    A kept build of a commit its version no longer names is forgotten, and the request builds again."""
     now = time.time()
     with lock:
         failure = known_failures.get(request)
         if failure and now - failure["at"] < DAY:
             return failure["job"]
         job = kept.get(request)
-    return job if job and kept_status(job) else None
+    status = kept_status(job) if job else None
+    if status and stale(status):
+        forget_stale(job)
+        return None
+    return job if status else None
 
 
 def remember_failure(job, status):
@@ -508,6 +518,51 @@ def github_download(url, path):
         answer = urllib.request.urlopen(e.headers["Location"], timeout=60)
     with answer, open(path, "wb") as f:
         shutil.copyfileobj(answer, f, CHUNK)
+
+
+def release_commits():
+    """Each version's commit in mod-builds' versions.json, which its builds are made from, read at
+    most every RELEASES_SECONDS; the last one read while GitHub doesn't answer, and none without it.
+    """
+    if not github_open():
+        return {}
+    now = time.time()
+    with lock:
+        if now - releases["at"] < RELEASES_SECONDS:
+            return releases["commits"]
+        releases["at"] = now
+    try:
+        answer = github_api("GET", "/contents/versions.json")
+        commits = json.loads(base64.b64decode(answer["content"]))
+        if not isinstance(commits, dict):
+            raise ValueError("versions.json is not a table")
+    except (OSError, ValueError, KeyError, TypeError, urllib.error.URLError) as e:
+        print(f"could not read versions.json: {e!r}", flush=True)
+        with lock:
+            return releases["commits"]
+    with lock:
+        releases["commits"] = {str(v): str(c) for v, c in commits.items()}
+        return releases["commits"]
+
+
+def stale(status):
+    """Whether a kept build was made from another commit than the one its version names now: one
+    built while a release candidate had the release's number is not the release (0.8.0's first
+    builds were release-candidate-5's, without its controls and skins)."""
+    build = (status or {}).get("build") or {}
+    want = release_commits().get(build.get("version"))
+    return bool(want and build.get("commit") and build["commit"] != want)
+
+
+def forget_stale(job):
+    """A kept build of an older commit goes: asking for its mods builds them again."""
+    shutil.rmtree(result_folder(job), ignore_errors=True)
+    with lock:
+        for request in [r for r, j in kept.items() if j == job]:
+            del kept[request]
+        github_jobs.pop(job, None)
+    print(f"{job}: built from an older commit of its version, forgotten", flush=True)
+    save_index()
 
 
 def github_folder():
@@ -871,6 +926,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if library and arriving:
             arriving.wait(60)
         status = kept_status(job)
+        if status and stale(status):
+            # Not the game its version is any more: asking for its mods again builds it.
+            forget_stale(job)
+            return self.answer(404, {"error": "No such job."})
         if status:
             try:
                 os.utime(os.path.join(result_folder(job), "status.json"))
