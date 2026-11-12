@@ -9681,12 +9681,15 @@ impl Game<'_> {
             self.crafter_slot_clicked(*slot, *button, *input);
         }
         let ops = ops.to_vec();
+        // CreativeModeInventoryScreen.slotClicked clicks the player's InventoryMenu itself, its
+        // result slot too; other screens take a crafting result their own way (`click_inventory`).
+        let menu_result = self.screen == Screen::Creative;
         let done = self.menu_session(move |menu, env, to_menu| {
             let mut clicks = Vec::new();
             for &(slot, button, input) in &ops {
                 let menu_slot = match slot {
                     Some(g) => {
-                        if g == 200 && input != Input::QuickMove {
+                        if g == 200 && input != Input::QuickMove && !menu_result {
                             return None;
                         }
                         match to_menu(g) {

@@ -462,6 +462,74 @@ impl Game<'_> {
             && cursor.1 >= oy + y
             && cursor.1 < oy + y + 16.0
     }
+    /// Whether GUI position `p` is on an item tab's grid of items, between its cells or a little
+    /// past them (`Creative::on_item_grid`). Bedrock Inventory's item window has it whichever of
+    /// its windows is worked with.
+    pub(super) fn creative_catalog_at(&self, batch: &HudBatch, p: (f32, f32)) -> bool {
+        let (x, y) = batch.centered_origin(Creative::WIDTH, Creative::HEIGHT);
+        let x = if CREATIVE_SHIFT.get() != 0.0 {
+            x - BEDROCK_SHIFT
+        } else if self.creative_tab_open() {
+            x
+        } else {
+            return false;
+        };
+        Creative::on_item_grid((p.0 - x, p.1 - y), self.creative_screen.shown_rows)
+    }
+    /// A carried stack put down on an item tab's grid off its cells: the click of an empty cell
+    /// (`CreativeModeInventoryScreen.slotClicked`), which deletes it, or one of it with the right
+    /// button. Its release clicks nothing more.
+    fn creative_empty_cell_click(&mut self, right: bool) {
+        let catalog = world_items!(self);
+        let max = |s: &ItemStack| catalog.get(&s.item).map_or(64, |i| i.max_stack);
+        horizon_client::creative::click_display(
+            &mut self.carried,
+            None,
+            max,
+            i32::from(right),
+            horizon_client::menu::Input::Pickup,
+        );
+        self.inv_drag = None;
+        self.inv_clicks.skip_release();
+    }
+    /// A finger lets go over Bedrock Inventory's item window with a stack it brought from the
+    /// inventory window (the one its press held): the stack goes back to the tab, as on Bedrock,
+    /// clicked on the cell under it or, between the cells, on an empty one. True when it did.
+    pub(super) fn creative_catalog_release(&mut self, right: bool) -> bool {
+        if self.screen != Screen::Creative
+            || !self.has_touch()
+            || self.bedrock_items.is_none()
+            || self.carried.is_none()
+        {
+            return false;
+        }
+        let Some(size) = self
+            .renderer
+            .as_ref()
+            .map(|r| [r.config.width, r.config.height])
+        else {
+            return false;
+        };
+        let batch = HudBatch::new(size, self.settings.gui_scale_inputs());
+        if !self.creative_catalog_at(&batch, self.cursor) {
+            return false;
+        }
+        // The press's drag ends here, and the item window takes the release.
+        self.inv_drag = None;
+        self.inv_clicks.cancel_drag();
+        self.bedrock_side(self.cursor.0, batch.width);
+        match self.slot_at(&batch, self.cursor.0, self.cursor.1) {
+            Some(slot) => {
+                self.click_open_inventory(
+                    Some(slot),
+                    i32::from(right),
+                    horizon_client::menu::Input::Pickup,
+                );
+            }
+            None => self.creative_empty_cell_click(right),
+        }
+        true
+    }
     /// NeoForge's creative page buttons, 20 square, 50 above the screen at
     /// its left and right edges: -1 or 1 for the one at `cursor`, when there
     /// is more than one page.
@@ -606,6 +674,8 @@ impl Game<'_> {
         }
         if self.slot_at(&batch, cx, cy).is_some() || self.clicked_outside(&batch) {
             self.inventory_press(right);
+        } else if self.carried.is_some() && self.creative_catalog_at(&batch, (cx, cy)) {
+            self.creative_empty_cell_click(right);
         }
     }
     /// A click on the search tab's box (`EditBox.onClick`).
@@ -625,5 +695,36 @@ impl Game<'_> {
         search.width = w;
         search.click(&self.gui.atlas, mx, shift, false);
         true
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// `CreativeModeInventoryScreen.slotClicked` clicks the player's own InventoryMenu on the
+    /// Survival Inventory tab, its crafting result too (Bedrock Inventory shows the grid).
+    #[test]
+    #[ignore = "needs prepared resources in HORIZON_TEST_RESOURCES"]
+    fn the_inventory_tab_takes_the_crafting_result() {
+        crate::game::native_entity_refs::tests::with_game(|game| {
+            game.screen = Screen::Creative;
+            let inventory = game
+                .creative_screen
+                .tab_headers()
+                .iter()
+                .position(|tab| tab.inventory)
+                .unwrap();
+            game.creative_screen.select(inventory);
+            game.craft_size = 2;
+            game.craft_grid[0] = Some(ItemStack::new("minecraft:oak_log", 1));
+            let pickup = horizon_client::menu::Input::Pickup;
+            assert!(game.click_open_inventory(Some(200), 0, pickup));
+            assert_eq!(
+                game.carried,
+                Some(ItemStack::new("minecraft:oak_planks", 4))
+            );
+            assert_eq!(game.craft_grid[0], None);
+        });
     }
 }

@@ -241,7 +241,9 @@ impl Game<'_> {
             .as_ref()
             .is_some_and(|(owner, _)| owner.native_id() == "recipes");
         let left = if self.screen == Screen::Creative {
-            Self::creative_origin(batch).0 + 198.0 + MARGIN
+            // Right of both of Bedrock Inventory's windows, whichever is worked with: from the
+            // item window's edge it covered the other's crafting grid and Destroy Item slot.
+            Self::creative_bounds(batch).1 + 3.0 + MARGIN
         } else {
             (image.left + image.width) as f32 + MARGIN
         };

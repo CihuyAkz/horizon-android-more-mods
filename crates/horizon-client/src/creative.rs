@@ -223,6 +223,25 @@ impl Creative {
     /// How far a tab row reaches outside the window, above or below it.
     pub const TAB_ROW_DEPTH: f32 = 28.0;
     pub const TRASH_POSITION: (f32, f32) = (173.0, 112.0);
+    /// How far past an item tab's grid of items a stack put down still goes back to the tab.
+    pub const GRID_MARGIN: f32 = 4.0;
+
+    /// Whether `mouse`, relative to the screen origin, is on an item tab's grid of `rows` rows of
+    /// items or within [`Creative::GRID_MARGIN`] of it. The display slots' hover boxes leave no
+    /// gap between them (`isHovering` grows each by a pixel); the margin is Starling's.
+    pub fn on_item_grid(mouse: (f32, f32), rows: usize) -> bool {
+        let m = Self::GRID_MARGIN;
+        let (left, top) = (8.0 - m, 17.0 - m);
+        let (right, bottom) = (8.0 + 9.0 * 18.0 + m, 17.0 + rows as f32 * 18.0 + m);
+        mouse.0 >= left && mouse.0 < right && mouse.1 >= top && mouse.1 < bottom
+    }
+
+    /// Whether `mouse`, relative to the screen origin, is within `reach` of the middle of the
+    /// Survival Inventory tab's Destroy Item slot, as a finger means a slot a little past it.
+    pub fn near_trash(mouse: (f32, f32), reach: f32) -> bool {
+        let (x, y) = Self::TRASH_POSITION;
+        (mouse.0 - x - 8.0).abs() <= reach && (mouse.1 - y - 8.0).abs() <= reach
+    }
 
     /// Visible player slots in the creative inventory tab (game slot ids).
     pub fn inventory_slots() -> impl Iterator<Item = usize> {
@@ -1425,6 +1444,31 @@ mod tests {
                 Some(expected)
             );
         }
+    }
+
+    #[test]
+    fn the_item_grid_takes_its_cells_the_pixels_between_them_and_a_margin() {
+        // A cell's middle, the pixels between two items, and the grid's corners past the cells.
+        for mouse in [(17.0, 26.0), (25.5, 35.5), (4.0, 13.0), (173.9, 110.9)] {
+            assert!(Creative::on_item_grid(mouse, 5), "{mouse:?}");
+        }
+        // Past the margin, the scrollbar, and the hotbar under five rows.
+        for mouse in [(3.9, 26.0), (17.0, 12.9), (175.0, 40.0), (17.0, 112.0)] {
+            assert!(!Creative::on_item_grid(mouse, 5), "{mouse:?}");
+        }
+        // Bedrock Inventory's sixth row, which has no hotbar under it.
+        assert!(Creative::on_item_grid((17.0, 116.0), 6));
+        assert!(!Creative::on_item_grid((17.0, 129.0), 6));
+    }
+
+    #[test]
+    fn a_finger_means_the_destroy_item_slot_a_little_past_it() {
+        // Its middle, and 11 pixels off it (half a cell and 2 beyond).
+        assert!(Creative::near_trash((181.0, 120.0), 11.0));
+        assert!(Creative::near_trash((170.0, 131.0), 11.0));
+        // The last hotbar slot's middle, beside it.
+        assert!(!Creative::near_trash((161.0, 120.0), 11.0));
+        assert!(!Creative::near_trash((181.0, 132.0), 11.0));
     }
 
     #[test]

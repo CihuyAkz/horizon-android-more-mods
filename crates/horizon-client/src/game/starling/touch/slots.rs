@@ -3,12 +3,13 @@
 //! another slot moves it there (onto the same item as much as fits, onto another item the two
 //! swap); a finger held on a stack picks half of it, shown by a bar on the slot; a second quick
 //! tap on the picked stack sends it to the other side (Shift-click); a tap outside the window
-//! throws it. In creative an item of the tabs taps into a slot as a full stack. With a stack
-//! picked (or a finger still on the half it held), a finger drawn across slots shares it out
-//! among them, as the mouse's drag does (QUICK_CRAFT). Stacks slide to where they went, and a
-//! finger on a slot's frame or just past it still means that slot. A finger dragged across the
-//! player turns it round. A finger that moves from a slot (nothing picked) scrolls or drags as the
-//! pointer does elsewhere.
+//! throws it. In creative an item of the tabs taps into a slot as a full stack, and a stack
+//! tapped or let go on the Destroy Item slot is destroyed, on a tab's grid of items goes back to
+//! the tab. With a stack picked (or a finger still on the half it held), a finger drawn across
+//! slots shares it out among them, as the mouse's drag does (QUICK_CRAFT). Stacks slide to where
+//! they went, and a finger on a slot's frame or just past it still means that slot. A finger
+//! dragged across the player turns it round. A finger that moves from a slot (nothing picked)
+//! scrolls or drags as the pointer does elsewhere.
 use super::super::input_trace::InputOrigin;
 use super::super::{Game, Screen, event_loop::EventLoopCtl};
 use horizon_client::{
@@ -92,7 +93,13 @@ impl Game<'_> {
     }
 
     fn touch_gui_batch(&self) -> HudBatch {
-        HudBatch::new(self.touch_size(), horizon_client::hud::GuiScale { requested: 0, unicode: false })
+        HudBatch::new(
+            self.touch_size(),
+            horizon_client::hud::GuiScale {
+                requested: 0,
+                unicode: false,
+            },
+        )
     }
 
     /// The slot under a window position, and whether it is outside the window.
@@ -216,7 +223,11 @@ impl Game<'_> {
                 }
                 let (slot, outside) = self.slot_touch_at(t.location);
                 let picked = self.touch.slots.picked.is_some();
-                if slot.is_none() && !(outside && picked) {
+                // With a stack picked, the creative screen's Destroy Item slot and a tab's grid
+                // of items off its cells take a tap as outside the window does.
+                let target = slot.is_some()
+                    || (picked && (outside || self.touch_drop_at(t.location).is_some()));
+                if !target {
                     // A button, a tab, the recipe book: the pointer's, and the pick is dropped.
                     if picked {
                         self.touch_unpick(event_loop, id, t.device_id);
@@ -304,7 +315,12 @@ impl Game<'_> {
                     return self.touch.slots.down.is_some();
                 };
                 if t.phase == TouchPhase::Ended && !down.held {
-                    self.touch_slot_tap(event_loop, id, t.device_id, down.slot, t.location);
+                    // Off the slots the tap is where the finger landed, the place it was judged.
+                    let at = match down.slot {
+                        Some(_) => t.location,
+                        None => down.touch.location,
+                    };
+                    self.touch_slot_tap(event_loop, id, t.device_id, down.slot, at);
                 }
                 true
             }
@@ -338,7 +354,8 @@ impl Game<'_> {
         self.touch_vibrate(super::SPLIT_BUZZ);
     }
 
-    /// A tap at `at`: on a slot (`Some`) or outside the window.
+    /// A tap at `at`: on a slot (`Some`), or outside the window, on the Destroy Item slot or on a
+    /// tab's grid of items off its cells.
     fn touch_slot_tap(
         &mut self,
         event_loop: &dyn EventLoopCtl,
@@ -356,9 +373,13 @@ impl Game<'_> {
             }
             (None, None) => {}
             (Some(p), None) => {
-                // Out of the window: thrown, as a mouse carrying it would.
+                // A mouse carrying it clicks there: out of the window it is thrown, on the
+                // Destroy Item slot it is destroyed, on a tab's grid of items it goes back to the
+                // tab. What the hand still holds goes back where the pick was.
+                let at = self.touch_drop_at(at).unwrap_or(at);
                 self.touch_grab(event_loop, id, device, p);
                 self.touch_click_at(event_loop, id, device, at, MouseButton::Left, false);
+                self.touch_put_back(event_loop, id, device, p);
                 self.touch_unpick(event_loop, id, device);
             }
             (Some(p), Some(slot)) if slot == p.slot => {
@@ -421,6 +442,12 @@ impl Game<'_> {
         let Some(p) = self.touch.slots.picked else {
             return;
         };
+        // Let go over the Destroy Item slot or a tab's grid of items, the pick goes there,
+        // whatever slots the finger crossed on its way.
+        if self.touch_drop_at(at).is_some() {
+            self.touch_slot_tap(event_loop, id, device, None, at);
+            return;
+        }
         match slots[..] {
             [] => {}
             [slot] => self.touch_slot_tap(event_loop, id, device, Some(slot), at),
@@ -443,25 +470,51 @@ impl Game<'_> {
                     }
                 }
                 self.touch_mouse_button(event_loop, id, device, ElementState::Released);
-                if self.carried.is_some() {
-                    if self.touch_display_slot(p.slot) {
-                        // A tab's item: what is left goes, as the creative screen's cursor does.
-                        self.carried = None;
-                    } else {
-                        self.touch_slot_click(
-                            event_loop,
-                            id,
-                            device,
-                            p.slot,
-                            MouseButton::Left,
-                            false,
-                        );
-                    }
-                }
+                self.touch_put_back(event_loop, id, device, p);
                 self.touch_slide(&before, p.slot);
                 self.touch_unpick(event_loop, id, device);
             }
         }
+    }
+
+    /// What the hand still holds after the pick was used goes back where the pick was; what is
+    /// left of a tab's item goes, as the creative screen's cursor does.
+    fn touch_put_back(
+        &mut self,
+        event_loop: &dyn EventLoopCtl,
+        id: WindowId,
+        device: DeviceId,
+        p: Picked,
+    ) {
+        if self.carried.is_none() {
+            return;
+        }
+        if self.touch_display_slot(p.slot) {
+            self.carried = None;
+        } else {
+            self.touch_slot_click(event_loop, id, device, p.slot, MouseButton::Left, false);
+        }
+    }
+
+    /// Where a pick let go of at window position `p` is clicked with in hand when `p` is on no
+    /// slot: the creative screen's Destroy Item slot (its middle, as a finger means a slot a
+    /// little past its frame), or `p` on a tab's grid of items off its cells.
+    fn touch_drop_at(&mut self, p: PhysicalPosition<f64>) -> Option<PhysicalPosition<f64>> {
+        if self.screen != Screen::Creative {
+            return None;
+        }
+        let batch = self.touch_gui_batch();
+        let gui = (p.x as f32 / batch.scale, p.y as f32 / batch.scale);
+        self.bedrock_side(gui.0, batch.width);
+        let (ox, oy) = Self::creative_origin(&batch);
+        if self.creative_inventory_open() && Creative::near_trash((gui.0 - ox, gui.1 - oy), REACH) {
+            let (x, y) = Creative::TRASH_POSITION;
+            return Some(PhysicalPosition::new(
+                f64::from((ox + x + 8.0) * batch.scale),
+                f64::from((oy + y + 8.0) * batch.scale),
+            ));
+        }
+        self.creative_catalog_at(&batch, gui).then_some(p)
     }
 
     fn touch_mouse_button(

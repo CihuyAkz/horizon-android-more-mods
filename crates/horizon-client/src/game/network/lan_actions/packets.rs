@@ -596,6 +596,11 @@ impl Game<'_> {
                         g.player_on_equip(equipment, old.as_ref(), item.as_ref());
                     });
                 }
+                // TransientCraftingContainer.setItem: InventoryMenu.slotsChanged makes the grid's
+                // result again, which the tick's inventory sync sends (slot 0).
+                if (1..=4).contains(&slot) {
+                    self.guest_craft_result(conn);
+                }
             }
             // AbstractContainerMenu.quickMoveStack of a mod container: the mods first.
             S::ContainerClick(p) if self.lan_mod_quick_move(conn, &p) => {}
