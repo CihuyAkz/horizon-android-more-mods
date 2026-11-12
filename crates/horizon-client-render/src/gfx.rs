@@ -1999,7 +1999,8 @@ async fn open_backend(
                     return;
                 }
                 log::warn!(
-                    "Horizon renderer: the graphics device was lost ({reason:?}: {message})"
+                    "Horizon renderer: the graphics device was lost ({reason:?}: {message}){}",
+                    memory_note()
                 );
                 lost.store(true, std::sync::atomic::Ordering::Relaxed);
             });
@@ -2034,6 +2035,10 @@ const NO_GPU_DRIVER: &str = "No Vulkan or OpenGL graphics driver found: Horizon 
 fn startup_step(step: std::fmt::Arguments) {
     log::info!("Horizon renderer: {step}");
     log::logger().flush();
+}
+/// "; memory: process 412 MiB, ..." for a log line (`system_stats::memory_note`), or nothing.
+fn memory_note() -> String {
+    crate::system_stats::memory_note().map_or_else(String::new, |m| format!("; memory: {m}"))
 }
 /// How far the first frame on a new device got, for `startup_step`.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -2234,15 +2239,22 @@ impl Renderer {
                 });
             if previous.is_none() {
                 startup_step(format_args!(
-                    "device ready; configuring the surface ({}x{} {:?}, {:?})",
-                    config.width, config.height, config.format, config.present_mode
+                    "device ready; configuring the surface ({}x{} {:?}, {:?}){}",
+                    config.width,
+                    config.height,
+                    config.format,
+                    config.present_mode,
+                    memory_note()
                 ));
             }
             surface.configure(&device, &config);
             // Until its first frame the window shows what was behind it (on Android, the
             // launcher through the app's empty window): clear it now, before the pipelines
-            // take their few hundred milliseconds.
+            // take their few hundred milliseconds. Its own step: a driver that dies here
+            // (PowerVR Rogue's, in this first submit) is told apart from one that dies
+            // configuring.
             if previous.is_none() {
+                startup_step(format_args!("clearing the window"));
                 clear_surface(&device, &queue, surface, config.format);
             }
             let hdr_output = hdr::output(&caps);
@@ -4123,10 +4135,11 @@ impl Renderer {
         }
         if previous.is_none() {
             startup_step(format_args!(
-                "pipelines ready (multi-draw {}, occlusion culling {}, GPU timer {})",
+                "pipelines ready (multi-draw {}, occlusion culling {}, GPU timer {}){}",
                 on_off(multi_draw),
                 on_off(cull_on),
                 on_off(gpu_timer.is_some()),
+                memory_note(),
             ));
         }
         Ok(Self {
