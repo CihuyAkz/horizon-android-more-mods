@@ -1,0 +1,82 @@
+
+name: Revert Repository
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_branch:
+        description: "Branch to restore"
+        required: true
+        type: string
+
+      target_sha:
+        description: "Commit SHA to restore branch to"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: repository-restore-${{ inputs.target_branch }}
+  cancel-in-progress: false
+
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate Inputs
+        shell: bash
+        env:
+          TARGET_BRANCH: ${{ inputs.target_branch }}
+          TARGET_SHA: ${{ inputs.target_sha }}
+        run: |
+          if [[ ! "$TARGET_SHA" =~ ^[0-9a-fA-F]{7,40}$ ]]; then
+            echo "Invalid commit SHA"
+            exit 1
+          fi
+
+          if [[ ! "$TARGET_BRANCH" =~ ^[a-zA-Z0-9._/-]+$ ]] || [[ "$TARGET_BRANCH" == -* ]] || [[ "$TARGET_BRANCH" == *..* ]] || [[ "$TARGET_BRANCH" == *//* ]]; then
+            echo "Invalid branch name"
+            exit 1
+          fi
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.target_branch }}
+          fetch-depth: 0
+          token: ${{ secrets.REPO_TOKEN }}
+
+      - name: Validate Target Commit
+        shell: bash
+        env:
+          TARGET_SHA: ${{ inputs.target_sha }}
+        run: |
+          git cat-file -e "$TARGET_SHA^{commit}"
+
+      - name: Restore Repository
+        shell: bash
+        env:
+          TARGET_SHA: ${{ inputs.target_sha }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git rm -r --ignore-unmatch .
+          git checkout "$TARGET_SHA" -- .
+
+          if git diff --cached --quiet; then
+            echo "Repository already matches target commit."
+            exit 0
+          fi
+
+          git commit -m "chore: restore repository to $TARGET_SHA"
+
+      - name: Push Restore Commit
+        shell: bash
+        env:
+          TARGET_BRANCH: ${{ inputs.target_branch }}
+        run: |
+          git push origin "HEAD:refs/heads/$TARGET_BRANCH"
