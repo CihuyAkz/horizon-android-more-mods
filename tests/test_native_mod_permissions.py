@@ -38,7 +38,7 @@ class NeedsTests(unittest.TestCase):
         folder = self.mod({
             "src/speaker.rs": "let stream = device.build_output_stream(&config, play, err, None)?;",
             "opus/src/opus_encoder.c": "int opus_encode(OpusEncoder *st, const opus_int16 *pcm);",
-            "assets/voicechat/textures/mic.png": "build_input_stream",
+            "assets/unrelated/textures/icon.png": "build_input_stream",
             "horizon-mixin.toml": "# build_input_stream in a manifest is not a call",
         })
         self.assertEqual(permissions.needs(folder), [])

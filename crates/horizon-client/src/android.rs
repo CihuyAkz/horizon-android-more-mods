@@ -375,6 +375,7 @@ const PLAYER_FILES: &[&str] = &[
     "datapacks",
     "shaderpacks",
     "horizon-mods",
+    "horizon-native-mods",
     "screenshots",
     "servers.dat",
     "horizon-mods.txt",
@@ -396,6 +397,7 @@ const NO_MEDIA: &[&str] = &[
     "datapacks",
     "shaderpacks",
     "horizon-mods",
+    "horizon-native-mods",
     "assets",
 ];
 

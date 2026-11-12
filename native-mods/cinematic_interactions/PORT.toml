@@ -1,0 +1,8 @@
+id = "cinematic_interactions"
+name = "Cinematic Interactions"
+version = "0.12.2"
+kind = "android_builtin_native_bundle"
+source_archive = "cinematic_interactions-0.12.2.hnmod"
+horizon_revision = "fdc87aecdbd116bf1e08adcd062fcbaea8c2e2ca"
+mixins_revision = "d9c83d7096b7ea5b83678da2efdfd6161f74997e"
+license_note = "The archive NOTICE identifies the port as MIT and includes CC BY 4.0 attribution for the adapted hammer model; the referenced LICENSE file is not present in this archive."

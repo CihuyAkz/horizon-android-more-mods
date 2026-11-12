@@ -1,3 +1,4 @@
-# The native mod builds made for every release (native-mods.yml): one set a line, mod ids from
-# this folder separated by spaces. The game offers these at once; other sets are asked for.
+# The existing wrench build.
 wrench
+# All Android bundled mods, exposed in Starling Extras and built together for the release.
+zoom worldmap recipes smartf3 freecam_plus connected_textures armorhud jade basic_hud visuality_horizon punchy freelook cinematic_interactions firstpersonmodel eatinganimation veinminer

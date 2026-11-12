@@ -1,0 +1,119 @@
+[mod]
+id = "punchy"
+version = "0.1.2"
+priority = 100
+
+[compatibility]
+horizon_revision = "0000000000000000000000000000000000000000"
+
+[[crate]]
+id = "engine"
+path = "engine"
+
+[[module]]
+id = "runtime"
+file = "crates/horizon-client/src/game.rs"
+name = "punchy"
+source = "runtime.rs"
+
+[[injection]]
+id = "list"
+kind = "HEAD"
+target = "horizon_client::game::native_hooks::Game<'_>::native_mods"
+helper = "list.rs"
+bindings = [{ name="mods", ty="&mut Vec<crate::game::native_hooks::NativeMod>", value="&mut *mods" }]
+
+[[injection]]
+id = "settings"
+kind = "HEAD"
+target = "horizon_client::game::native_hooks::Game<'_>::native_settings"
+helper = "settings.rs"
+bindings = [{ name="game", ty="&crate::game::Game<'_>", value="&*self" },{ name="mod_id", ty="&str", value="mod_id" },{ name="buttons", ty="&mut Vec<String>", value="&mut *buttons" }]
+
+[[injection]]
+id = "click"
+kind = "HEAD"
+target = "horizon_client::game::native_hooks::Game<'_>::native_settings_click"
+helper = "click.rs"
+bindings = [{ name="game", ty="&crate::game::Game<'_>", value="&*self" },{ name="mod_id", ty="&str", value="mod_id" },{ name="button", ty="usize", value="button" }]
+
+[[injection]]
+id = "sliders"
+kind = "HEAD"
+target = "horizon_client::game::native_hooks::Game<'_>::native_settings_sliders"
+helper = "sliders.rs"
+bindings = [{ name="game", ty="&crate::game::Game<'_>", value="&*self" },{ name="mod_id", ty="&str", value="mod_id" },{ name="sliders", ty="&mut Vec<horizon_client_render::mod_list::NativeSlider>", value="&mut *sliders" }]
+
+[[injection]]
+id = "slider"
+kind = "HEAD"
+target = "horizon_client::game::native_hooks::Game<'_>::native_settings_slider"
+helper = "slider.rs"
+bindings = [{ name="game", ty="&crate::game::Game<'_>", value="&*self" },{ name="mod_id", ty="&str", value="mod_id" },{ name="slider", ty="usize", value="slider" },{ name="value", ty="f32", value="value" },{ name="finished", ty="bool", value="finished" }]
+
+[[injection]]
+id = "tick"
+kind = "HEAD"
+target = "horizon_client::game::native_hooks::Game<'_>::native_tick"
+helper = "tick.rs"
+bindings = [{ name="game", ty="&mut crate::game::Game<'_>", value="&mut *self" }]
+
+[[injection]]
+id = "key"
+kind = "HEAD"
+target = "horizon_client::game::native_hooks::Game<'_>::native_key"
+helper = "key.rs"
+bindings = [{ name="game", ty="&mut crate::game::Game<'_>", value="&mut *self" },{ name="key", ty="&str", value="key" },{ name="pressed", ty="bool", value="pressed" }]
+
+[[module]]
+id = "geometry"
+file = "crates/horizon-client/src/game.rs"
+name = "punchy_geometry"
+source = "geometry.rs"
+
+[[injection]]
+id = "hand_geometry"
+kind = "HEAD"
+cancellable = true
+target = "horizon_client::game::Game<'_>::hand_geometry"
+helper = "render.rs"
+bindings = [{ name="game", ty="&mut crate::game::Game<'_>", value="&mut *self" },{ name="alpha", ty="f64", value="alpha" }]
+
+[[injection]]
+id = "successful_use_item"
+kind = "RETURN"
+target = "horizon_client::game::remote::Game<'_>::remote_use_item"
+helper = "used.rs"
+bindings = [{ name="game", ty="&crate::game::Game<'_>", value="&*self" },{ name="hand", ty="horizon_client::first_person::Hand", value="hand" },{ name="value", ty="bool", value="$value" }]
+
+[[injection]]
+id = "successful_use_item_on"
+kind = "RETURN"
+target = "horizon_client::game::remote::Game<'_>::remote_use_item_on"
+helper = "used.rs"
+bindings = [{ name="game", ty="&crate::game::Game<'_>", value="&*self" },{ name="hand", ty="horizon_client::first_person::Hand", value="hand" },{ name="value", ty="bool", value="$value" }]
+
+[[injection]]
+id = "successful_use_entity"
+kind = "RETURN"
+target = "horizon_client::game::remote::Game<'_>::remote_use_entity"
+helper = "used.rs"
+bindings = [{ name="game", ty="&crate::game::Game<'_>", value="&*self" },{ name="hand", ty="horizon_client::first_person::Hand", value="hand" },{ name="value", ty="bool", value="$value" }]
+
+[[injection]]
+id = "mining_attempt"
+kind = "HEAD"
+target = "horizon_client::game::remote::Game<'_>::remote_mining"
+helper = "mining.rs"
+bindings = [{ name="game", ty="&crate::game::Game<'_>", value="&*self" },{ name="start", ty="bool", value="start" }]
+
+# Drop Punchy's cached animation clips after an in-game resource-pack reload.
+[[injection]]
+id = "animations-reloaded"
+kind = "HEAD"
+hook = "client_resources_reloaded"
+hook_version = 1
+helper = "resources_reloaded.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+]

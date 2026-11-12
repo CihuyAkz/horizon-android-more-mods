@@ -95,7 +95,7 @@ final class NativeMods {
 
     /**
      * What the build at `library` says its mods need of Android, each with the mods that need it,
-     * in build.json's order ({"microphone": ["voicechat"]}): native_build.sh finds it in their
+     * in build.json's order ({"microphone": ["native_mod"]}): native_build.sh finds it in their
      * source (native_mod_permissions.py); none from a build made before it did, or unreadable.
      */
     static Map<String, List<String>> permissions(File library) {

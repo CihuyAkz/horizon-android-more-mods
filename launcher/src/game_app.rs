@@ -46,8 +46,7 @@ const INFO_PLIST: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
 </plist>
 "#;
 
-/// Where `ensure` fills in the localized `NSMicrophoneUsageDescription` (native mods can open the
-/// microphone for voice chat; without the key macOS would kill the game instead of asking).
+/// Where `ensure` fills in the localized `NSMicrophoneUsageDescription`.
 const MIC_DESCRIPTION: &str = "__MIC_DESCRIPTION__";
 
 /// Brings `version`'s Horizon.app up to date and returns the game's program inside it. A program
@@ -62,7 +61,7 @@ pub fn ensure(version: &Path) -> io::Result<PathBuf> {
     let plist = INFO_PLIST.replacen(
         MIC_DESCRIPTION,
         &crate::shortcut::xml(crate::i18n::tr(
-            "Native mods can use your microphone for voice chat when you enable it.",
+            "Native mods can use your microphone when you enable it.",
         )),
         1,
     );

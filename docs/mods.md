@@ -488,5 +488,7 @@ Horizon's own mods are native. They live in
 | Coordinates HUD | `native/coords-hud` | A small example mod (position and facing, `/where`, `/coords`) |
 
 The game keeps the parts that must be fast, such as drawing the minimap's map, and a native mod picks the options
-([extras.md](extras.md)). Far View is not a mod any more: its distance and detail are Graphics > LOD Distance and Far
-Detail ([graphics.md](graphics.md)).
+([extras.md](extras.md)). In Starling Extras' Android bundle, the standalone Minimap bundle is replaced by World Map
+(`worldmap` 0.7.1): the explored world map, cave layers, waypoints and an optional corner minimap. Its terrain scanner
+and map-colour code still live in `crates/horizon-client-render/src/minimap.rs`. Far View is not a mod any more: its
+distance and detail are Graphics > LOD Distance and Far Detail ([graphics.md](graphics.md)).

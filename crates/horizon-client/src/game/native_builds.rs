@@ -1,7 +1,6 @@
-//! Android: native mods (docs/starling-native-mods.md). A native mod is compiled into the game, so
-//! playing with one is playing another build of this version's game library, made by GitHub
-//! (native-mods.yml) and published as assets of the native-builds release, the organisation's
-//! repository's and Starling's own both asked (starling_releases). This card lists the
+//! Android: native mods (docs/starling-native-mods.md). Dev APKs may contain the bundled native
+//! mods in their own game library; additional mod combinations are built by GitHub
+//! (native-mods.yml) and published as assets of the native-builds release. This card lists the
 //! builds for this version, downloads one (its SHA-256 checked against the build's JSON), and
 //! chooses it for the next start: StarlingActivity loads it in place of the APK's library
 //! (NativeMods.java). It also stops using one, asks GitHub for another set (an issue the player
@@ -194,6 +193,16 @@ fn chosen() -> Option<String> {
 fn running() -> Option<String> {
     let path = PathBuf::from(std::env::var_os("STARLING_GAME_LIBRARY")?);
     Some(path.parent()?.file_name()?.to_string_lossy().into_owned())
+}
+
+/// Native mods compiled into this APK's own library (Dev builds). A selected downloaded build
+/// takes precedence when present; this set is the fallback when the APK's library will run.
+fn apk_native_mods() -> BTreeSet<String> {
+    std::env::var("STARLING_APK_NATIVE_MODS")
+        .unwrap_or_default()
+        .split_whitespace()
+        .map(str::to_owned)
+        .collect()
 }
 
 /// This install of the APK (NativeMods.stamp), none when the activity could not say.
@@ -736,6 +745,7 @@ impl Game<'_> {
         let (version, _) = crate::android::app_version()?;
         let mods = &self.settings.mods;
         let now = running();
+        let apk_mods = apk_native_mods();
         let next = chosen();
         let native_rows = mods
             .installed
@@ -771,7 +781,9 @@ impl Game<'_> {
             };
             game.lines.push((said, false));
         }
-        let old = next.as_deref().filter(|_| next_loads.is_none());
+        let old = next
+            .as_deref()
+            .filter(|_| next_loads.is_none() && !wanted.is_subset(&apk_mods));
         if let Some(name) = old {
             let said = tr(
                 "starling.mods.native.out_of_date",
@@ -779,7 +791,7 @@ impl Game<'_> {
             );
             game.lines.push((said, true));
         }
-        let in_next = next_build.map(|b| b.mods).unwrap_or_default();
+        let in_next = next_build.map(|b| b.mods).unwrap_or_else(|| apk_mods.clone());
         if compiling {
             game.lines
                 .push((tr("starling.mods.native.compiling", &[]), false));
@@ -787,7 +799,9 @@ impl Game<'_> {
                 tr("starling.mods.native.show_compile", &[]),
                 NativeGameAct::ShowCompile,
             ));
-        } else if !wanted.is_empty() && (old.is_some() || wanted != in_next) {
+        } else if !wanted.is_empty()
+            && (old.is_some() || (wanted != in_next && !wanted.is_subset(&apk_mods)))
+        {
             if old.is_none() {
                 let key = if next_loads.is_some() {
                     "starling.mods.native.differs"
@@ -830,19 +844,20 @@ impl Game<'_> {
         if !SERVICE_SUPPORTED || !mods.installed.get(i).is_some_and(|m| m.native.is_some()) {
             return;
         }
-        let any_on = mods
-            .installed
-            .iter()
-            .enumerate()
-            .any(|(j, m)| m.native.is_some() && !m.id.is_empty() && mods.is_on(j));
-        if !any_on {
+        let wanted = folder_mods_on(&mods.disabled);
+        if wanted.is_subset(&apk_native_mods()) {
+            // The APK already contains every enabled mod; use its own library, not a downloaded build.
             let _ = std::fs::remove_file(dir().join("current"));
             let _ = std::fs::remove_file(dir().join("starts"));
-        } else if let Some((version, _)) = crate::android::app_version()
-            && let Some(name) = build_with(&folder_mods_on(&mods.disabled), &version)
+        } else if !wanted.is_empty()
+            && let Some((version, _)) = crate::android::app_version()
+            && let Some(name) = build_with(&wanted, &version)
             && chosen().as_deref() != Some(name.as_str())
         {
             let _ = std::fs::write(dir().join("current"), name);
+            let _ = std::fs::remove_file(dir().join("starts"));
+        } else if wanted.is_empty() {
+            let _ = std::fs::remove_file(dir().join("current"));
             let _ = std::fs::remove_file(dir().join("starts"));
         }
         self.refresh_native_game();

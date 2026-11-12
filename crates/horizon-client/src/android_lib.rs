@@ -31,7 +31,7 @@ fn android_main(app: AndroidApp) {
 
 /// `StarlingActivity.onStorage`, called on the UI thread before the game's thread starts.
 #[unsafe(no_mangle)]
-extern "system" fn Java_io_github_juanluci_starling_StarlingActivity_onStorage(
+extern "system" fn Java_dev_horizon_android_StarlingActivity_onStorage(
     mut env: jni::JNIEnv,
     _class: jni::objects::JClass,
     folder: jni::objects::JString,
@@ -46,7 +46,7 @@ extern "system" fn Java_io_github_juanluci_starling_StarlingActivity_onStorage(
 
 /// `StarlingActivity.onImeHeight` (packaging/android/java), called on the UI thread.
 #[unsafe(no_mangle)]
-extern "system" fn Java_io_github_juanluci_starling_StarlingActivity_onImeHeight(
+extern "system" fn Java_dev_horizon_android_StarlingActivity_onImeHeight(
     _env: *mut std::ffi::c_void,
     _class: *mut std::ffi::c_void,
     pixels: i32,
@@ -56,7 +56,7 @@ extern "system" fn Java_io_github_juanluci_starling_StarlingActivity_onImeHeight
 
 /// `TextMirror.onMirrorEdit`, called on the UI thread.
 #[unsafe(no_mangle)]
-extern "system" fn Java_io_github_juanluci_starling_TextMirror_onMirrorEdit(
+extern "system" fn Java_dev_horizon_android_TextMirror_onMirrorEdit(
     mut env: jni::JNIEnv,
     _class: jni::objects::JClass,
     text: jni::objects::JString,
@@ -72,7 +72,7 @@ extern "system" fn Java_io_github_juanluci_starling_TextMirror_onMirrorEdit(
 
 /// `TextMirror.onMirrorAction`, called on the UI thread.
 #[unsafe(no_mangle)]
-extern "system" fn Java_io_github_juanluci_starling_TextMirror_onMirrorAction(
+extern "system" fn Java_dev_horizon_android_TextMirror_onMirrorAction(
     _env: *mut std::ffi::c_void,
     _class: *mut std::ffi::c_void,
 ) {
@@ -81,7 +81,7 @@ extern "system" fn Java_io_github_juanluci_starling_TextMirror_onMirrorAction(
 
 /// `TextMirror.onMirrorKey`, called on the UI thread.
 #[unsafe(no_mangle)]
-extern "system" fn Java_io_github_juanluci_starling_TextMirror_onMirrorKey(
+extern "system" fn Java_dev_horizon_android_TextMirror_onMirrorKey(
     _env: *mut std::ffi::c_void,
     _class: *mut std::ffi::c_void,
     code: i32,
@@ -91,7 +91,7 @@ extern "system" fn Java_io_github_juanluci_starling_TextMirror_onMirrorKey(
 
 /// `StarlingActivity.onPointerCaptureLost`, called on the UI thread.
 #[unsafe(no_mangle)]
-extern "system" fn Java_io_github_juanluci_starling_StarlingActivity_onPointerCaptureLost(
+extern "system" fn Java_dev_horizon_android_StarlingActivity_onPointerCaptureLost(
     _env: *mut std::ffi::c_void,
     _class: *mut std::ffi::c_void,
 ) {
@@ -100,7 +100,7 @@ extern "system" fn Java_io_github_juanluci_starling_StarlingActivity_onPointerCa
 
 /// The system diagnostics window calls this on its worker, without starting the game.
 #[unsafe(no_mangle)]
-extern "system" fn Java_io_github_juanluci_starling_DiagnosticsActivity_makeReport(
+extern "system" fn Java_dev_horizon_android_DiagnosticsActivity_makeReport(
     mut env: jni::JNIEnv,
     activity: jni::objects::JObject,
     private: jni::objects::JString,

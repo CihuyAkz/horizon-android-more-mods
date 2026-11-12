@@ -660,7 +660,7 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("horizon-not-built-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
-        for id in ["veinminer", "zoom", "minimap"] {
+        for id in ["veinminer", "zoom", "worldmap"] {
             hnmod(&dir, id);
         }
         std::fs::write(dir.join("notes.txt"), "not a mod").unwrap();
@@ -678,15 +678,15 @@ mod tests {
                 .is_some_and(|p| p.starts_with("Not a native mod Starling can read"))
         );
         let ids: Vec<&str> = rows.iter().map(|r| r.id.as_str()).collect();
-        assert_eq!(ids, ["minimap", "veinminer", "zoom"]);
-        assert_eq!(rows[1].title, "Veinminer 0.3.0");
-        assert_eq!(rows[1].problem.as_deref(), Some(mod_list::NOT_BUILT));
+        assert_eq!(ids, ["veinminer", "worldmap", "zoom"]);
+        assert_eq!(rows[0].title, "Veinminer 0.3.0");
+        assert_eq!(rows[0].problem.as_deref(), Some(mod_list::NOT_BUILT));
         assert!(rows.iter().all(|r| r.native.is_none() && !r.dev));
-        // A native build with zoom, and minimap's row already listed by its own hook.
+        // A native build with zoom, and worldmap's row already listed by its own hook.
         let built =
             r#"{"base":"nightly-2026-10-30-1da354b","mods":[{"id":"zoom","version":"0.3.0"}]}"#;
         let listed = Installed {
-            id: "minimap".into(),
+            id: "worldmap".into(),
             ..rows[0].clone()
         };
         // The broken file's row, listed already, isn't added again when the page reads the folder.

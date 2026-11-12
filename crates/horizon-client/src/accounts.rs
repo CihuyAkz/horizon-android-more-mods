@@ -561,11 +561,16 @@ pub fn download_files() {
                 assets: true,
             };
             let pins = Pins::starling();
-            let installed = starling_account::files::download(
+            let legacy_version = crate::logging::private_home()
+                .join(".local/horizon-client")
+                .join(&pins.version);
+            let legacy_version = legacy_version.is_dir().then_some(legacy_version);
+            let installed = starling_account::files::download_with_legacy_assets(
                 &Sources::live(),
                 &pins,
                 &root,
                 wanted,
+                legacy_version.as_deref(),
                 &progress,
                 &|| cancel.load(Ordering::Relaxed),
             )?;

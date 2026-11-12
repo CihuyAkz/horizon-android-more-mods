@@ -220,8 +220,25 @@ pub fn scale(
     }
 }
 
-/// `extractLines` for both columns under the overlay's pose: each line's
-/// background first, then the text, right-aligned in the right column.
+/// Android exposes an explicit text-size control independently of its touch HUD.
+pub fn touch_scale(
+    framebuffer: [i32; 2],
+    gui_scale: i32,
+    option: i32,
+    unicode: bool,
+    gui_size: [i32; 2],
+) -> (f32, [i32; 2]) {
+    if option <= 0 {
+        return scale(framebuffer, gui_scale, option, unicode, gui_size);
+    }
+    let pixels = option.clamp(1, 6);
+    (
+        pixels as f32 / gui_scale.max(1) as f32,
+        [framebuffer[0] / pixels, framebuffer[1] / pixels],
+    )
+}
+
+/// `extractLines` for both columns under the overlay's pose: each line's background first, then the text, right-aligned in the right column.
 pub fn draw(font: &Font, columns: [&[String]; 2], scale: f32, width: i32) -> Vec<GuiDraw> {
     let mut out = vec![GuiDraw::Push(vec![PoseOp::Scale(scale, scale)])];
     for (lines, align_left) in [(columns[0], true), (columns[1], false)] {

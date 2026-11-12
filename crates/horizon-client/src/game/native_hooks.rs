@@ -910,7 +910,7 @@ use horizon_client::{
     lan::menu::Slots,
     merchant::MerchantOffer,
     mobs::{Damage, Who},
-    mod_list::{self, Installed, NativePage},
+    mod_list::{self, Installed, NativePage, NativeSlider},
     music::{Music, MusicLayer},
     particles::{ParticleOptions, ParticleType},
     text::Text,
@@ -2724,6 +2724,12 @@ impl Game<'_> {
     /// Button `button` of mod `mod_id`'s settings page was clicked.
     pub(super) fn native_settings_click(&mut self, mod_id: &str, button: usize) {
         mod_api::dispatch_settings_click(self, mod_api::mods(), mod_id, button);
+    }
+    pub(super) fn native_settings_sliders(&mut self, mod_id: &str, sliders: &mut Vec<NativeSlider>) {
+        let _ = (mod_id, sliders);
+    }
+    pub(super) fn native_settings_slider(&mut self, mod_id: &str, slider: usize, value: f32, finished: bool) {
+        let _ = (mod_id, slider, value, finished);
     }
     /// The player did `event` on mod `mod_id`'s panel (`native_panel_items`):
     /// act on it when it is yours. API 2.
@@ -8305,10 +8311,71 @@ impl Game<'_> {
     /// says, read at runtime. Only relative paths of plain names. API 20.
     pub(super) fn native_data(&self, path: &str) -> Option<Vec<u8>> {
         let plain = |p: &str| !p.is_empty() && p != "." && p != ".." && !p.contains('\\');
-        if !path.starts_with("data/") || !path.split('/').all(plain) {
+        if !(path.starts_with("data/") || path.starts_with("assets/"))
+            || !path.split('/').all(plain)
+        {
             return None;
         }
-        fs::read(self.options.resources.join(path)).ok()
+        let file = self.options.resources.join(path);
+        let size = fs::metadata(&file).ok()?.len();
+        if size > 32 * 1024 * 1024 {
+            return None;
+        }
+        fs::read(file).ok()
+    }
+    /// JSON resource files below an assets/ or data/ directory, in stable path order.
+    /// Bounded to keep a resource pack from loading an unbounded tree into memory.
+    pub(super) fn native_data_tree(&self, prefix: &str) -> Vec<(String, Vec<u8>)> {
+        const MAX_FILES: usize = 512;
+        const MAX_DEPTH: usize = 12;
+        const MAX_TOTAL: u64 = 64 * 1024 * 1024;
+        let plain = |part: &str| !part.is_empty() && part != "." && part != ".." && !part.contains('\\');
+        if !(prefix.starts_with("assets/") || prefix.starts_with("data/"))
+            || !prefix.split('/').all(plain)
+        {
+            return Vec::new();
+        }
+
+        let root = self.options.resources.join(prefix);
+        let mut pending = vec![(root, 0usize)];
+        let mut files = Vec::new();
+        let mut total = 0u64;
+        while let Some((directory, depth)) = pending.pop() {
+            if depth > MAX_DEPTH || files.len() >= MAX_FILES || total >= MAX_TOTAL {
+                break;
+            }
+            let Ok(entries) = fs::read_dir(&directory) else { continue };
+            let mut entries: Vec<_> = entries.filter_map(Result::ok).collect();
+            entries.sort_by_key(|entry| entry.file_name());
+            for entry in entries {
+                let Ok(kind) = entry.file_type() else { continue };
+                let path = entry.path();
+                if kind.is_dir() {
+                    if depth < MAX_DEPTH {
+                        pending.push((path, depth + 1));
+                    }
+                    continue;
+                }
+                if !kind.is_file()
+                    || path.extension().and_then(|e| e.to_str()) != Some("json")
+                    || files.len() >= MAX_FILES
+                    || total >= MAX_TOTAL
+                {
+                    continue;
+                }
+                let Ok(size) = fs::metadata(&path).map(|m| m.len()) else { continue };
+                if size > 32 * 1024 * 1024 || total.saturating_add(size) > MAX_TOTAL {
+                    continue;
+                }
+                let Ok(bytes) = fs::read(&path) else { continue };
+                let Ok(relative) = path.strip_prefix(&self.options.resources) else { continue };
+                let relative = relative.to_string_lossy().replace('\\', "/");
+                total += bytes.len() as u64;
+                files.push((relative, bytes));
+            }
+        }
+        files.sort_by(|a, b| a.0.cmp(&b.0));
+        files
     }
     /// The block at `pos` (`mymod:cable`; air where nothing is loaded).
     /// API 20.
@@ -9324,10 +9391,15 @@ impl Game<'_> {
             .retain(|row| row.native.is_none() && !mods.iter().any(|m| m.id == row.id));
         for m in mods {
             let mut buttons = Vec::new();
+            let mut sliders = Vec::new();
             self.native_settings(&m.id, &mut buttons);
+            self.native_settings_sliders(&m.id, &mut sliders);
+            let slider_insert_after = if m.id == "punchy" { 6.min(buttons.len()) } else { buttons.len() };
             let page = NativePage {
                 keys: m.keys,
                 buttons,
+                slider_insert_after,
+                sliders,
             };
             self.settings.mods.installed.push(Installed {
                 id: m.id,
@@ -9348,6 +9420,16 @@ impl Game<'_> {
         self.native_settings_click(&id, button);
         self.native_settings_refresh(i);
     }
+    /// A native mod slider changed; refresh its label after the drag ends.
+    pub(super) fn native_settings_slider_event(&mut self, i: usize, slider: usize, value: f32, finished: bool) {
+        let Some(id) = self.settings.mods.installed.get(i).map(|m| m.id.clone()) else {
+            return;
+        };
+        self.native_settings_slider(&id, slider, value, finished);
+        if finished {
+            self.native_settings_refresh(i);
+        }
+    }
     /// Native mod `i`'s page opened: its labels asked again, so that they
     /// follow the language (and the mod's state) since the list was made.
     pub(super) fn native_settings_refresh(&mut self, i: usize) {
@@ -9355,10 +9437,14 @@ impl Game<'_> {
             return;
         };
         let mut buttons = Vec::new();
+        let mut sliders = Vec::new();
         self.native_settings(&id, &mut buttons);
+        self.native_settings_sliders(&id, &mut sliders);
         let row = self.settings.mods.installed.get_mut(i);
         if let Some(page) = row.and_then(|m| m.native.as_mut()) {
+            page.slider_insert_after = if id == "punchy" { 6.min(buttons.len()) } else { buttons.len() };
             page.buttons = buttons;
+            page.sliders = sliders;
         }
     }
     /// A key event for `native_key`.

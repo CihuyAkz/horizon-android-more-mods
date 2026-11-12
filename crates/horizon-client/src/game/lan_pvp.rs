@@ -4,7 +4,7 @@
 //! attack (blocking, armour, knockback), when the `pvp` game rule allows it
 //! (`ServerPlayer.canHarmPlayer`, `isPvpAllowed`). A player's arrow on
 //! another player lands the same way.
-use super::{Game, lan::LanHost, lan_mobs::guest_bounds, mace::Spared};
+use super::{Game, lan::LanHost, lan_mobs::guest_bounds, mace::Spared, ray_box};
 
 use horizon_client::{
     Result,
@@ -102,6 +102,19 @@ impl Strike {
 }
 
 impl Game<'_> {
+    /// The guest on the host's crosshair and how far, within reach.
+    pub(super) fn guest_hit(&self) -> Option<(u32, f64)> {
+        let host = self.lan.as_ref()?;
+        let (eye, dir) = self.aim()?;
+        let reach = self.entity_reach;
+        host.hub
+            .guests
+            .iter()
+            .filter(|g| host.hub.here(g) && g.loaded && !g.dead && !g.spectator())
+            .filter_map(|g| Some((g.conn, ray_box(eye, dir, reach, guest_bounds(g))?)))
+            .min_by(|a, b| a.1.total_cmp(&b.1))
+    }
+
     /// Whether the player a hit landed on stands on the ground.
     pub(super) fn pvp_victim_on_ground(host: &LanHost, victim: Victim) -> bool {
         match victim {

@@ -1,4 +1,4 @@
-package io.github.juanluci.starling;
+package dev.horizon.android;
 
 import java.io.File;
 import java.io.IOException;
@@ -139,8 +139,9 @@ public final class GameFolderChecks {
                 "shared storage is all the player's");
         check(new GameFolder(root, true).idOf(new File(root, "accounts")) == null,
                 "the app's own sign-ins are not shown");
-        check(new GameFolder(root, true).idOf(new File(root, "horizon-native-mods")) == null,
-                "nor its native mods' folder: the game offers the Starling folder for it");
+        check("starling/horizon-native-mods".equals(
+                new GameFolder(root, true).idOf(new File(root, "horizon-native-mods"))),
+                "the native mods folder is part of the game files");
     }
 
     /** The app's own files: their sign-ins and builds out of reach, the top's names fixed. */
@@ -164,7 +165,7 @@ public final class GameFolderChecks {
         }
         List<String> top = folder.children("starling");
         check(top.contains("starling/options.txt") && top.contains("starling/saves"), "listed");
-        for (String made : new String[] {"resourcepacks", "shaderpacks", "horizon-mods"}) {
+        for (String made : new String[] {"resourcepacks", "shaderpacks", "horizon-mods", "horizon-native-mods"}) {
             check(top.contains("starling/" + made), made + " is made to copy into");
         }
         check(!top.contains("starling/accounts") && !top.contains("starling/native")

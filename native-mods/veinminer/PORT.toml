@@ -1,0 +1,8 @@
+id = "veinminer"
+name = "Veinminer"
+version = "0.3.2"
+kind = "android_builtin_native_bundle"
+source_archive = "veinminer-0.3.2.hnmod"
+horizon_revision = "d91cab68ded29bd2b004f7050c468fb98c41a00b"
+mixins_revision = "4342a0bfbe71d4d14185528d64e496d6022f16a1"
+license_note = "No license file or license declaration was present in the supplied archive; keep this local pending permission."

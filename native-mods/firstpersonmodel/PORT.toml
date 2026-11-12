@@ -1,0 +1,8 @@
+id = "firstpersonmodel"
+name = "First-person Model"
+version = "1.0.0"
+kind = "android_builtin_native_bundle"
+source_archive = "firstpersonmodel-1.0.0.hnmod"
+horizon_revision = "2ebf00a0281c592f79191e76fce0e7d522c6f425"
+mixins_revision = "5a64af938ec86b00d53d16a408aabc0038fb3e57"
+license_note = "MIT license and upstream attribution are included in the archive."

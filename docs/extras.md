@@ -13,7 +13,7 @@ again restores vanilla's behaviour completely.
 | FPS and click counters (for native mods) | `extras.rs` (pure logic, unit tested) |
 | Dynamic lights: item glow, nearest sources | `crates/horizon-client-render/src/dynamic_light.rs` (unit tested), `game/dynamic_lights.rs`, `terrain.wgsl` and `entity.wgsl` (`dynamic_block_light`) |
 | HUD drawing (a native mod's minimap, corner stacking) | `crates/horizon-client/src/extras_hud.rs` |
-| Minimap colours, tiles and image (for the Minimap native mod) | `crates/horizon-client-render/src/minimap.rs` |
+| Minimap colours, tiles and terrain scan (shared with World Map) | `crates/horizon-client-render/src/minimap.rs` |
 | Reconnect policy and backoff | `crates/horizon-client/src/reconnect.rs` |
 | Game glue (input hooks, per-frame update) | `crates/horizon-client/src/game/extras.rs` |
 | Mouse Tweaks-style controls, sort buttons | `crates/horizon-client/src/game/tweaks.rs` |
@@ -64,21 +64,17 @@ in Controls, and adding one would put a non-vanilla mapping into `options.txt`.
 
 ### Moved to native mods
 
-The **FPS counter**, **Keystrokes**, **Zoom** and the **Minimap** are official native mods now (in
-horizon-rust/horizon-mods under `native/<name>/`, [mods.md](mods.md#horizons-official-mods)), with the same look and
-options. Players install them from the launcher's Mods page, and the launcher builds them into the game
-([native-mods.md](native-mods.md)). The game keeps
-the hook points they use (`crates/horizon-client/src/game/native_hooks.rs`), and `horizon-extras.txt` keeps the old
-keys and `movedToMods`.
+The **FPS counter**, **Keystrokes**, **Zoom** and upstream **Minimap** are official native mods (in
+horizon-rust/horizon-mods under `native/<name>/`, [mods.md](mods.md#horizons-official-mods)). In Starling Extras'
+Android bundle, the standalone Minimap bundle is replaced by **World Map** (`worldmap` 0.7.1). It adds a persistent
+explored map, cave layers, waypoints and an optional corner minimap. The game's hook points remain in
+`crates/horizon-client/src/game/native_hooks.rs`, while the World Map bundle owns its screen and controls.
 
-The game still draws the minimap, for the native mod (`native_minimap` in `native_hooks.rs`, [mods.md](mods.md)):
-- a corner map (top right by default), square or round, small/medium/large, zoom 0.5 to 4 blocks per pixel, rotating
-  with the player or north up, with the player arrow (vanilla's map decoration sprite);
-- vanilla's `MapColor` per block, as map items use, with the map item's height shading and water-depth dithering;
-- underground, in the Nether and under any roof, the floor around the player's height instead of the top block;
-- one cached 16x16 tile per loaded chunk (packed map colour and height), filled nearest first and refreshed when
-  blocks change within 0.3 ms a frame; the 128x128 image is recomposed only when the view moved or a tile changed, and
-  uploaded into a dedicated atlas slot. With no mod showing a map, nothing runs.
+World Map reuses the terrain scanner, vanilla map colours, height shading, water-depth dithering and per-chunk tile
+cache in `crates/horizon-client-render/src/minimap.rs`. It stores explored regions on disk, refreshes nearby chunks,
+and draws both its full-screen map and optional corner image through the native mod image hook. The
+standalone Minimap 2.0.0 bundle is removed from the Android package; the shared renderer file is
+deliberately kept.
 
 ### Own name tag (`ownNameTag`, default off)
 - In third person (F5, either view), the player's own name shows above its head,

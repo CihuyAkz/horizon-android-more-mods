@@ -798,7 +798,7 @@
   "{path} is not a folder to build into.": "{path} 不是可供构建的文件夹。",
   "Could not copy the build: {error}": "无法复制构建：{error}",
   "Could not move the build to {path}: {error}": "无法将构建移动到 {path}：{error}",
-  "Native mods can use your microphone for voice chat when you enable it.": "原生模组在您启用时可使用您的麦克风进行语音聊天。",
+  "Native mods can use your microphone when you enable it.": "原生模组在您启用时可使用您的麦克风。",
   "Import a game build…": "导入游戏构建…",
   "Importing…": "正在导入…",
   "Imported builds": "导入的构建",

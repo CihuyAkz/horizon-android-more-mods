@@ -15,6 +15,26 @@ pub const DIR: &str = "horizon-mods";
 /// Where the launcher installs native mods (`<id>.hnmod`), beside [`DIR`]. They run only in a
 /// game the launcher built with them.
 pub const NATIVE_DIR: &str = "horizon-native-mods";
+
+#[cfg(target_os = "android")]
+pub const ANDROID_BUNDLED: [&str; 16] = [
+    "zoom",
+    "worldmap",
+    "recipes",
+    "smartf3",
+    "freecam_plus",
+    "connected_textures",
+    "armorhud",
+    "jade",
+    "basic_hud",
+    "visuality_horizon",
+    "punchy",
+    "freelook",
+    "cinematic_interactions",
+    "firstpersonmodel",
+    "eatinganimation",
+    "veinminer",
+];
 /// Why a native mod installed in [`NATIVE_DIR`] doesn't run in this game.
 #[cfg(not(target_os = "android"))]
 pub const NOT_BUILT: &str = "Installed, not built into this game: build the game with it in the launcher (Settings > Native mods), then play the instance that build is in.";
@@ -91,13 +111,22 @@ pub struct NativePage {
     /// Each key's name, label and default key (`key.keyboard.z`).
     pub keys: Vec<[String; 3]>,
     pub buttons: Vec<String>,
+    pub slider_insert_after: usize,
+    pub sliders: Vec<NativeSlider>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct NativeSlider {
+    pub section: String,
+    pub label: String,
+    pub value: f32,
 }
 
 impl ModList {
     pub fn load(dir: &Path) -> Self {
         fs::read_to_string(dir.join(FILE))
             .map(|t| Self::parse(&t))
-            .unwrap_or_default()
+            .unwrap_or_else(|_| Self::parse(""))
     }
     pub fn parse(text: &str) -> Self {
         let ids = |value: &str| -> BTreeSet<String> {
@@ -108,7 +137,29 @@ impl ModList {
                 .map(str::to_owned)
                 .collect()
         };
-        let (enabled, disabled) = (ids("true"), ids("false"));
+        let enabled = ids("true");
+        let mut disabled = ids("false");
+        #[cfg(target_os = "android")]
+        let enabled = {
+            let mut enabled = enabled;
+            let has_worldmap_preference = text
+                .lines()
+                .filter_map(|line| line.split_once(':'))
+                .any(|(key, _)| key.trim() == "mod.worldmap");
+            if enabled.remove("minimap") && !has_worldmap_preference {
+                enabled.insert("worldmap".to_owned());
+            }
+            disabled.remove("minimap");
+            enabled.remove("horizon_physics");
+            disabled.remove("horizon_physics");
+            enabled
+        };
+        #[cfg(target_os = "android")]
+        for id in ANDROID_BUNDLED.iter() {
+            if !enabled.contains(*id) {
+                disabled.insert((*id).to_owned());
+            }
+        }
         let mut keys: BTreeMap<String, BTreeMap<String, String>> = BTreeMap::new();
         for (k, v) in text.lines().filter_map(|l| l.split_once(':')) {
             // Mod ids have no dots; a key's name may.
@@ -194,6 +245,42 @@ mod tests {
         assert_eq!(list.enabled.iter().collect::<Vec<_>>(), ["coords_hud"]);
         assert_eq!(ModList::parse(&list.serialize()), list);
         assert_eq!(ModList::default().serialize(), "");
+    }
+
+    #[cfg(target_os = "android")]
+    #[test]
+    fn removed_native_mods_are_not_bundled_or_defaulted() {
+        let list = ModList::parse("");
+        for id in [
+            "minimap",
+            "accurate_block_placement",
+            "voicechat",
+            "horizon_physics",
+        ] {
+            assert!(!ANDROID_BUNDLED.contains(&id));
+            assert!(!list.disabled.contains(id));
+        }
+    }
+
+    #[cfg(target_os = "android")]
+    #[test]
+    fn removed_physics_mod_is_ignored_in_saved_preferences() {
+        let list = ModList::parse("mod.horizon_physics:true\nmod.horizon_physics:false\n");
+        assert!(!list.enabled.contains("horizon_physics"));
+        assert!(!list.disabled.contains("horizon_physics"));
+    }
+
+    #[cfg(target_os = "android")]
+    #[test]
+    fn previous_minimap_opt_in_migrates_to_worldmap_unless_worldmap_was_set() {
+        let migrated = ModList::parse("mod.minimap:true\n");
+        assert!(migrated.enabled.contains("worldmap"));
+        assert!(!migrated.enabled.contains("minimap"));
+        assert!(!migrated.disabled.contains("minimap"));
+
+        let explicit_off = ModList::parse("mod.minimap:true\nmod.worldmap:false\n");
+        assert!(!explicit_off.enabled.contains("worldmap"));
+        assert!(explicit_off.disabled.contains("worldmap"));
     }
 
     #[test]

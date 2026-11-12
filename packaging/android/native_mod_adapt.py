@@ -74,6 +74,8 @@ CHANGED = (
         r"d\.custom_name = Some\(bc::ITEM_NAME\.to_owned\(\)\);",
         "d.custom_name = Some(horizon_world::nbt::Tag::String(bc::ITEM_NAME.into()));",
     ),
+    (r"ControlFlow<\(Vec<Vertex>, Vec<\(u32, i32\)>\)>", "ControlFlow<Vec<Vertex>>"),
+    (r"ControlFlow::Break\(\(out, Vec::new\(\)\)\)", "ControlFlow::Break(out)"),
 )
 
 

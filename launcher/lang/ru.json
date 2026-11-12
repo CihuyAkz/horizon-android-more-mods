@@ -798,7 +798,7 @@
   "{path} is not a folder to build into.": "{path} не является папкой для сборки.",
   "Could not copy the build: {error}": "Не удалось скопировать сборку: {error}",
   "Could not move the build to {path}: {error}": "Не удалось переместить сборку в {path}: {error}",
-  "Native mods can use your microphone for voice chat when you enable it.": "Нативные моды могут использовать ваш микрофон для голосового чата, когда вы это включите.",
+  "Native mods can use your microphone when you enable it.": "Нативные моды могут использовать ваш микрофон, когда вы это включите.",
   "Import a game build…": "Импортировать сборку игры…",
   "Importing…": "Импорт…",
   "Imported builds": "Импортированные сборки",

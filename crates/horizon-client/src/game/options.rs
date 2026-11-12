@@ -531,6 +531,12 @@ impl Game<'_> {
                         self.native_settings_event(i, b);
                     }
                 }
+                Event::NativeHandEditorClosed(i) => {
+                    self.native_settings_event(i, 0);
+                }
+                Event::NativeSlider(i, slider, value, finished) => {
+                    self.native_settings_slider_event(i, slider, value, finished);
+                }
                 Event::NativeSettings(i) => self.native_settings_refresh(i),
                 Event::Credits => self.open_win_screen(false, super::win::Finish::Options),
                 Event::Narrator => self.narrator_status_changed(),

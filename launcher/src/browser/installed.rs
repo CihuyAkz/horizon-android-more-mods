@@ -140,18 +140,20 @@ fn add(
             None => format!("{} has no version Horizon runs.", project.title),
         });
     };
-    for id in &version.required {
-        let needed = source.project(id).map_err(|_| {
-            format!(
-                "{} needs {id} on {}, which isn't a pack Horizon loads (a Java mod?).",
-                project.title,
-                source.id().label()
-            )
-        })?;
-        if needed.kind.folder().is_none() {
-            return Err(format!("{} needs {}.", project.title, needed.title));
+    if project.kind != Kind::ResourcePack {
+        for id in &version.required {
+            let needed = source.project(id).map_err(|_| {
+                format!(
+                    "{} needs {id} on {}, which isn't a pack Horizon loads (a Java mod?).",
+                    project.title,
+                    source.id().label()
+                )
+            })?;
+            if needed.kind.folder().is_none() {
+                return Err(format!("{} needs {}.", project.title, needed.title));
+            }
+            add(source, needed, everything, true, depth + 1, steps)?;
         }
-        add(source, needed, everything, true, depth + 1, steps)?;
     }
     steps.push(Step {
         project,

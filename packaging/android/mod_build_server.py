@@ -30,7 +30,7 @@ ROOT = pathlib.Path(os.environ.get("MOD_BUILD_ROOT", pathlib.Path.home() / "modb
 SANDBOX = pathlib.Path(__file__).with_name("mod_build_sandbox.sh")
 PORT = int(os.environ.get("MOD_BUILD_PORT", "8787"))
 MAX_BODY = 32 << 20
-MAX_MODS = 16
+MAX_MODS = 32
 MAX_EXPANDED = 64 << 20
 MAX_ENTRIES = 512
 MAX_QUEUE = 8
@@ -117,7 +117,7 @@ def split_body(body):
         mods.append(body[at : at + size])
         at += size
     if not mods or len(mods) > MAX_MODS:
-        raise Refused("Send from 1 to 16 mods.")
+        raise Refused("Send from 1 to 32 mods.")
     return mods
 
 

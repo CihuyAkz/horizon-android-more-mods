@@ -203,6 +203,68 @@ fn the_official_layout_is_checked_and_resumable() {
 }
 
 #[test]
+fn completed_horizon_assets_are_reused_without_downloading_or_copying_them() {
+    let f = fake();
+    let root = std::env::temp_dir().join(format!("starling-files-reuse-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&root);
+    let legacy = root.join("old/.local/horizon-client/T");
+    std::fs::create_dir_all(legacy.join("assets")).unwrap();
+    std::fs::write(legacy.join("horizon-resources.json"), b"{}").unwrap();
+    std::fs::write(legacy.join("android-downloads-v2.json"), b"{}").unwrap();
+
+    let index = f.files.lock().unwrap().get("/index.json").unwrap().clone();
+    std::fs::write(legacy.join("asset-index.json"), &index).unwrap();
+    let parsed: Value = serde_json::from_slice(&index).unwrap();
+    for (name, object) in parsed["objects"].as_object().unwrap() {
+        let Some(hash) = object["hash"].as_str().filter(|h| h.len() == 40) else {
+            continue;
+        };
+        let Some(bytes) = f
+            .files
+            .lock()
+            .unwrap()
+            .get(&format!("/res/{}/{hash}", &hash[..2]))
+            .cloned()
+        else {
+            continue;
+        };
+        let file = legacy.join("assets").join(name);
+        std::fs::create_dir_all(file.parent().unwrap()).unwrap();
+        std::fs::write(file, bytes).unwrap();
+    }
+
+    let game = root.join("starling");
+    let got = download_with_legacy_assets(
+        &sources(&f),
+        &f.pins,
+        &game,
+        ALL,
+        Some(&legacy),
+        &|_| {},
+        &|| false,
+    )
+    .unwrap();
+    assert!(got.client_jar.is_file());
+    assert_eq!(f.hits.load(Ordering::Relaxed), 5); // manifest, index, client, server and library only
+
+    for (name, object) in parsed["objects"].as_object().unwrap() {
+        let Some(hash) = object["hash"].as_str().filter(|h| h.len() == 40) else {
+            continue;
+        };
+        let source = legacy.join("assets").join(name);
+        let target = game.join("assets/objects").join(&hash[..2]).join(hash);
+        assert!(target.is_file());
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::MetadataExt;
+            assert_eq!(source.metadata().unwrap().ino(), target.metadata().unwrap().ino());
+        }
+    }
+    assert!(game.join("assets/indexes/9.json").is_file());
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
 fn a_file_that_is_not_the_listed_one_is_refused() {
     let f = fake();
     let root = std::env::temp_dir().join(format!("starling-files-bad-{}", std::process::id()));

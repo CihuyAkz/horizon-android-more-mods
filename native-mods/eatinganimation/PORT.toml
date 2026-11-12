@@ -1,0 +1,8 @@
+id = "eatinganimation"
+name = "Eating Animation"
+version = "0.2.0"
+kind = "android_builtin_native_bundle"
+source_archive = "eatinganimation-0.2.0.hnmod"
+horizon_revision = "6d99e14ff0c70ae60bc56b67829b526409fa068e"
+mixins_revision = "5a64af938ec86b00d53d16a408aabc0038fb3e57"
+license_note = "MIT license is included in the archive."

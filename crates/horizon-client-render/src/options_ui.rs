@@ -1740,8 +1740,11 @@ pub enum Page {
     Font,
     Packs,
     Mods,
+    /// The native mods bundled with Starling, separate from manually installed mods.
+    StarlingExtra,
     /// A native mod's settings page: its index in `mods.installed`.
     NativeMod(usize),
+    NativeModHandEditor(usize),
     /// Horizon's shader packs, either kind (`shader_pack_list`): one on or none, and a
     /// `shaders/` pack's profile.
     ShaderPacks,
@@ -1896,6 +1899,12 @@ enum WKind {
         value: f32,
         opt: Opt,
     },
+    NativeSlider {
+        label: Text,
+        value: f32,
+        mod_index: usize,
+        slider_index: usize,
+    },
     /// An option of a shader pack the pack shows as a slider: its value's place in its list.
     ShaderSlider {
         label: Text,
@@ -2029,6 +2038,8 @@ pub enum Event {
     /// Button `.1` of native mod `.0`'s page was pressed: the game tells the
     /// mod and refreshes the page.
     NativeButton(usize, usize),
+    NativeHandEditorClosed(usize),
+    NativeSlider(usize, usize, f32, bool),
     /// Close the options and edit the touch controls' layout over the world.
     TouchLayout,
     /// The Custom Buttons page opened: `Settings::custom_buttons` takes what the layout has.
@@ -2115,6 +2126,7 @@ pub struct OptionsUi {
     /// The shader pack option whose slider is held, and the handle's own position: it follows
     /// the pointer while the option takes the nearest of its values.
     shader_dragging: Option<(String, f32)>,
+    native_dragging: Option<(usize, usize, f32)>,
     /// Shift is held during the click (it resets a shader pack option to its default).
     pub shift: bool,
     /// The pressed slider's own position (`AbstractSliderButton.value`) and
@@ -2264,6 +2276,7 @@ impl Default for OptionsUi {
             scroll: 0.0,
             dragging: None,
             shader_dragging: None,
+            native_dragging: None,
             shift: false,
             slider_value: None,
             scrollbar_drag_y: None,
@@ -2338,8 +2351,81 @@ fn wrap_words(text: &str, max: usize) -> Vec<String> {
     lines
 }
 
-/// Android: the Mods page's game with native mods (`ModList::native_game`): its lines, cut to the
-/// list's width, its buttons two to a row, and a gap before the mods.
+/// True when `id` is one of the native mods included in Starling's Android APK.
+fn starling_extra_mod(id: &str) -> bool {
+    #[cfg(target_os = "android")]
+    {
+        crate::mod_list::ANDROID_BUNDLED.contains(&id)
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = id;
+        false
+    }
+}
+
+/// The installed mods assigned to one of the two Mods pages. Keep the original index in every
+/// action: settings and toggles are keyed by `mods.installed`, not by the filtered page.
+fn installed_mod_rows(s: &Settings, bundled: bool) -> Vec<Row> {
+    s.mods
+        .installed
+        .iter()
+        .enumerate()
+        .filter(|(_, installed)| starling_extra_mod(&installed.id) == bundled)
+        .map(|(i, installed)| {
+            let on = s.mods.is_on(i);
+            let not_built = installed.problem.as_deref() == Some(crate::mod_list::NOT_BUILT);
+            let compiled_here = not_built && installed.native.is_some();
+            let chosen_box = installed.native.is_some() && !installed.id.is_empty();
+            let mut label = if chosen_box {
+                let tick = if on { '\u{2611}' } else { '\u{2610}' };
+                Text::literal(format!("{tick} {}", installed.title))
+            } else {
+                Text::literal(format!("{}: ", installed.title)).append(on_off(on))
+            };
+            if not_built {
+                if !compiled_here {
+                    label = label.append(tr("horizon.mods.not_built"));
+                }
+            } else if installed.problem.is_some() {
+                label = label.append(tr("horizon.mods.stopped"));
+            } else if installed.dev {
+                label = label.append(tr("horizon.mods.dev"));
+            }
+            let dead = installed.dev || installed.id.is_empty();
+            let side = if compiled_here {
+                on.then(|| {
+                    let warning = Text::literal(format!(
+                        "\u{a7}e\u{26a0} {}",
+                        lang::get("starling.mods.native.not_compiled")
+                    ));
+                    inactive(button(0.0, 0.0, 150.0, warning, Act::NativeButton(i, 0)))
+                })
+            } else {
+                installed
+                    .native
+                    .as_ref()
+                    .is_some_and(|page| {
+                        !page.keys.is_empty() || !page.buttons.is_empty() || !page.sliders.is_empty()
+                    })
+                    .then(|| {
+                        let settings = tr("horizon.mods.settings");
+                        button(0.0, 0.0, 150.0, settings, Act::ModSettings(i))
+                    })
+            };
+            if let Some(side) = side {
+                let toggle = button(0.0, 0.0, 150.0, label, Act::ToggleMod(i));
+                Row::Buttons(if dead { inactive(toggle) } else { toggle }, Some(side))
+            } else {
+                let widget = button(0.0, 0.0, 310.0, label, Act::ToggleMod(i));
+                Row::Buttons(if dead { inactive(widget) } else { widget }, None)
+            }
+        })
+        .collect()
+}
+
+/// Android: the native build status shared by the Mods and Starling Extra pages: its lines, cut
+/// to the list's width, its buttons two to a row, and a gap before the mods.
 fn native_game_rows(s: &Settings) -> Vec<Row> {
     let Some(game) = &s.mods.native_game else {
         return Vec::new();
@@ -2570,6 +2656,7 @@ enum Row {
     Note(String),
     /// A button, and another after it.
     Buttons(Widget, Option<Widget>),
+    NativeSlider(usize, usize, String, f32),
     /// Skin Customization's name box, after its label.
     Field,
     /// What a custom button sends.
@@ -3232,7 +3319,9 @@ impl OptionsUi {
             Page::Font => "options.font.title",
             Page::Packs => "resourcePack.title",
             Page::Mods => "horizon.pages.mods",
+            Page::StarlingExtra => "Starling Extras",
             Page::NativeMod(_) => "Mod Settings",
+            Page::NativeModHandEditor(_) => "Hand Editor",
             Page::ShaderPacks => "horizon.pages.shader_packs",
             Page::ShaderOptions | Page::NativePackOptions(..) => "horizon.pages.shader_options",
             Page::CustomButtons
@@ -3301,29 +3390,80 @@ impl OptionsUi {
         filtered
     }
 
+    fn native_button_action(
+        &mut self,
+        s: &mut Settings,
+        i: usize,
+        b: usize,
+        events: &mut Vec<Event>,
+    ) {
+        if self.page() == Page::NativeModHandEditor(i) && b == 0 {
+            events.extend(self.back(s));
+            return;
+        }
+        let open_hand_editor = self.page() == Page::NativeMod(i)
+            && s.mods.installed.get(i).is_some_and(|installed| {
+                installed.id == "punchy"
+                    && installed.native.as_ref()
+                        .and_then(|page| page.buttons.get(b))
+                        .is_some_and(|label| label == "Hand Editor")
+            });
+        events.push(Event::NativeButton(i, b));
+        if open_hand_editor {
+            self.push(Page::NativeModHandEditor(i));
+        }
+    }
+
     /// A native mod's page: its name, its keys as Key Binds rows (the
     /// player's choice, else the default), then its buttons.
-    fn native_rows(&self, s: &Settings, i: usize) -> Vec<Row> {
+    fn native_rows(&self, s: &Settings, i: usize, hand_editor: bool) -> Vec<Row> {
         let Some(m) = s.mods.installed.get(i) else {
             return Vec::new();
         };
-        let mut rows = vec![Row::Note(m.title.clone())];
+        let mut rows = if hand_editor {
+            vec![Row::Note("Adjust the held item's hand and arm transforms".into())]
+        } else {
+            vec![Row::Note(m.title.clone())]
+        };
         let Some(page) = &m.native else {
             return rows;
         };
         let chosen = s.mods.keys.get(&m.id);
-        for (k, [name, label, default]) in page.keys.iter().enumerate() {
-            let key = chosen.and_then(|c| c.get(name)).unwrap_or(default);
-            let mut message = keybinds::display_name(key);
-            if self.selected_native_key == Some((i, k)) {
-                message = Text::literal("> ")
-                    .append(message.with_color(text::WHITE))
-                    .append(" <")
-                    .with_color(text::YELLOW);
+        if !hand_editor {
+            for (k, [name, label, default]) in page.keys.iter().enumerate() {
+                let key = chosen.and_then(|c| c.get(name)).unwrap_or(default);
+                let mut message = keybinds::display_name(key);
+                if self.selected_native_key == Some((i, k)) {
+                    message = Text::literal("> ")
+                        .append(message.with_color(text::WHITE))
+                        .append(" <")
+                        .with_color(text::YELLOW);
+                }
+                let caption = button(0.0, 0.0, 150.0, Text::literal(label.clone()), Act::None);
+                let change = button(0.0, 0.0, 150.0, message, Act::NativeKey(i, k));
+                rows.push(Row::Buttons(inactive(caption), Some(change)));
             }
-            let caption = button(0.0, 0.0, 150.0, Text::literal(label.clone()), Act::None);
-            let change = button(0.0, 0.0, 150.0, message, Act::NativeKey(i, k));
-            rows.push(Row::Buttons(inactive(caption), Some(change)));
+        }
+        let insert_after = page.slider_insert_after.min(page.buttons.len());
+        let mut sliders_inserted = false;
+        let mut append_sliders = |rows: &mut Vec<Row>| {
+            let mut previous_section: Option<&str> = None;
+            for (slider_index, slider) in page.sliders.iter().enumerate() {
+                if previous_section != Some(slider.section.as_str()) {
+                    rows.push(Row::Note(slider.section.clone()));
+                    previous_section = Some(slider.section.as_str());
+                }
+                rows.push(Row::NativeSlider(
+                    i,
+                    slider_index,
+                    slider.label.clone(),
+                    slider.value.clamp(0.0, 1.0),
+                ));
+            }
+        };
+        if insert_after == 0 {
+            append_sliders(&mut rows);
+            sliders_inserted = true;
         }
         for (b, label) in page.buttons.iter().enumerate() {
             let widget = button(
@@ -3334,6 +3474,13 @@ impl OptionsUi {
                 Act::NativeButton(i, b),
             );
             rows.push(Row::Buttons(widget, None));
+            if !sliders_inserted && b + 1 == insert_after {
+                append_sliders(&mut rows);
+                sliders_inserted = true;
+            }
+        }
+        if !sliders_inserted {
+            append_sliders(&mut rows);
         }
         rows
     }
@@ -4010,70 +4157,48 @@ impl OptionsUi {
             }
             Page::Font => pairs(&[Opt::ForceUnicode, Opt::JapaneseGlyphs]),
             Page::Mods => {
-                // Android: which game runs, above the mods.
-                let mut rows = native_game_rows(s);
-                if s.mods.installed.is_empty() {
-                    rows.push(Row::Header("horizon.mods.empty"));
-                    return rows;
+                let mut rows = Vec::new();
+                if cfg!(target_os = "android") {
+                    rows.push(Row::Buttons(
+                        button(
+                            0.0,
+                            0.0,
+                            310.0,
+                            Text::literal("Starling Extras"),
+                            Act::Push(Page::StarlingExtra),
+                        ),
+                        None,
+                    ));
                 }
-                let mods = s.mods.installed.iter().enumerate().map(|(i, installed)| {
-                    let on = s.mods.is_on(i);
-                    let not_built =
-                        installed.problem.as_deref() == Some(crate::mod_list::NOT_BUILT);
-                    // Android: a native mod is chosen for the next build (the page's top Compile),
-                    // so its row is a box ticked or not; one chosen and not in this game says so
-                    // beside it.
-                    let compiled_here = not_built && installed.native.is_some();
-                    let chosen_box = installed.native.is_some() && !installed.id.is_empty();
-                    let mut label = if chosen_box {
-                        let tick = if on { '\u{2611}' } else { '\u{2610}' };
-                        Text::literal(format!("{tick} {}", installed.title))
-                    } else {
-                        Text::literal(format!("{}: ", installed.title)).append(on_off(on))
-                    };
-                    if not_built {
-                        if !compiled_here {
-                            label = label.append(tr("horizon.mods.not_built"));
-                        }
-                    } else if installed.problem.is_some() {
-                        label = label.append(tr("horizon.mods.stopped"));
-                    } else if installed.dev {
-                        label = label.append(tr("horizon.mods.dev"));
-                    }
-                    let dead = installed.dev || installed.id.is_empty();
-                    // Beside it: a warning, as Java's, for a native mod chosen and not in this
-                    // game (nothing to press: Compile is the page's), Settings for one in it that
-                    // has settings.
-                    let side = if compiled_here {
-                        on.then(|| {
-                            let warning = Text::literal(format!(
-                                "\u{a7}e\u{26a0} {}",
-                                lang::get("starling.mods.native.not_compiled")
-                            ));
-                            inactive(button(0.0, 0.0, 150.0, warning, Act::NativeButton(i, 0)))
-                        })
-                    } else {
-                        installed
-                            .native
-                            .as_ref()
-                            .is_some_and(|page| !page.keys.is_empty() || !page.buttons.is_empty())
-                            .then(|| {
-                                let settings = tr("horizon.mods.settings");
-                                button(0.0, 0.0, 150.0, settings, Act::ModSettings(i))
-                            })
-                    };
-                    if let Some(side) = side {
-                        let toggle = button(0.0, 0.0, 150.0, label, Act::ToggleMod(i));
-                        Row::Buttons(if dead { inactive(toggle) } else { toggle }, Some(side))
-                    } else {
-                        let widget = button(0.0, 0.0, 310.0, label, Act::ToggleMod(i));
-                        Row::Buttons(if dead { inactive(widget) } else { widget }, None)
-                    }
-                });
-                rows.extend(mods);
+                // Manual native mods still need access to the build status. Bundled mods have
+                // their own page, where the same status is shown beside their toggles.
+                if s.mods
+                    .installed
+                    .iter()
+                    .any(|m| m.native.is_some() && !starling_extra_mod(&m.id))
+                {
+                    rows.extend(native_game_rows(s));
+                }
+                let mods = installed_mod_rows(s, false);
+                if mods.is_empty() {
+                    rows.push(Row::Header("horizon.mods.empty"));
+                } else {
+                    rows.extend(mods);
+                }
                 rows
             }
-            Page::NativeMod(i) => self.native_rows(s, i),
+            Page::StarlingExtra => {
+                let mut rows = native_game_rows(s);
+                let mods = installed_mod_rows(s, true);
+                if mods.is_empty() {
+                    rows.push(Row::Header("horizon.mods.empty"));
+                } else {
+                    rows.extend(mods);
+                }
+                rows
+            }
+            Page::NativeMod(i) => self.native_rows(s, i, false),
+            Page::NativeModHandEditor(i) => self.native_rows(s, i, true),
             Page::ShaderPacks => {
                 use crate::shader_pack_list::Kind as PackKind;
                 let choice = s.horizon.shader_choice();
@@ -5017,6 +5142,23 @@ impl OptionsUi {
                             }
                             y += 25.0;
                         }
+                        Row::NativeSlider(mod_index, slider_index, label, value) => {
+                            out.push(Widget {
+                                x: cx - 155.0,
+                                y: y + 2.0,
+                                w: 310.0,
+                                h: 20.0,
+                                kind: WKind::NativeSlider {
+                                    label: Text::literal(label),
+                                    value,
+                                    mod_index,
+                                    slider_index,
+                                },
+                                list: false,
+                                row: 0,
+                            });
+                            y += 25.0;
+                        }
                         Row::Field => {
                             out.push(Widget {
                                 x: cx - 155.0,
@@ -5469,6 +5611,29 @@ impl OptionsUi {
                         narrate_widget(n, s, wd, hover, list_key, framebuffer);
                     });
                 }
+                WKind::NativeSlider { label, value, mod_index, slider_index } => {
+                    let held = self.native_dragging.filter(|(i, j, _)| {
+                        i == mod_index && j == slider_index
+                    });
+                    let dragging = held.is_some();
+                    ui::slider_ext(
+                        batch,
+                        atlas,
+                        wd.x,
+                        wd.y,
+                        wd.w,
+                        label,
+                        held.map_or(*value, |entry| entry.2),
+                        hover || dragging,
+                        is_focused,
+                        self.can_change_value && is_focused,
+                        true,
+                        dragging,
+                    );
+                    crate::widgets::last_narratable(|n| {
+                        narrate_widget(n, s, wd, hover, list_key, framebuffer);
+                    });
+                }
                 WKind::ShaderSlider { label, value, name } => {
                     let label = fitted.as_ref().map_or(label, |f| &f.0);
                     let held = self.shader_dragging.as_ref().filter(|(n, _)| n == name);
@@ -5861,6 +6026,19 @@ impl OptionsUi {
                 *at = ui::slider_value(wd.x, wd.w, x);
                 options.set_position(name, *at);
             }
+            if let Some((mod_index, slider_index, _)) = self.native_dragging
+                && let Some(wd) = widgets.iter().find(|wd| {
+                    matches!(
+                        &wd.kind,
+                        WKind::NativeSlider { mod_index: i, slider_index: j, .. }
+                            if *i == mod_index && *j == slider_index
+                    )
+                })
+            {
+                let value = ui::slider_value(wd.x, wd.w, x);
+                self.native_dragging = Some((mod_index, slider_index, value));
+                events.push(Event::NativeSlider(mod_index, slider_index, value, false));
+            }
             if let Some(opt) = self.dragging
                 && let Some(wd) = widgets
                     .iter()
@@ -5957,7 +6135,7 @@ impl OptionsUi {
                                 events.push(Event::ListShaderPacks);
                                 self.refresh_shader_profiles(s);
                             }
-                            if p == Page::Mods {
+                            if matches!(p, Page::Mods | Page::StarlingExtra) {
                                 events.push(Event::ListMods);
                             }
                             if p == Page::Music {
@@ -6067,7 +6245,7 @@ impl OptionsUi {
                             self.selected_key = Some(NATIVE_KEY);
                             self.selected_native_key = Some((i, k));
                         }
-                        Act::NativeButton(i, b) => events.push(Event::NativeButton(i, b)),
+                        Act::NativeButton(i, b) => self.native_button_action(s, i, b, &mut events),
                         Act::NativeGame(act) => events.push(Event::NativeGame(act)),
                         Act::OpenModFolder => events.push(Event::OpenModFolder),
                         Act::OpenCatalog(shelf) => events.push(Event::OpenCatalog(shelf)),
@@ -6276,6 +6454,12 @@ impl OptionsUi {
                     self.slider_value = Some((opt, v, Instant::now()));
                     drag_slider(opt, s, v, &mut events);
                 }
+                WKind::NativeSlider { mod_index, slider_index, .. } => {
+                    self.can_change_value = true;
+                    let value = ui::slider_value(wd.x, wd.w, x);
+                    self.native_dragging = Some((mod_index, slider_index, value));
+                    events.push(Event::NativeSlider(mod_index, slider_index, value, false));
+                }
                 WKind::LanguageRow { code, .. } => {
                     self.can_change_value = false;
                     if self.language_choice.as_deref() == Some(code.as_str()) {
@@ -6306,16 +6490,21 @@ impl OptionsUi {
         // AbstractSliderButton suppresses the press sound and plays once on
         // release, even if the pointer has left the widget or its value stayed.
         let slider = self.dragging.take().is_some() | self.shader_dragging.take().is_some();
+        let native_slider = self.native_dragging.take();
         let graphics_slider = self.graphics.release();
         let calibration_slider = self.calibration.as_mut().is_some_and(|c| c.release());
         let split_drop = self.split_setup.release();
+        let mut events = Vec::new();
         if slider || graphics_slider || calibration_slider {
-            vec![Event::ButtonClick, Event::Changed]
+            events.extend([Event::ButtonClick, Event::Changed]);
         } else if split_drop {
-            vec![Event::ButtonClick]
-        } else {
-            Vec::new()
+            events.push(Event::ButtonClick);
         }
+        if let Some((mod_index, slider_index, value)) = native_slider {
+            events.push(Event::NativeSlider(mod_index, slider_index, value, true));
+            events.push(Event::ButtonClick);
+        }
+        events
     }
     pub fn scroll(&mut self, s: &Settings, size: (f32, f32), amount: f32) {
         let (_, top, bottom, content) = self.layout(s, size.0, size.1);
@@ -6612,6 +6801,9 @@ impl OptionsUi {
             return events;
         }
         let page = self.stack.pop().unwrap_or(Page::Main);
+        if let Page::NativeModHandEditor(i) = page {
+            events.push(Event::NativeHandEditorClosed(i));
+        }
         self.scroll = 0.0;
         self.scrollbar_drag_y = None;
         self.dragging = None;
@@ -7195,7 +7387,7 @@ impl OptionsUi {
                             if p == Page::ShaderPacks {
                                 events.push(Event::ListShaderPacks);
                             }
-                            if p == Page::Mods {
+                            if matches!(p, Page::Mods | Page::StarlingExtra) {
                                 events.push(Event::ListMods);
                             }
                             if p == Page::Music {
@@ -7281,7 +7473,7 @@ impl OptionsUi {
                             self.selected_key = Some(NATIVE_KEY);
                             self.selected_native_key = Some((i, k));
                         }
-                        Act::NativeButton(i, b) => events.push(Event::NativeButton(i, b)),
+                        Act::NativeButton(i, b) => self.native_button_action(s, i, b, &mut events),
                         Act::NativeGame(act) => events.push(Event::NativeGame(act)),
                         Act::OpenModFolder => events.push(Event::OpenModFolder),
                         Act::OpenCatalog(shelf) => events.push(Event::OpenCatalog(shelf)),
@@ -7986,6 +8178,86 @@ mod tests {
         assert_eq!(ui.page(), Page::Main);
     }
 
+    #[cfg(target_os = "android")]
+    #[test]
+    fn starling_extra_separates_bundled_mods_from_manual_mods() {
+        let atlas = atlas();
+        let mut s = Settings::default();
+        let mut ui = OptionsUi::default();
+        let size = (480.0, 320.0);
+        let installed = |id: &str| crate::mod_list::Installed {
+            id: id.into(),
+            title: id.into(),
+            description: String::new(),
+            problem: None,
+            dev: false,
+            native: Some(crate::mod_list::NativePage::default()),
+        };
+        s.mods.installed = vec![
+            installed("zoom"),
+            installed("firstpersonmodel"),
+            installed("eatinganimation"),
+            installed("cinematic_interactions"),
+            installed("veinminer"),
+            installed("manual_native"),
+        ];
+        for id in [
+            "minimap",
+            "accurate_block_placement",
+            "voicechat",
+            "horizon_physics",
+        ] {
+            assert!(!crate::mod_list::ANDROID_BUNDLED.contains(&id));
+        }
+        for id in [
+            "firstpersonmodel",
+            "eatinganimation",
+            "cinematic_interactions",
+            "veinminer",
+        ] {
+            assert!(crate::mod_list::ANDROID_BUNDLED.contains(&id));
+        }
+
+        ui.show(Page::Mods);
+        let (widgets, ..) = ui.layout(&s, size.0, size.1);
+        assert!(widgets.iter().any(|w| matches!(
+            &w.kind,
+            WKind::Button {
+                act: Act::Push(Page::StarlingExtra),
+                ..
+            }
+        )));
+        let visible: Vec<_> = widgets.iter().filter_map(|w| match &w.kind {
+            WKind::Button { act: Act::ToggleMod(i), label, .. } => Some((*i, label.plain())),
+            _ => None,
+        }).collect();
+        assert_eq!(visible.iter().map(|(i, _)| *i).collect::<Vec<_>>(), [5]);
+
+        let open = widgets.iter().find(|w| matches!(
+            w.kind,
+            WKind::Button { act: Act::Push(Page::StarlingExtra), .. }
+        )).unwrap();
+        let events = ui.click(
+            &mut s,
+            &atlas,
+            open.x + 1.0,
+            open.y + 1.0,
+            size,
+            [480, 320],
+            false,
+            false,
+        );
+        assert!(events.contains(&Event::ListMods));
+        assert_eq!(ui.page(), Page::StarlingExtra);
+
+        let (built_in, ..) = ui.layout(&s, size.0, size.1);
+        let visible: Vec<_> = built_in.iter().filter_map(|w| match &w.kind {
+            WKind::Button { act: Act::ToggleMod(i), label, .. } => Some((*i, label.plain())),
+            _ => None,
+        }).collect();
+        assert_eq!(visible.iter().map(|(i, _)| *i).collect::<Vec<_>>(), [0, 1, 2, 3, 4, 5]);
+    }
+
     #[test]
     fn opening_a_native_mods_page_asks_the_game_for_its_labels_again() {
         let atlas = atlas();
@@ -8030,6 +8302,131 @@ mod tests {
         // Its labels were made with the list, maybe in another language.
         assert_eq!(events.last(), Some(&Event::NativeSettings(0)));
         assert_eq!(ui.page(), Page::NativeMod(0));
+    }
+
+    #[test]
+    fn punchy_hand_editor_button_opens_a_separate_page() {
+        let atlas = atlas();
+        let mut s = Settings::default();
+        let mut ui = OptionsUi::default();
+        let size = (480.0, 320.0);
+        s.mods.installed.push(crate::mod_list::Installed {
+            id: "punchy".into(),
+            title: "Punchy".into(),
+            description: String::new(),
+            problem: None,
+            dev: false,
+            native: Some(crate::mod_list::NativePage {
+                buttons: vec![
+                    "Animation speed".into(),
+                    "Reload animations".into(),
+                    "Hand poses".into(),
+                    "Hand Editor".into(),
+                ],
+                ..Default::default()
+            }),
+        });
+        ui.show(Page::NativeMod(0));
+        let (widgets, ..) = ui.layout(&s, size.0, size.1);
+        let open = widgets
+            .iter()
+            .find(|widget| matches!(
+                widget.kind,
+                WKind::Button { act: Act::NativeButton(0, 3), .. }
+            ))
+            .expect("Punchy settings include the Hand Editor button");
+        let events = ui.click(
+            &mut s,
+            &atlas,
+            open.x + 1.0,
+            open.y + 1.0,
+            size,
+            [480, 320],
+            false,
+            false,
+        );
+        assert!(events.contains(&Event::NativeButton(0, 3)));
+        assert_eq!(ui.page(), Page::NativeModHandEditor(0));
+    }
+
+    #[test]
+    fn native_mod_settings_renders_and_dispatches_native_slider_drags() {
+        let atlas = atlas();
+        let mut s = Settings::default();
+        let mut ui = OptionsUi::default();
+        let size = (480.0, 320.0);
+        s.mods.installed.push(crate::mod_list::Installed {
+            id: "punchy".into(),
+            title: "Punchy".into(),
+            description: String::new(),
+            problem: None,
+            dev: false,
+            native: Some(crate::mod_list::NativePage {
+                buttons: vec!["Back to Punchy settings".into(), "Hand · Main hand".into()],
+                slider_insert_after: 1,
+                sliders: vec![crate::mod_list::NativeSlider {
+                    section: "Position".into(),
+                    label: "Offset X  0.000".into(),
+                    value: 0.5,
+                }],
+                ..Default::default()
+            }),
+        });
+        ui.show(Page::NativeModHandEditor(0));
+        let (widgets, ..) = ui.layout(&s, size.0, size.1);
+        let slider = widgets
+            .iter()
+            .find(|widget| matches!(
+                widget.kind,
+                WKind::NativeSlider { mod_index: 0, slider_index: 0, .. }
+            ))
+            .expect("native mod page renders its slider");
+        let press_x = slider.x + slider.w * 0.35;
+        let press_y = slider.y + 10.0;
+        assert!(ui.click(
+            &mut s,
+            &atlas,
+            press_x,
+            press_y,
+            size,
+            [480, 320],
+            false,
+            false,
+        ).contains(&Event::NativeSlider(0, 0, 0.35, false)));
+        let moved = ui.click(
+            &mut s,
+            &atlas,
+            slider.x + slider.w * 0.8,
+            press_y,
+            size,
+            [480, 320],
+            true,
+            false,
+        );
+        assert!(moved.iter().any(|event| matches!(event, Event::NativeSlider(0, 0, value, false) if (*value - 0.8).abs() < 0.001)));
+        let released = ui.release();
+        assert!(released.iter().any(|event| matches!(event, Event::NativeSlider(0, 0, value, true) if (*value - 0.8).abs() < 0.001)));
+
+        let (widgets, ..) = ui.layout(&s, size.0, size.1);
+        let back = widgets
+            .iter()
+            .find(|widget| matches!(
+                widget.kind,
+                WKind::Button { act: Act::NativeButton(0, 0), .. }
+            ))
+            .expect("the Hand Editor page has a back button");
+        let events = ui.click(
+            &mut s,
+            &atlas,
+            back.x + 1.0,
+            back.y + 1.0,
+            size,
+            [480, 320],
+            false,
+            false,
+        );
+        assert_eq!(ui.page(), Page::NativeMod(0));
+        assert!(events.contains(&Event::NativeHandEditorClosed(0)));
     }
 
     #[test]
@@ -8275,6 +8672,7 @@ mod tests {
             native: Some(crate::mod_list::NativePage {
                 keys: vec![["zoom".into(), "Zoom key".into(), "key.keyboard.z".into()]],
                 buttons: Vec::new(),
+                ..Default::default()
             }),
         });
         ui.show(Page::NativeMod(0));

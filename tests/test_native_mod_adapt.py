@@ -21,6 +21,24 @@ UPDATED_STATE = """Break(ItemRenderState {
 })"""
 
 
+OLD_CINEMATIC_HANDS = """fn cinematic_hands(game: &mut crate::game::Game<'_>, alpha: f64) -> ::core::ops::ControlFlow<(Vec<Vertex>, Vec<(u32, i32)>)> {
+    ::core::ops::ControlFlow::Break((out, Vec::new()))
+}
+"""
+NEW_CINEMATIC_HANDS = """fn cinematic_hands(game: &mut crate::game::Game<'_>, alpha: f64) -> ::core::ops::ControlFlow<Vec<Vertex>> {
+    ::core::ops::ControlFlow::Break(out)
+}
+"""
+
+
+class CinematicHands(unittest.TestCase):
+    def test_hand_hook_matches_starling_hand_geometry_return(self):
+        self.assertEqual(adapt.code(OLD_CINEMATIC_HANDS), NEW_CINEMATIC_HANDS)
+
+    def test_adaptation_is_idempotent(self):
+        self.assertEqual(adapt.code(NEW_CINEMATIC_HANDS), NEW_CINEMATIC_HANDS)
+
+
 class Code(unittest.TestCase):
     def test_a_mod_from_before_the_new_fields_gets_them(self):
         self.assertEqual(adapt.code(OLD_STATE).count("cit_glint: None"), 1)

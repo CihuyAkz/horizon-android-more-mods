@@ -644,7 +644,6 @@ public class StarlingActivity extends NativeActivity {
                 .show();
     }
 
-    /** Mod ids as the player reads them: "voicechat" is Voicechat, two are "A and B". */
     private static String modNames(List<String> ids) {
         StringBuilder names = new StringBuilder();
         for (int i = 0; i < ids.size(); i++) {

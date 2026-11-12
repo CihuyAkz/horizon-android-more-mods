@@ -798,7 +798,7 @@
   "{path} is not a folder to build into.": "{path} はビルド先のフォルダーではありません。",
   "Could not copy the build: {error}": "ビルドをコピーできませんでした: {error}",
   "Could not move the build to {path}: {error}": "ビルドを {path} に移動できませんでした: {error}",
-  "Native mods can use your microphone for voice chat when you enable it.": "ネイティブモッドは、有効にした場合、音声チャットにマイクを使用できます。",
+  "Native mods can use your microphone when you enable it.": "ネイティブモッドは、有効にした場合、マイクを使用できます。",
   "Import a game build…": "ゲームのビルドをインポート…",
   "Importing…": "インポート中…",
   "Imported builds": "インポートしたビルド",

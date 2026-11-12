@@ -11,9 +11,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 ANDROID = ROOT / "packaging" / "android"
-JAVA = ANDROID / "java" / "io" / "github" / "juanluci" / "starling"
+JAVA = ANDROID / "java" / "dev" / "horizon" / "android"
 NS = "{http://schemas.android.com/apk/res/android}"
-PROVIDER = "io.github.juanluci.starling.GameFolderProvider"
+PROVIDER = "dev.horizon.android.GameFolderProvider"
 
 
 def provider():
@@ -64,7 +64,7 @@ class GameFolderRules(unittest.TestCase):
                 check=True, capture_output=True, text=True,
             )
             ran = subprocess.run(
-                ["java", "-cp", str(classes), "io.github.juanluci.starling.GameFolderChecks", str(work)],
+                ["java", "-cp", str(classes), "dev.horizon.android.GameFolderChecks", str(work)],
                 capture_output=True, text=True,
             )
             self.assertEqual(ran.returncode, 0, ran.stdout + ran.stderr)

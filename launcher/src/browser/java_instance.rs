@@ -139,11 +139,13 @@ fn add(
             ),
         });
     };
-    for id in &version.required {
-        let needed = source
-            .project(id)
-            .map_err(|e| format!("{} needs {id}: {e}", project.title))?;
-        add(source, target, needed, true, depth + 1, steps)?;
+    if project.kind != Kind::ResourcePack {
+        for id in &version.required {
+            let needed = source
+                .project(id)
+                .map_err(|e| format!("{} needs {id}: {e}", project.title))?;
+            add(source, target, needed, true, depth + 1, steps)?;
+        }
     }
     steps.push(Step {
         project,

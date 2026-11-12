@@ -1,0 +1,8 @@
+{
+  "game": "26.3",
+  "horizon": "0000000000000000000000000000000000000000",
+  "id": "basic_hud",
+  "mixins": "ddd9700b21997c95d95ac6ee5ecafe3830cf622a",
+  "schema": 1,
+  "version": "0.5.0"
+}

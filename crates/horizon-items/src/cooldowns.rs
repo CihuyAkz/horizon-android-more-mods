@@ -77,6 +77,14 @@ pub struct Cooldowns {
     entries: HashMap<Arc<str>, (i32, i32)>,
 }
 impl Cooldowns {
+    /// Read-only cooldown entries for native client HUD extensions.
+    pub fn entries(&self) -> &HashMap<Arc<str>, (i32, i32)> {
+        &self.entries
+    }
+    /// The current client cooldown tick for native HUD extensions.
+    pub fn tick_count(&self) -> i32 {
+        self.tick_count
+    }
     /// `getCooldownPercent`: what is left of the entry, from 1 to 0.
     pub fn percent(&self, group: &str, partial_tick: f32) -> f32 {
         let Some((start, end)) = self.entries.get(group) else {

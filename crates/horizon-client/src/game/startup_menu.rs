@@ -849,6 +849,8 @@ impl Loading {
                 // Mods' settings pages open only in a running game.
                 Event::NativeSettings(_)
                 | Event::NativeButton(..)
+                | Event::NativeHandEditorClosed(..)
+                | Event::NativeSlider(..)
                 | Event::OpenCatalog(_)
                 | Event::NativeGame(_) => {}
                 // Saved by `Changed`; the game reads the native mods' set as it starts.

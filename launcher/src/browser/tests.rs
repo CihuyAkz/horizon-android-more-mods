@@ -449,3 +449,53 @@ fn curseforge_is_coming_soon_and_never_searched() {
     assert_eq!(ids, [SourceId::Modrinth, SourceId::Horizon]);
     assert!(source(SourceId::CurseForge).is_none());
 }
+
+struct ResourcePackWithMissingMod;
+
+impl Source for ResourcePackWithMissingMod {
+    fn id(&self) -> SourceId {
+        SourceId::Modrinth
+    }
+
+    fn search(&self, _: &Query) -> Result<Vec<Project>, String> {
+        Ok(Vec::new())
+    }
+
+    fn project(&self, id: &str) -> Result<Project, String> {
+        Err(format!("Required mod {id} is unavailable."))
+    }
+
+    fn versions(&self, _: &Project) -> Result<Vec<Version>, String> {
+        let mut v = version("resource-pack-with-dependency", &[GAME], &["minecraft"]);
+        v.required.push("missing-required-mod".into());
+        Ok(vec![v])
+    }
+}
+
+#[test]
+fn resource_packs_install_without_installing_required_mods() {
+    let project = modrinth::parse_hit(&json!({
+        "project_id": "resource-pack",
+        "project_type": "resourcepack",
+        "slug": "resource-pack",
+        "title": "Resource Pack",
+        "versions": [GAME],
+        "categories": ["minecraft"]
+    }))
+    .unwrap();
+    let source = ResourcePackWithMissingMod;
+
+    let horizon_steps = installed::plan(&source, &project, false).unwrap();
+    assert_eq!(horizon_steps.len(), 1);
+    assert_eq!(horizon_steps[0].project.id, "resource-pack");
+    assert!(!horizon_steps[0].dependency);
+
+    let target = java_instance::Target {
+        minecraft: GAME.into(),
+        loader: None,
+    };
+    let instance_steps = java_instance::plan(&source, &target, &project).unwrap();
+    assert_eq!(instance_steps.len(), 1);
+    assert_eq!(instance_steps[0].project.id, "resource-pack");
+    assert!(!instance_steps[0].dependency);
+}

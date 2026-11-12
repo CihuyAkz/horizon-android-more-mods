@@ -798,7 +798,7 @@
   "{path} is not a folder to build into.": "{path} no es una carpeta para compilar.",
   "Could not copy the build: {error}": "No se pudo copiar la compilación: {error}",
   "Could not move the build to {path}: {error}": "No se pudo mover la compilación a {path}: {error}",
-  "Native mods can use your microphone for voice chat when you enable it.": "Los mods nativos pueden usar tu micrófono para el chat de voz cuando lo actives.",
+  "Native mods can use your microphone when you enable it.": "Los mods nativos pueden usar tu micrófono cuando lo actives.",
   "Import a game build…": "Importar una compilación del juego…",
   "Importing…": "Importando…",
   "Imported builds": "Compilaciones importadas",

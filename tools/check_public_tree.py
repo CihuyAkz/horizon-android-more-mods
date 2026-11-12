@@ -11,18 +11,18 @@ PRIVATE_EXTENSIONS = {".jar", ".class", ".jfr", ".hprof", ".java"}
 ORIGINAL_JDK_TOOLS = {"tools/JfrSummary.java", "tests/java/JfrFixture.java", "tests/java/GameFolderChecks.java"}
 # The Android app's own classes (packaging/android/build_apk.py), Horizon's code like the above.
 ORIGINAL_ANDROID = {
-    "packaging/android/java/io/github/juanluci/starling/StarlingActivity.java",
-    "packaging/android/java/io/github/juanluci/starling/GameActivity.java",
-    "packaging/android/java/io/github/juanluci/starling/LauncherActivity.java",
-    "packaging/android/java/io/github/juanluci/starling/DiagnosticsActivity.java",
-    "packaging/android/java/io/github/juanluci/starling/StartupRecovery.java",
-    "packaging/android/java/io/github/juanluci/starling/TextMirror.java",
-    "packaging/android/java/io/github/juanluci/starling/UpdateProvider.java",
-    "packaging/android/java/io/github/juanluci/starling/NativeMods.java",
-    "packaging/android/java/io/github/juanluci/starling/WorkService.java",
-    "packaging/android/java/io/github/juanluci/starling/HorizonImport.java",
-    "packaging/android/java/io/github/juanluci/starling/GameFolder.java",
-    "packaging/android/java/io/github/juanluci/starling/GameFolderProvider.java",
+    "packaging/android/java/dev/horizon/android/StarlingActivity.java",
+    "packaging/android/java/dev/horizon/android/GameActivity.java",
+    "packaging/android/java/dev/horizon/android/LauncherActivity.java",
+    "packaging/android/java/dev/horizon/android/DiagnosticsActivity.java",
+    "packaging/android/java/dev/horizon/android/StartupRecovery.java",
+    "packaging/android/java/dev/horizon/android/TextMirror.java",
+    "packaging/android/java/dev/horizon/android/UpdateProvider.java",
+    "packaging/android/java/dev/horizon/android/NativeMods.java",
+    "packaging/android/java/dev/horizon/android/WorkService.java",
+    "packaging/android/java/dev/horizon/android/HorizonImport.java",
+    "packaging/android/java/dev/horizon/android/GameFolder.java",
+    "packaging/android/java/dev/horizon/android/GameFolderProvider.java",
     # The same activity before the app was named Starling, in the history.
     "packaging/android/java/dev/horizon/android/HorizonActivity.java",
 }

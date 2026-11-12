@@ -28,22 +28,23 @@ import re
 import shutil
 import subprocess
 import sys
+import tomllib
 import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 HERE = Path(__file__).resolve().parent
 
-APPLICATION_ID = "io.github.juanluci.starling"
-LABEL = "Starling"
+APPLICATION_ID = "dev.horizon.android"
+LABEL = "Starling Extras"
 # --dev and --preview: an app of its own, installed beside the release (which a build signed with
 # another key cannot install over), with its own folder (StarlingActivity.sharedFolder: StarlingDev,
 # StarlingPreview) and its own sign-in and game files. Preview is what starling-client/starling's
 # CI builds, signed with that repository's test key: the release key stays out of it.
 DEV_SUFFIX = ".dev"
-VARIANTS = {"dev": (DEV_SUFFIX, " Dev"), "preview": (".preview", " Preview")}
+VARIANTS = {"dev": (DEV_SUFFIX, ""), "preview": (".preview", " Preview")}
 VERSION_NAME = "0.8.0"
-VERSION_CODE = 13
+VERSION_CODE = 31
 MIN_SDK = 26  # AAudio (cpal)
 TARGET_SDK = 35
 PLATFORM = 36
@@ -61,8 +62,7 @@ TARGETS = {
 LIBRARY = "horizon_android"
 # Every LOAD segment aligned for 16 KB pages, which Android 15 devices may use.
 PAGE_FLAGS = "-C link-arg=-Wl,-z,max-page-size=16384"
-# A BuildId in the library, so the native tombstones in diagnostic ZIPs name it and its frames can be matched to
-# the unstripped copy kept beside the APK (`lib<LIBRARY>-symbols.so`, docs/android-diagnostics.md).
+# A BuildId in the library, so native crash diagnostics can match frames to the unstripped CI copy.
 BUILD_ID_FLAGS = "-C link-arg=-Wl,--build-id=sha1"
 ICONS = {
     "mipmap-mdpi": "48x48",
@@ -76,6 +76,24 @@ PREPARE_KIT = (
     "research-lock.json",
     "crates/horizon-prepare/src/exporters.rs",
     "mods/horizon/src/test/java",
+)
+BUILTIN_NATIVE_MODS = (
+    "zoom",
+    "worldmap",
+    "recipes",
+    "smartf3",
+    "freecam_plus",
+    "connected_textures",
+    "armorhud",
+    "jade",
+    "basic_hud",
+    "visuality_horizon",
+    "punchy",
+    "freelook",
+    "cinematic_interactions",
+    "firstpersonmodel",
+    "eatinganimation",
+    "veinminer",
 )
 
 
@@ -158,6 +176,92 @@ def zip_folder(folder, archive):
             z.writestr(info, file.read_bytes())
 
 
+def native_bundle_allowed(relative):
+    parts = relative.split("/")
+    name = parts[-1]
+    in_data = len(parts) >= 2 and (
+        parts[0] == "data" or (len(parts) >= 3 and parts[1] == "data")
+    )
+    text = len(parts) <= 2 and (
+        name.startswith(("README", "LICENSE", "LICENCE", "COPYING", "NOTICE"))
+        or name == ".gitignore"
+    )
+    return relative.endswith((".rs", ".toml")) or in_data or text
+
+
+def bundle_native_mods(assets_folder):
+    destination = assets_folder / "native-mods"
+    destination.mkdir()
+    for mod_id in BUILTIN_NATIVE_MODS:
+        source = ROOT / "native-mods" / mod_id
+        metadata_path = source / "horizon-native.json"
+        mixin_root = source / "mixins" / mod_id
+        mixin_path = mixin_root / "horizon-mixin.toml"
+        try:
+            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+            mixin = tomllib.loads(mixin_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError, tomllib.TOMLDecodeError) as exc:
+            raise RuntimeError(f"{mod_id}: unreadable native bundle metadata: {exc}") from exc
+        manifest = mixin.get("mod", {})
+        compatibility = mixin.get("compatibility", {})
+        revision = metadata.get("horizon")
+        if (
+            metadata.get("schema") != 1
+            or metadata.get("id") != mod_id
+            or not isinstance(metadata.get("version"), str)
+            or not metadata["version"]
+            or manifest.get("id") != mod_id
+            or manifest.get("version") != metadata.get("version")
+            or compatibility.get("horizon_revision") != revision
+            or not isinstance(revision, str)
+            or not re.fullmatch(r"[0-9a-f]{40}", revision)
+            or not re.fullmatch(r"[0-9a-f]{40}", str(metadata.get("mixins", "")))
+        ):
+            raise RuntimeError(f"{mod_id}: horizon-native.json and horizon-mixin.toml disagree")
+        if metadata_path.is_symlink() or mixin_root.is_symlink() or not metadata_path.is_file():
+            raise RuntimeError(f"{mod_id}: unsupported native bundle source")
+        files = [("horizon-native.json", metadata_path)]
+        expanded = metadata_path.stat().st_size
+        for path in sorted(mixin_root.rglob("*")):
+            if path.is_symlink():
+                raise RuntimeError(f"{mod_id}: unsupported bundle entry: {path}")
+            if path.is_dir():
+                continue
+            if not path.is_file():
+                raise RuntimeError(f"{mod_id}: unsupported bundle entry: {path}")
+            relative = path.relative_to(mixin_root).as_posix()
+            if (
+                "\\" in relative
+                or ":" in relative
+                or any(part in ("", ".", "..") for part in relative.split("/"))
+                or not native_bundle_allowed(relative)
+            ):
+                raise RuntimeError(f"{mod_id}: unsupported bundle entry: {relative}")
+            size = path.stat().st_size
+            expanded += size
+            files.append((f"mixins/{mod_id}/{relative}", path))
+        if len(files) > 512 or expanded > 64 << 20:
+            raise RuntimeError(f"{mod_id}: native bundle exceeds the size or entry limit")
+        names = {name for name, _ in files}
+        if f"mixins/{mod_id}/horizon-mixin.toml" not in names:
+            raise RuntimeError(f"{mod_id}: missing horizon-mixin.toml")
+        archive_path = destination / f"{mod_id}.hnmod"
+        with zipfile.ZipFile(archive_path, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
+            for name, path in sorted(files):
+                info = zipfile.ZipInfo(name, (2026, 1, 1, 0, 0, 0))
+                info.compress_type = zipfile.ZIP_DEFLATED
+                archive.writestr(info, path.read_bytes(), compress_type=zipfile.ZIP_DEFLATED, compresslevel=9)
+
+    # Dev APKs built through native_build.sh carry the corresponding game library itself.
+    # This marker lets the Android runtime distinguish those APK-built mods from source-only
+    # bundles, without putting another copy of the libraries in the APK assets.
+    compiled_mods = os.environ.get("STARLING_APK_NATIVE_MODS", "").split()
+    if compiled_mods:
+        if len(compiled_mods) != len(set(compiled_mods)) or not set(compiled_mods).issubset(BUILTIN_NATIVE_MODS):
+            raise RuntimeError("STARLING_APK_NATIVE_MODS contains unknown or duplicate mod ids")
+        (destination / "compiled.txt").write_text(" ".join(sorted(compiled_mods)) + "\n", encoding="utf-8")
+
+
 def assets(out):
     """The APK's assets/: prepare-kit.zip (PREPARE_KIT, with the paths horizon-prepare reads),
     lowbudget.zip, the skin the setup draws the menus with (packaging/lowbudget/pack, made by its
@@ -167,6 +271,7 @@ def assets(out):
     folder = out / "assets"
     shutil.rmtree(folder, ignore_errors=True)
     folder.mkdir()
+    bundle_native_mods(folder)
     fonts = folder / "diagnostic-fonts"
     fonts.mkdir()
     for name in ("Geist-Regular.ttf", "Geist-SemiBold.ttf"):
@@ -193,7 +298,7 @@ def compile_java(build_tools, android_jar, out):
     for folder in (classes, dex):
         shutil.rmtree(folder, ignore_errors=True)
         folder.mkdir()
-    sources = sorted((HERE / "java").rglob("*.java")) + [out / "generated" / "io/github/juanluci/starling/R.java"]
+    sources = sorted((HERE / "java" / "dev" / "horizon" / "android").rglob("*.java")) + [out / "generated" / "dev/horizon/android/R.java"]
     run("javac", "--release", "8", "-nowarn", "-classpath", android_jar, "-d", classes, *sources)
     # A single archive also avoids cmd.exe's command-line limit on Windows.
     archive = out / "classes.jar"
@@ -213,7 +318,8 @@ def link_resources(aapt2, android_jar, out, assets, variant, abi=ABI):
     manifest = (HERE / "AndroidManifest.xml").read_text(encoding="utf-8")
     suffix, label_suffix = VARIANTS[variant] if variant else ("", "")
     application_id = APPLICATION_ID + suffix
-    label = LABEL + label_suffix
+    # The Dev build is a separate package, but its user-visible name stays Starling Extras.
+    label = LABEL if variant == "dev" else LABEL + label_suffix
     manifest = manifest.replace("@APPLICATION_ID@", application_id).replace("@LABEL@", label)
     if abi != ABI:
         # Additional architectures may expose GLES only. Validate actual GPU limits.
@@ -252,7 +358,7 @@ def link_resources(aapt2, android_jar, out, assets, variant, abi=ABI):
     run(
         aapt2, "link", "-o", out / "base.apk",
         "--manifest", out / "AndroidManifest.xml",
-        "--java", out / "generated", "--custom-package", "io.github.juanluci.starling",
+        "--java", out / "generated", "--custom-package", "dev.horizon.android",
         "-I", android_jar,
         "--min-sdk-version", MIN_SDK, "--target-sdk-version", TARGET_SDK,
         "--version-code", VERSION_CODE, "--version-name", VERSION_NAME,
@@ -274,17 +380,26 @@ def add_code(base, libraries, dex, unsigned, abi=ABI):
 
 def sign(build_tools, aligned, apk, out):
     keystore = os.environ.get("HORIZON_ANDROID_KEYSTORE")
-    alias = os.environ.get("HORIZON_ANDROID_KEY_ALIAS", "horizon-debug")
+    alias = os.environ.get("HORIZON_ANDROID_KEY_ALIAS")
     env = dict(os.environ)
     if not keystore:
-        keystore = out / "debug.keystore"
-        env["HORIZON_ANDROID_STORE_PASSWORD"] = env["HORIZON_ANDROID_KEY_PASSWORD"] = "android"
-        if not keystore.exists():
-            run(
-                "keytool", "-genkeypair", "-keystore", keystore, "-storepass", "android",
-                "-keypass", "android", "-alias", alias, "-keyalg", "RSA", "-keysize", "2048",
-                "-validity", "10000", "-dname", "CN=Horizon Android debug",
-            )
+        previous = ROOT / ".local" / "android" / "debug.keystore"
+        if previous.is_file():
+            keystore = previous
+            alias = alias or "androiddebugkey"
+            env.setdefault("HORIZON_ANDROID_STORE_PASSWORD", "android")
+            env.setdefault("HORIZON_ANDROID_KEY_PASSWORD", "android")
+        else:
+            keystore = out / "debug.keystore"
+            alias = alias or "horizon-debug"
+            env["HORIZON_ANDROID_STORE_PASSWORD"] = env["HORIZON_ANDROID_KEY_PASSWORD"] = "android"
+            if not keystore.exists():
+                run(
+                    "keytool", "-genkeypair", "-keystore", keystore, "-storepass", "android",
+                    "-keypass", "android", "-alias", alias, "-keyalg", "RSA", "-keysize", "2048",
+                    "-validity", "10000", "-dname", "CN=Horizon Android debug",
+                )
+    alias = alias or "horizon-debug"
     apksigner = tool(build_tools, "apksigner")
     run(
         apksigner, "sign", "--ks", keystore, "--ks-key-alias", alias,
@@ -350,8 +465,7 @@ def main():
     if args.library_only:
         return
     if not args.keep_symbols:
-        # The same library with its symbols, never shipped: CI keeps it to read crash frames. Native-mod
-        # builds (--library-only) don't need one.
+        # Keep the same library unstripped for CI crash-symbolication; never put it in the APK.
         shutil.copyfile(built, out / f"lib{LIBRARY}-symbols.so")
 
     variant = "dev" if args.dev else "preview" if args.preview else None
