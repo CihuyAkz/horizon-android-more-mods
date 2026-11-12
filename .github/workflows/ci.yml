@@ -5,7 +5,7 @@ name: checks
 # is built by android.yml.
 on:
   push:
-    # android in JuanLuci/starling; starling and integration in starling-client/starling.
+    # starling and integration in starling-client/starling (android: Horizon Android's, and JuanLuci/starling's).
     branches: [android, starling, integration]
   pull_request:
     types: [opened, synchronize, reopened]

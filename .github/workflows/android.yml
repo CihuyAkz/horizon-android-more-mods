@@ -2,14 +2,15 @@ name: android
 # All four Starling APKs, on GitHub's runners: branch pushes and pull requests build each ABI and keep it
 # as an artifact, signed with the debug key in STARLING_DEBUG_KEYSTORE_BASE64 so one installs over another (a
 # throwaway key where that secret is missing, as in a fork's pull request). A tag v* signs it with the release key held
-# in the repository's secrets (STARLING_KEYSTORE_BASE64, STARLING_KEY_ALIAS, STARLING_STORE_PASSWORD, STARLING_KEY_PASSWORD)
-# and publishes it as the latest release, with packaging/android/release-notes.md. The APK holds no game files: players
-# prepare those from their own copy.
+# in the secrets of the `release` environment (STARLING_KEYSTORE_BASE64, STARLING_KEY_ALIAS, STARLING_STORE_PASSWORD,
+# STARLING_KEY_PASSWORD) and publishes it as the latest release, with packaging/android/release-notes.md. The APK holds
+# no game files: players prepare those from their own copy.
 #
-# Only JuanLuci/starling holds the release key (the merge agreement with Horizon Android). Everywhere else, as in
-# starling-client/starling, every build is Starling Preview (io.github.juanluci.starling.preview, build_apk.py
-# --preview), installed beside the release and signed with that repository's own test key in
-# STARLING_DEBUG_KEYSTORE_BASE64 (alias horizon-debug, password android); a tag there publishes nothing.
+# The release key is starling-client/starling's, in its `release` environment, which only the protected `starling`
+# branch and v* tags reach (a ruleset lets only admins push those tags); JuanLuci/starling held it before. Every other
+# build, and every build elsewhere, is Starling Preview (io.github.juanluci.starling.preview, build_apk.py --preview),
+# installed beside the release and signed with the repository's own test key in STARLING_DEBUG_KEYSTORE_BASE64 (alias
+# horizon-debug, password android); a tag elsewhere publishes nothing.
 on:
   push:
     branches: [android, starling, integration]
@@ -33,8 +34,8 @@ on:
 permissions:
   contents: read
 env:
-  RELEASE_BUILD: ${{ (github.repository == 'JuanLuci/starling' && (startsWith(github.ref, 'refs/tags/v') || inputs.release_key)) && 'true' || 'false' }}
-  PREVIEW: ${{ github.repository != 'JuanLuci/starling' && 'true' || 'false' }}
+  RELEASE_BUILD: ${{ (github.repository == 'starling-client/starling' && (startsWith(github.ref, 'refs/tags/v') || inputs.release_key)) && 'true' || 'false' }}
+  PREVIEW: ${{ !(github.repository == 'starling-client/starling' && (startsWith(github.ref, 'refs/tags/v') || inputs.release_key)) && 'true' || 'false' }}
 concurrency:
   group: android-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -48,6 +49,8 @@ jobs:
           - { abi: armeabi-v7a, target: armv7-linux-androideabi }
           - { abi: x86, target: i686-linux-android }
           - { abi: x86_64, target: x86_64-linux-android }
+    # The release key's environment, for a release build only (none otherwise).
+    environment: ${{ (github.repository == 'starling-client/starling' && (startsWith(github.ref, 'refs/tags/v') || inputs.release_key)) && 'release' || '' }}
     runs-on: ubuntu-latest
     # A release's fast profile builds slower (fewer codegen units, fewer at once: below).
     timeout-minutes: 150
@@ -153,7 +156,7 @@ jobs:
   release:
     # Publish once, only after every architecture has built and signed successfully.
     needs: apk
-    if: github.repository == 'JuanLuci/starling' && startsWith(github.ref, 'refs/tags/v')
+    if: github.repository == 'starling-client/starling' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -185,4 +188,4 @@ jobs:
         if: env.RELEASE_BUILD == 'true' && startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh workflow run native-mods.yml -R "$GITHUB_REPOSITORY" --ref android -f version="${GITHUB_REF_NAME#v}"
+        run: gh workflow run native-mods.yml -R "$GITHUB_REPOSITORY" --ref starling -f version="${GITHUB_REF_NAME#v}"

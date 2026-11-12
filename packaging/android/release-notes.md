@@ -102,7 +102,7 @@ Starling now sits on the newest Horizon, about 4,800 commits ahead of the previo
 
 ## Report a bug
 
-Open an [issue](https://github.com/JuanLuci/starling/issues/new/choose): the form asks for your phone, your Android version and `Starling/logs/latest.log` (with `previous.log` beside it once Starling has been opened again).
+Open an [issue](https://github.com/starling-client/starling/issues/new/choose): the form asks for your phone, your Android version and `Starling/logs/latest.log` (with `previous.log` beside it once Starling has been opened again).
 
 ## Not sure which APK to install?
 
