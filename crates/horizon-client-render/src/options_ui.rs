@@ -298,6 +298,7 @@ impl Opt {
             Opt::AndroidGyroSensitivity => "Gyroscope sensitivity",
             Opt::TouchSwapJumpSneak => "Swap jump / sneak",
             Opt::TouchAutoSprint => "Auto Sprint",
+            Opt::TouchAvoidCutout => "Avoid camera cutout",
 
             Opt::Fov => "options.fov",
             Opt::RenderDistance => "options.renderDistance",
@@ -759,6 +760,7 @@ impl Opt {
                 }
                 .into(),
             ),
+            Opt::TouchAvoidCutout => Some(if s.touch.avoid_cutout { "ON" } else { "OFF" }.into()),
             _ => None,
         };
         if let Some(value) = touch_value {
@@ -1326,6 +1328,7 @@ impl Opt {
             Opt::TouchAttackSide => s.touch.attack_indicator_left ^= true,
             Opt::TouchSwapJumpSneak => s.touch.swap_jump_sneak ^= true,
             Opt::TouchAutoSprint => s.touch.sprint_with_joystick ^= true,
+            Opt::TouchAvoidCutout => s.touch.avoid_cutout ^= true,
             Opt::AndroidInputSelection => s.touch.input_selection.cycle(back),
 
             Opt::GuiScale => {
@@ -4335,6 +4338,7 @@ impl OptionsUi {
                     Opt::GuiScale,
                     Opt::TouchLeftHand,
                     Opt::TouchSwapJumpSneak,
+                    Opt::TouchAvoidCutout,
                 ]));
                 rows.push(Row::Header("Joystick, Actions & Gyroscope"));
                 rows.extend(pairs(&[

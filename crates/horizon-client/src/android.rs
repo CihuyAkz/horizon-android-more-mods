@@ -505,6 +505,25 @@ pub fn ime_height() -> u32 {
     IME_HEIGHT.load(std::sync::atomic::Ordering::Relaxed)
 }
 
+/// The camera cutout's safe insets in window pixels, from StarlingActivity's insets listener:
+/// 16 bits each, left lowest, then top, right and bottom, so a frame never reads half a change.
+static SAFE_INSETS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+/// `StarlingActivity.onSafeInsets` (packaging/android/java), called on the UI thread.
+pub fn set_safe_insets(insets: [i32; 4]) {
+    let packed = insets.iter().rev().fold(0u64, |packed, &pixels| {
+        (packed << 16) | pixels.clamp(0, 0xFFFF) as u64
+    });
+    SAFE_INSETS.store(packed, std::sync::atomic::Ordering::Relaxed);
+}
+
+/// How far the camera cutout reaches into the window from each edge, in pixels: left, top,
+/// right, bottom (#166). All 0 without a cutout, and before Android 9.
+pub fn safe_insets() -> [u32; 4] {
+    let packed = SAFE_INSETS.load(std::sync::atomic::Ordering::Relaxed);
+    std::array::from_fn(|i| ((packed >> (16 * i)) & 0xFFFF) as u32)
+}
+
 /// Start or stop listening to the gyroscope (StarlingActivity.gyroscope); false when the phone
 /// has none.
 pub fn gyroscope(on: bool) -> bool {

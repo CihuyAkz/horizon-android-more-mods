@@ -863,6 +863,7 @@ pub enum Opt {
     AndroidGyroSensitivity,
     TouchSwapJumpSneak,
     TouchAutoSprint,
+    TouchAvoidCutout,
     AndroidInputSelection,
 
     Fov,

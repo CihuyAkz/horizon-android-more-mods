@@ -1630,11 +1630,12 @@ impl Game<'_> {
         self.screen == Screen::Chat && self.touch_shown()
     }
     /// The chat bar's buttons in GUI pixels (x, y, w, h): at the right, just above the text
-    /// field (lifted with it over the keyboard).
-    fn chat_bar(batch: &HudBatch) -> [[f32; 4]; 6] {
+    /// field (lifted with it over the keyboard, and out of a camera cutout's strip with it).
+    fn chat_bar(&self, batch: &HudBatch) -> [[f32; 4]; 6] {
         let (w, h, gap) = (24.0, 16.0, 2.0);
         let y = batch.height - 14.0 - h - 2.0;
-        let left = batch.width - 2.0 - 6.0 * w - 5.0 * gap;
+        let right = batch.width - self.safe_gui_insets(batch.scale)[2];
+        let left = right - 2.0 - 6.0 * w - 5.0 * gap;
         std::array::from_fn(|i| [left + i as f32 * (w + gap), y, w, h])
     }
     /// The chat bar's button under window pixel `p`.
@@ -1645,7 +1646,7 @@ impl Game<'_> {
         let batch = HudBatch::new(self.touch_size(), horizon_client::hud::GuiScale { requested: 0, unicode: false });
         let lift = self.keyboard_height() as f32 / batch.scale;
         let (x, y) = (p[0] / batch.scale, p[1] / batch.scale + lift);
-        Self::chat_bar(&batch)
+        self.chat_bar(&batch)
             .iter()
             .position(|r| x >= r[0] && x < r[0] + r[2] && y >= r[1] && y < r[1] + r[3])
     }
@@ -1661,7 +1662,7 @@ impl Game<'_> {
             .filter(|(_, at)| at.elapsed() < Duration::from_millis(150))
             .map(|(i, _)| i);
         let ink = horizon_client::hud::rgba(255, 255, 255, 255);
-        for (i, r) in Self::chat_bar(batch).iter().enumerate() {
+        for (i, r) in self.chat_bar(batch).iter().enumerate() {
             let sprite = if lit == Some(i) {
                 "gui/sprites/widget/button_highlighted"
             } else {
@@ -1696,6 +1697,48 @@ impl Game<'_> {
             return crate::android::ime_height();
         }
         0
+    }
+
+    /// How far the camera cutout reaches into the window from each edge (left, top, right,
+    /// bottom), in pixels, while the touch settings keep clear of it (Android, #166).
+    fn safe_insets(&self) -> [u32; 4] {
+        #[cfg(target_os = "android")]
+        if self.mobile.controls.settings.avoid_cutout {
+            return crate::android::safe_insets();
+        }
+        [0; 4]
+    }
+
+    /// [`Self::safe_insets`] in whole GUI pixels at `scale`.
+    pub(in crate::game) fn safe_gui_insets(&self, scale: f32) -> [f32; 4] {
+        if scale <= 0.0 {
+            return [0.0; 4];
+        }
+        self.safe_insets()
+            .map(|pixels| (pixels as f32 / scale).ceil())
+    }
+
+    /// `draw` laid out on the part of `batch` between the camera cutout's strips at the left
+    /// and right ([`Self::safe_gui_insets`]) as if that were the whole width, then moved in
+    /// from the left with the controller targets it made: what keeps to an edge keeps to the
+    /// strip's. `draw` is told how far it moves, to take a pointer into its layout. Without a
+    /// strip it draws as it always did.
+    pub(in crate::game) fn draw_clear_of_cutout(
+        &self,
+        batch: &mut HudBatch,
+        draw: impl FnOnce(&mut HudBatch, f32),
+    ) {
+        let [left, _, right, _] = self.safe_gui_insets(batch.scale);
+        let (start, targets, width) = (
+            batch.vertices.len(),
+            horizon_client::widgets::targets_mark(),
+            batch.width,
+        );
+        batch.width = (width - left - right).max(0.0);
+        draw(batch, left);
+        batch.width = width;
+        batch.translate_since(start, left, 0.0);
+        horizon_client::widgets::shift_targets(targets, left);
     }
 
     /// How far, in GUI pixels at `scale`, [`Self::lift_over_keyboard`] moves the chat up: what a

@@ -244,6 +244,19 @@ pub fn targets_mark() -> usize {
     TARGETS.with_borrow(|(current, _, _)| current.len())
 }
 
+/// Move the targets registered since `mark` `dx` GUI pixels right, with what drew them: a
+/// screen laid out clear of a camera cutout's strip, then moved in.
+pub fn shift_targets(mark: usize, dx: f32) {
+    if dx == 0.0 {
+        return;
+    }
+    TARGETS.with_borrow_mut(|(current, _, _)| {
+        for target in current.iter_mut().skip(mark) {
+            target.rect[0] += dx;
+        }
+    });
+}
+
 /// Drop the targets registered since `mark` that aren't inside `y0..y1`
 /// (GUI pixels): rows a scrolling list clipped away.
 pub fn clip_targets(mark: usize, y0: f32, y1: f32) {

@@ -1422,7 +1422,9 @@ impl Game<'_> {
         }
     }
     /// The pointer where the chat lays its parts out: over the on-screen keyboard the chat is
-    /// drawn higher (`lift_over_keyboard`), so the point under a finger is that much lower in it.
+    /// drawn higher (`lift_over_keyboard`), so the point under a finger is that much lower in it;
+    /// beside a camera cutout it is drawn further right (`draw_clear_of_cutout`), so that much
+    /// further left in it.
     fn chat_pointer(&self) -> (f32, f32) {
         let scale = self.renderer.as_ref().map_or(1.0, |r| {
             HudBatch::new(
@@ -1431,7 +1433,10 @@ impl Game<'_> {
             )
             .scale
         });
-        (self.cursor.0, self.cursor.1 + self.chat_lift(scale))
+        (
+            self.cursor.0 - self.safe_gui_insets(scale)[0],
+            self.cursor.1 + self.chat_lift(scale),
+        )
     }
     pub(super) fn chat_scroll(&mut self, amount: f32) {
         let cursor = self.chat_pointer();
@@ -1477,7 +1482,9 @@ impl Game<'_> {
                 .width
             });
             let (x, y, w, h) = Self::leave_bed_button(width, height);
-            if horizon_client::screen_draw::inside((cursor.0 as i32, cursor.1 as i32), x, y, w, h) {
+            // The button is in the middle, where the cutout's strip moves nothing.
+            let at = (self.cursor.0 as i32, cursor.1 as i32);
+            if horizon_client::screen_draw::inside(at, x, y, w, h) {
                 self.wake_up();
                 return;
             }
@@ -1711,7 +1718,9 @@ impl Game<'_> {
         let (home_x, home_y) = (0, height - 40);
         let (mut x, mut y) = (home_x, home_y);
         self.native_customize_chat_overlay(width, height, focused, &mut x, &mut y);
-        let offset = [(x - home_x) as f32, (y - home_y) as f32];
+        // Out of a camera cutout's strip at the left, as the chat box below it (#166).
+        let clear = self.safe_gui_insets(batch.scale)[0];
+        let offset = [(x - home_x) as f32 + clear, (y - home_y) as f32];
         self.ui
             .chat
             .draw_at(batch, &self.gui.atlas, now, focused, offset);
@@ -1771,7 +1780,6 @@ impl Game<'_> {
             dispatcher: chat_tree(&self.remote),
             registries: &self.ui.registries,
         };
-        screen.resize(&m, &c, batch.width as i32, batch.height as i32);
         // Options.getBackgroundColor(Integer.MIN_VALUE).
         let background = if self.settings.file.bool("backgroundForChatOnly") {
             i32::MIN
@@ -1785,8 +1793,13 @@ impl Game<'_> {
             .ui
             .chat_opened
             .map_or(0, |t| t.elapsed().as_millis() as u64);
-        let draws = screen.draw(&m, mouse, blink, background);
-        horizon_client::screen_draw::paint(batch, &self.gui.atlas, &draws);
+        // The box and its suggestions keep out of a camera cutout's strips (#166).
+        self.draw_clear_of_cutout(batch, |batch, clear| {
+            screen.resize(&m, &c, batch.width as i32, batch.height as i32);
+            let mouse = ((pointer.0 - clear).floor() as i32, mouse.1);
+            let draws = screen.draw(&m, mouse, blink, background);
+            horizon_client::screen_draw::paint(batch, &self.gui.atlas, &draws);
+        });
         self.ui.chat_screen = Some(screen);
         if in_bed {
             let button = Self::leave_bed_draws(&m, mouse, batch.width, batch.height);
@@ -1795,13 +1808,17 @@ impl Game<'_> {
         // The hovered message part's tooltip (`renderComponentHoverEffect`),
         // or the text of the message tag under the cursor.
         let height = batch.height as i32;
-        let (cx, cy) = (f64::from(pointer.0), f64::from(pointer.1));
+        // The lines are drawn that much further right (`draw_chat`).
+        let clear = self.safe_gui_insets(batch.scale)[0];
+        let (cx, cy) = (f64::from(pointer.0 - clear), f64::from(pointer.1));
         // handleTagIcon: the chat-modified icons over the cursor or its message.
         let (tag_tooltip, tag_icons) =
             self.ui
                 .chat
                 .focused_tags(&self.gui.atlas.font, height, cx, cy);
+        let start = batch.vertices.len();
         horizon_client::hud_layout::paint(batch, &self.gui.atlas, &tag_icons);
+        batch.translate_since(start, clear, 0.0);
         if let Some(style) = self.ui.chat.style_at(&self.gui.atlas.font, height, cx, cy) {
             // ActiveTextCollector.ClickableStyleFinder: a click event, or an
             // insertion while Shift is held (ChatScreen.includeInsertions).

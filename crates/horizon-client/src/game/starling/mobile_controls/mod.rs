@@ -243,10 +243,12 @@ impl Game<'_> {
         tc.break_progress = breaking;
         tc.in_menu = in_menu;
         tc.in_inventory = matches!(self.screen, Screen::Inventory | Screen::Creative);
-        tc.viewport(
+        let (width, height) = (
             self.window.as_ref().map_or(1, |w| w.inner_size().width),
             self.window.as_ref().map_or(1, |w| w.inner_size().height),
         );
+        tc.viewport(width, height);
+        tc.safe_insets(width, height, crate::android::safe_insets());
         let flying = self.player.as_ref().is_some_and(|p| p.flying);
         if shown && flying && !tc.vertical_movement {
             self.toggles.0[0] = horizon_client::keymapping::KeyState::toggle(true, true);
@@ -351,7 +353,11 @@ impl Game<'_> {
             self.mobile.ui.virtual_mouse,
         );
         if tc.editor.is_none() {
-            self.mobile.ui.draw(b, &self.gui.atlas, self.pad_in_menu());
+            // Out of the camera cutout's strips with the controls (#166); `android_aux_touch`
+            // reads them there.
+            self.draw_clear_of_cutout(b, |b, _| {
+                self.mobile.ui.draw(b, &self.gui.atlas, self.pad_in_menu());
+            });
             self.mobile
                 .ui
                 .draw_floating_menu(b, &self.gui.atlas, &tc.settings);
@@ -1562,13 +1568,17 @@ impl Game<'_> {
         if t.phase == TouchPhase::Moved {
             return Ok(false);
         }
+        // The utility keys as `mobile_draw` lays them out, clear of the cutout's strips.
+        let [left, _, right, _] = self.safe_gui_insets(b.scale);
         if t.phase == TouchPhase::Started
             && !self.mobile.ui.owns_relative(t.id)
             && !self.mobile.ui.owns_gesture(t.id)
-            && let Some(action) = self
-                .mobile
-                .ui
-                .action(b.width, b.height, p, self.pad_in_menu())
+            && let Some(action) = self.mobile.ui.action(
+                b.width - left - right,
+                b.height,
+                [p[0] - left, p[1]],
+                self.pad_in_menu(),
+            )
         {
             {
                 self.mobile.controls.clear();
