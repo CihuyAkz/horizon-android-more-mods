@@ -17,6 +17,7 @@ use horizon_client::{
         Installed, KeyConflictContext, KeyMapping, NativePage, NativeSetting, NativeSettingValue,
     },
     starling_mod_api::NativeMod,
+    text::Text,
 };
 use horizon_core::position::BlockPos;
 use horizon_world::registry::BlockStateId;
@@ -276,6 +277,73 @@ fn old_button(j: usize, label: String) -> NativeSetting {
 /// The old helpers, by their old names and shapes, on the new ones. Only mods call them.
 #[allow(dead_code)]
 impl Game<'_> {
+    /// The width of `text` in GUI pixels, as `native_text` draws it (`Font.width`); Horizon's
+    /// `native_text_width` takes the batch it draws on first now.
+    pub(in crate::game) fn native_text_width_old(&self, text: &str) -> f32 {
+        HudBatch::text_width(&self.gui.atlas, text)
+    }
+    /// Asks for the blur behind the open screen this frame; false when it was already asked.
+    pub(in crate::game) fn native_apply_screen_blur(&self) -> bool {
+        self.apply_screen_blur()
+    }
+    /// Sends `message` to the server as the player's chat.
+    pub(in crate::game) fn native_send_chat(&mut self, message: &str) -> Result<(), String> {
+        self.send_chat(message)
+    }
+    /// The world's clock: its game time and its time of day, while in a world.
+    pub(in crate::game) fn native_clock(&self) -> Option<mod_api::game::Clock> {
+        self.clock()
+    }
+    /// The rain and thunder levels of the world in place, each 0.0 to 1.0.
+    pub(in crate::game) fn native_weather(&self) -> (f32, f32) {
+        self.weather_levels(1.0)
+    }
+    /// The block light and sky light at `pos` (0 to 15), 0 where it isn't loaded.
+    pub(in crate::game) fn native_light(&self, pos: [i32; 3]) -> (u8, u8) {
+        if !self.world.loaded(pos[0], pos[2]) {
+            return (0, 0);
+        }
+        let light = self.world.light(pos[0], pos[1], pos[2]);
+        (light & 15, light >> 4)
+    }
+    /// Binds mod `mod_id`'s key `name` to `key` (none: back to its default), kept with the
+    /// options; whether it changed.
+    pub(in crate::game) fn native_set_mod_key(
+        &mut self,
+        mod_id: &str,
+        name: &str,
+        key: Option<&str>,
+    ) -> bool {
+        if !self.native_window()
+            || mod_id.is_empty()
+            || name.is_empty()
+            || mod_id.len() > 256
+            || name.len() > 256
+            || key.is_some_and(|k| k.len() > 512)
+        {
+            return false;
+        }
+        let old = self.settings.mods.binding(mod_id, name, ("", 0)).0;
+        if key == Some(old.as_str()) || (key.is_none() && old.is_empty()) {
+            return false;
+        }
+        match key {
+            Some(key) => self.settings.mods.set_binding(mod_id, name, key, 0),
+            None => {
+                if let Some(keys) = self.settings.mods.keys.get_mut(mod_id) {
+                    keys.remove(name);
+                }
+            }
+        }
+        self.settings.save(&Self::options_path());
+        true
+    }
+    /// Sets this client's action bar, with the normal timer; no server command or packet.
+    pub(in crate::game) fn native_client_action_bar(&mut self, text: Text, animate: bool) {
+        if self.native_window() {
+            self.titles.set_overlay(text, animate);
+        }
+    }
     /// Whether the player left mod `mod_id` on in Options > Mods.
     pub(in crate::game) fn native_on(&self, mod_id: &str) -> bool {
         self.on(mod_id)

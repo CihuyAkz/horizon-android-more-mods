@@ -97,11 +97,38 @@ def with_arguments(text, call, count, new):
     return text
 
 
+# Calls of a helper whose new shape takes other arguments, by how many they pass: the old shape
+# Starling keeps as `<name>_old` (game/starling/native_compat.rs).
+OLD_SHAPES = ((".native_text_width(", 1, ".native_text_width_old("),)
+
+
+def count_arguments(text, first):
+    """The number of arguments of the call whose `(` ends at `first`, and where its `)` is."""
+    depth, commas, i = 1, 0, first
+    while depth and i < len(text):
+        depth += (text[i] in "([{") - (text[i] in ")]}")
+        commas += text[i] == "," and depth == 1
+        i += 1
+    inner = text[first : i - 1].strip()
+    return (commas + (not inner.endswith(","))) if inner else 0, i
+
+
+def old_shapes(text):
+    for call, count, old in OLD_SHAPES:
+        at = 0
+        while (start := text.find(call, at)) >= 0:
+            if count_arguments(text, start + len(call))[0] == count:
+                text = text[:start] + old + text[start + len(call) :]
+            at = start + 1
+    return text
+
+
 def old_api(text):
     """The client's old `mod_api` module, which Horizon made the `mod_api` crate: Starling keeps it
     with its old names as `starling_mod_api` (a module named `mod_api` would be ambiguous with the
-    crate)."""
+    crate). NBT moved from horizon-world to horizon-core."""
     text = re.sub(r"\buse (horizon_client|crate)::mod_api;", r"use \1::starling_mod_api as mod_api;", text)
+    text = re.sub(r"\bhorizon_world::nbt\b", "horizon_core::nbt", text)
     return re.sub(r"\b(horizon_client|crate)::mod_api\b", r"\1::starling_mod_api", text)
 
 
@@ -110,7 +137,7 @@ def code(text):
         text = with_arguments(text, call, count, new)
     for old, new in CHANGED:
         text = re.sub(old, new, text)
-    return old_api(text)
+    return old_api(old_shapes(text))
 
 
 def owners(source):

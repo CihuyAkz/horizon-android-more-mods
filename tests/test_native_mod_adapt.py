@@ -36,6 +36,19 @@ class Calls(unittest.TestCase):
         self.assertEqual(said, "Break(content_root(root, enabled, &with, None, &mut |_| {}))")
 
 
+class OldShapes(unittest.TestCase):
+    def test_a_call_in_the_old_shape_goes_to_the_old_helper(self):
+        said = adapt.code("let w = game.native_text_width(&line.text) + 4.0;")
+        self.assertEqual(said, "let w = game.native_text_width_old(&line.text) + 4.0;")
+
+    def test_a_call_in_the_new_shape_stays(self):
+        line = "let w = game.native_text_width(batch, f(a, b));"
+        self.assertEqual(adapt.code(line), line)
+
+    def test_nbt_is_horizon_cores(self):
+        self.assertEqual(adapt.code("use horizon_world::nbt::Tag;"), "use horizon_core::nbt::Tag;")
+
+
 class OldApi(unittest.TestCase):
     def test_the_old_mod_api_module_is_starlings(self):
         said = adapt.code("use horizon_client::mod_api::NativeScreenView;\nuse crate::mod_api;\n")
