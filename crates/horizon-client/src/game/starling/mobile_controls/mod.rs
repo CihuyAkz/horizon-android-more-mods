@@ -415,7 +415,18 @@ impl Game<'_> {
         let in_menu = self.pad_in_menu();
         self.mobile.controls.in_menu =
             in_menu && !(self.screen == Screen::Options && self.options_waiting_for_key());
-        let inventory_control = self.mobile.controls.settings.inventory_controls
+        // The controls drawn over a container take their touches: every one with the inventory
+        // controls on, and else the ones the MCPE style shows there anyway, Sneak (Shift-click)
+        // and Inventory (#168, #235: the Shift button was drawn and a tap went through it).
+        let shown_over_container = self.mobile.controls.settings.inventory_controls
+            || self.mobile.controls.control_at(n).is_some_and(|c| {
+                matches!(
+                    c,
+                    horizon_client::android_controls::Control::Sneak
+                        | horizon_client::android_controls::Control::Inventory
+                )
+            });
+        let inventory_control = shown_over_container
             && matches!(self.screen, Screen::Inventory | Screen::Creative)
             && (self.mobile.controls.owns_pointer(t.id)
                 || (t.phase == TouchPhase::Started && self.mobile.controls.control_at_point(n)));
