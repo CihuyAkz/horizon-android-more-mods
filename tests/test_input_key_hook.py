@@ -111,6 +111,8 @@ impl Game {
         assert!(self.input);
         self.calls.push("hook"); self.observed.push((name, action, modifiers));
     }
+    // Starling's old key hook (native_compat.rs), called beside the new one.
+    fn native_input_key_old(&mut self, _: &KeyEvent, _: u32) {}
     METHOD
 }
 #[test]
