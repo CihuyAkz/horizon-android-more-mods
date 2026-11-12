@@ -7398,6 +7398,9 @@ impl Game<'_> {
         // The rockets boosting this player tick after it, also while it waits
         // for chunks.
         self.tick_own_rockets();
+        // Starling: client mods made for the old hooks tick on any server, single player's own
+        // included (native_compat.rs).
+        self.native_tick();
         self.tick_book_snapshot_retry();
         // Far tiles the samplers asked for (`lod_net`).
         if let Some(r) = &self.remote {

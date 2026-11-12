@@ -22,6 +22,9 @@ use horizon_client::{
 use horizon_core::position::BlockPos;
 use horizon_protocol::packets::play::{self, Clientbound as C};
 use mod_api::LevelRef;
+// Starling: the old names mods made for the old hooks use (native_compat.rs).
+#[allow(unused_imports)]
+pub use horizon_client::starling_mod_api::{NativeCommand, NativeServerPlayer};
 use mod_api::{
     ActionOutcome, ActionRefused, FakeEffect, GameMode, GlobalPos, Identifier, PlayerAction,
     PlayerActionSetup, PlayerFood, PlayerRef, PlayerRespawnConfig, ScopedActionResult,

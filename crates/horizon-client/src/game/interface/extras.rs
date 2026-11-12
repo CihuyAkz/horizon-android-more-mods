@@ -36,6 +36,8 @@ impl Game<'_> {
     }
     /// Mouse buttons while playing, for mods' clicks.
     pub(super) fn extras_mouse(&mut self, button: MouseButton, pressed: bool) {
+        // Starling: the mods made for the old hooks hear it as a key (native_compat.rs).
+        self.native_mouse_event(button, pressed);
         let i = match button {
             MouseButton::Left => 0,
             MouseButton::Right => 1,
@@ -61,6 +63,8 @@ impl Game<'_> {
         let now = self.extras_now();
         self.extras.fps.record(now, elapsed.as_secs_f32() * 1000.0);
         self.native_render_frame_pre(elapsed);
+        // Starling: the old hook, for the mods made for it (native_compat.rs).
+        self.native_frame(elapsed);
         // A clear a mod asked for (in this frame's `RenderFrameEvent.Pre`, or after the last
         // frame was drawn) lands before this frame's particles are drawn, paused or not.
         self.apply_mod_particle_clear();
@@ -277,6 +281,8 @@ impl Game<'_> {
         }
         self.draw_pvp_hud(batch, &mut corners);
         self.native_render_gui_post(batch, &mut corners);
+        // Starling: the old hook, for the mods made for it (native_compat.rs).
+        self.native_hud(batch, &mut corners);
     }
     /// The height the status effect icons take at the top right
     /// (`Hud.extractEffects`: beneficial at y 1, harmful at y 26).

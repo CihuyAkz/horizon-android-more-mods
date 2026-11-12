@@ -16,6 +16,9 @@ use horizon_client::{
     random_source,
 };
 use mod_api::SoundSource;
+// Starling: the old name mods made for the old hooks use (native_compat.rs).
+#[allow(unused_imports)]
+pub use horizon_client::starling_mod_api::NativeDispensed;
 // Its old home, for mixin code that names it here.
 use horizon_core::{
     geometry::{Aabb, Direction, Vec3},

@@ -857,11 +857,15 @@ impl Game<'_> {
     }
     /// Deliver a non-repeat key press to the native panel.
     pub(super) fn native_panel_key_event(&mut self, key: KeyCode, pressed: bool, repeat: bool) {
-        if pressed
-            && !repeat
-            && let Some(name) = keybinds::key_name(key)
-        {
-            self.native_panel_key(name);
+        if repeat {
+            return;
+        }
+        if let Some(name) = keybinds::key_name(key) {
+            if pressed {
+                self.native_panel_key(name);
+            }
+            // Starling: and to the mods made for the old hooks, down and up (native_compat.rs).
+            self.native_key(name, pressed);
         }
     }
     /// Whether a mod listens to one of the four screen render hooks; nothing
@@ -2579,6 +2583,12 @@ impl Game<'_> {
         stack: Option<&ItemStack>,
     ) -> BlockClickAnswer {
         let (mut use_block, mut use_item) = (TriState::Default, TriState::Default);
+        // Starling: the old hook first, for the mods made for it (native_compat.rs).
+        let mut canceled = false;
+        self.native_right_click_block_old(hit.pos, hit.face, &mut canceled);
+        if canceled {
+            return BlockClickAnswer::Canceled(mod_api::InteractionResult::Pass);
+        }
         if !mod_api::__private::listened(mod_api::HookId::RightClickBlock) {
             return BlockClickAnswer::Go {
                 use_block,
@@ -3465,6 +3475,8 @@ impl Game<'_> {
             row.native = Some(NativePage { mappings, settings });
             self.settings.mods.installed.push(row);
         }
+        // Starling: and the mods made for the old hooks (native_compat.rs).
+        self.list_old_native_mods();
     }
     /// The settings mod `mod_id` registered, with their kept values, as its page shows them.
     fn native_page_settings(&self, mod_id: &str) -> Vec<NativeSetting> {
@@ -3506,6 +3518,10 @@ impl Game<'_> {
     /// Setting `j` of native mod `i`'s page (its index in Options > Mods) changed on the page:
     /// kept as the mod registered it, then the mod is told (`setting_changed`).
     pub(super) fn native_setting_event(&mut self, i: usize, j: usize) {
+        // Starling: a button of a mod made for the old hooks (native_compat.rs).
+        if self.old_native_setting_event(i, j) {
+            return;
+        }
         let Some(row) = self.settings.mods.installed.get(i) else {
             return;
         };
@@ -3529,6 +3545,10 @@ impl Game<'_> {
     }
     /// Native mod `i`'s page opened: its settings' kept values read again.
     pub(super) fn native_settings_refresh(&mut self, i: usize) {
+        // Starling: the buttons of a mod made for the old hooks (native_compat.rs).
+        if self.old_native_settings_refresh(i) {
+            return;
+        }
         let Some(id) = self.settings.mods.installed.get(i).map(|m| m.id.clone()) else {
             return;
         };

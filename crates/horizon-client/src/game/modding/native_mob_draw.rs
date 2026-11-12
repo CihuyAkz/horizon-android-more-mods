@@ -8,6 +8,9 @@
 //! player in view gets `native_mob_layer` after its vanilla model
 //! (`EntityRenderersEvent.AddLayers`), in the same frame.
 pub use mod_api::game::{MobRender, PlayerRender};
+// Starling: the old names mods made for the old hooks use (native_compat.rs).
+#[allow(unused_imports)]
+pub use horizon_client::starling_mod_api::{NativeMobRender, NativePlayerRender};
 
 use super::{Dim, Game, native_block_entity_draw::BlockEntityDraw};
 use glam::{DVec3, Mat4};

@@ -1335,6 +1335,10 @@ impl LevelAccess for GameLevel<'_> {
                 destroy,
                 canceled: &mut canceled,
             });
+            // Starling: the old hook, for the mods made for it (native_compat.rs).
+            if !canceled {
+                self.native_piston_move(self.dimension, piston, step, push, destroy, &mut canceled);
+            }
         }
         !canceled
     }
@@ -6978,6 +6982,10 @@ impl Game<'_> {
         let mut canceled = false;
         let mut exp_to_drop = None;
         self.native_break_block(pos, state, &mut canceled, &mut exp_to_drop);
+        // Starling: the old hook, for the mods made for it (native_compat.rs).
+        if !canceled {
+            self.native_destroy_block(pos, state, &mut canceled);
+        }
         if canceled {
             return Ok(false);
         }
@@ -7616,6 +7624,15 @@ impl Game<'_> {
         // aimed at had its turn, and the item is off cooldown. A guest's
         // UseItemOn reaches only useOn, its UseItem only use.
         let mut claimed = false;
+        // Starling: the old hook first, for the mods made for it (native_compat.rs): a claimed
+        // use swings the hand, and neither the item's useOn nor its use runs.
+        if let Some(hit) = block_hit {
+            self.native_use_item_on_old(&stack, hit.pos, hit.face, &mut claimed);
+            if claimed {
+                self.swing_arm();
+                return Ok(true);
+            }
+        }
         if let Some(hit) = block_hit {
             if let Some(answer) = self.use_item_on_block(
                 hit,
@@ -8453,6 +8470,8 @@ impl Game<'_> {
         self.tick_totem();
         self.update_totem_ready();
         self.tick_command_extras();
+        // Starling: the old tick hook, for the mods made for it (native_compat.rs).
+        self.native_tick();
         self.tick_world(running)
     }
     /// What the tick runs after the local player's own update: effects, the

@@ -810,7 +810,9 @@ impl Game<'_> {
                     // MouseHandler.onScroll: the hotbar (or the spectator
                     // menu) takes the wheel only when no screen is open; a
                     // book, lectern, sign or prompt drawn over gameplay is one.
-                    if self.hotbar_takes_wheel() {
+                    // Starling: a mod made for the old hooks may take the steps first
+                    // (native_compat.rs).
+                    if self.hotbar_takes_wheel() && !self.native_wheel_event(d) {
                         let scroll =
                             self.mouse
                                 .on_scroll(raw_x, raw_y, discrete, wheel_sensitivity);

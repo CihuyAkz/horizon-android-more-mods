@@ -181,7 +181,11 @@ impl Game<'_> {
             horizon_client::command::MOD_COMMAND,
             &arguments,
         );
-        with_studio_commands(&with_native_commands(&tree_with_mods, &["studio"]))
+        // Starling: and the names the old hook gives, for the mods made for it
+        // (native_compat.rs).
+        let mut names = vec!["studio"];
+        self.native_commands(&mut names);
+        with_studio_commands(&with_native_commands(&tree_with_mods, &names))
     }
 }
 
