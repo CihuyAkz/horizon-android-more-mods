@@ -93,6 +93,17 @@ public class StarlingActivity extends NativeActivity {
      * build named by GAME_LIBRARY, the very library loaded here.
      */
     private void loadGame() {
+        // The game's thread (android_main, which android-activity starts with std's default 2 MiB
+        // stack) builds the game and the world renderer in frames of about a megabyte each since
+        // Horizon of 2026-11, past that stack's end. Rust's threads take this size unless they ask
+        // for one, and std reads it once, at the first thread: before the library is loaded. As
+        // Linux gives a desktop game's main thread; the player's own setting is kept.
+        try {
+            Os.setenv("RUST_MIN_STACK",
+                    android.os.Process.is64Bit() ? "16777216" : "8388608", false);
+        } catch (ErrnoException e) {
+            // std's default then.
+        }
         String stamp = NativeMods.stamp(this);
         if (stamp != null) {
             try {
