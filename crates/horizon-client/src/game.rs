@@ -2078,7 +2078,13 @@ struct FallingBlock {
     /// The UUID and compound it was loaded with, kept while it moves.
     saved: Option<Box<([i32; 4], horizon_core::nbt::Tag)>>,
 }
-horizon_mod_runtime::impl_attachment_lifetime!(FallingBlock);
+// Starling: in a module of its own, so the game module calls no macro at its top: horizon-mixins
+// can't tell what such a call defines, and refused a native mod's macros in every function under
+// the game module (E_UNSUPPORTED_MACRO).
+mod falling_block_attachments {
+    use super::FallingBlock;
+    horizon_mod_runtime::impl_attachment_lifetime!(FallingBlock);
+}
 
 impl FallingBlock {
     /// Where `FallingBlockRenderer` draws the block's model corner, `alpha`
