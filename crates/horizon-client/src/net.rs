@@ -1593,7 +1593,8 @@ mod tests {
             thread
                 .join()
                 .unwrap()
-                .unwrap_or_else(|reason| panic!("configuration failed: {}", reason.text));
+                .unwrap_or_else(|reason| panic!("configuration failed: {}", reason.text))
+                .unwrap_or_else(|reason| panic!("configuration ended: {}", reason.text));
             std::fs::remove_dir_all(root).unwrap();
         }
     }
