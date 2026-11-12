@@ -1446,12 +1446,10 @@ pub fn apply_mobile_defaults(tier: crate::system_stats::Tier, s: &mut crate::set
         Tier::Low => 70,
     };
     g.animated_textures = tier != Tier::Low;
-    // A phone's GPU is an integrated one, which far terrain slows most.
-    g.far_detail = if high {
-        FarDetail::Full
-    } else {
-        FarDetail::Reduced
-    };
+    // A phone's GPU is held back by geometry, which far terrain is most of: on the Snapdragon 8
+    // Gen 2 at render distance 8 and LOD distance 128, Full drew the frame in 29 to 31 ms of GPU
+    // and Mobile in 19 (render distance 8 alone, 15.5).
+    g.far_detail = FarDetail::Mobile;
 }
 
 #[cfg(test)]
@@ -1581,6 +1579,11 @@ mod tests {
         assert!(!low.horizon.animated_textures && high.horizon.animated_textures);
         // Auto-Jump on, as on Bedrock's touch screens.
         assert!(low.auto_jump && high.auto_jump);
+        // Far terrain as coarse as Mobile on every tier.
+        assert_eq!(
+            (low.horizon.far_detail, high.horizon.far_detail),
+            (FarDetail::Mobile, FarDetail::Mobile)
+        );
         // What the options screens read back.
         let file = high.to_file();
         let back = crate::settings::Settings::from_file(file);
