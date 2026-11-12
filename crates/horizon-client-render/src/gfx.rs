@@ -3188,6 +3188,14 @@ impl Renderer {
         request: output::FrameRequest,
         display: output::DisplayReading,
     ) -> Result<Self> {
+        // The window is in the background (Android) while this replaces a renderer that let its
+        // surface go (`suspend`): no surface can be made on it now ("the underlying handle is not
+        // available", a fatal error when loading ended in the background). This one starts
+        // suspended too, with the previous one's window format, and makes its surface on `resume`
+        // (as an offscreen renderer never would).
+        let waits_for_window = !offscreen
+            && previous
+                .is_some_and(|p| p.suspended && p.surface.is_none() && p.offscreen.is_none());
         let Opened {
             instance,
             surface,
@@ -3204,7 +3212,7 @@ impl Renderer {
                 describe_adapter(&renderer.adapter);
                 check_layers(&renderer.adapter, layers)?;
                 Opened {
-                    surface: if offscreen {
+                    surface: if offscreen || waits_for_window {
                         None
                     } else {
                         let spare = renderer
@@ -3274,6 +3282,13 @@ impl Renderer {
                 );
             }
             (config, caps.present_modes, hdr_output)
+        } else if let Some(previous) = previous.filter(|_| waits_for_window) {
+            // The window's own format, as the previous renderer configured it.
+            (
+                previous.config.clone(),
+                previous.present_modes.clone(),
+                previous.output_caps.hdr,
+            )
         } else {
             let format = wgpu::TextureFormat::Bgra8Unorm;
             let config = wgpu::SurfaceConfiguration {
@@ -3301,8 +3316,7 @@ impl Renderer {
             }
             (config, Vec::new(), hdr_output)
         };
-        let offscreen = surface
-            .is_none()
+        let offscreen = (surface.is_none() && !waits_for_window)
             .then(|| Self::offscreen_target(&device, &config));
         let wide_ok = draws_wide_frame(
             device.features(),
@@ -3319,7 +3333,8 @@ impl Renderer {
             adapter.get_downlevel_capabilities().flags,
             adapter.get_texture_format_features(hud_coverage::FORMAT),
         );
-        let hdr_driver = surface.is_some().then(|| output::window_driver(&info));
+        let hdr_driver =
+            (surface.is_some() || waits_for_window).then(|| output::window_driver(&info));
         let output_caps = output::OutputCapabilities {
             hdr: hdr_output,
             wide_frame: wide_ok,
@@ -5682,8 +5697,8 @@ impl Renderer {
             post_effects: None,
             readback: readback::Readback::default(),
             info,
-            suspended: !drawable_size(size.width, size.height, max_side),
-            detached: false,
+            suspended: waits_for_window || !drawable_size(size.width, size.height, max_side),
+            detached: waits_for_window,
             acquire_validation_failures: 0,
             surface_unconfigured: false,
             drawn_sections: 0,
