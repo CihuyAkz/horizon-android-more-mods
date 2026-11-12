@@ -270,7 +270,8 @@ impl OnPhone {
 }
 
 /// A file of `horizon-native-mods/` a native mod may be: Starling's `.hnmod` (Open with) or the
-/// `.hmod` Horizon's catalog installs a native mod as. `Bundle::read` tells the rest apart.
+/// `.hmod` Horizon's catalog installs a native mod as, in either format (`native::Any`), which
+/// tells the rest apart.
 fn native_file(path: &std::path::Path) -> bool {
     path.extension().is_some_and(|e| e == "hnmod" || e == "hmod")
 }
@@ -284,8 +285,8 @@ fn folder_mods_on(off: &BTreeSet<String>) -> BTreeSet<String> {
         .flatten()
         .map(|e| e.path())
         .filter(|p| native_file(p))
-        .filter_map(|p| horizon_mod_package::index::native::Bundle::read(&p).ok())
-        .map(|bundle| bundle.manifest.id)
+        .filter_map(|p| horizon_mod_package::index::native::Any::read(&p).ok())
+        .map(|bundle| bundle.id().to_owned())
         .filter(|id| !off.contains(id))
         .collect()
 }
@@ -445,10 +446,10 @@ fn bundles_body() -> Result<Vec<u8>, String> {
     let mut seen = BTreeSet::new();
     let mut mods = Vec::new();
     for path in paths {
-        let Ok(bundle) = horizon_mod_package::index::native::Bundle::read(&path) else {
+        let Ok(bundle) = horizon_mod_package::index::native::Any::read(&path) else {
             continue;
         };
-        if off.contains(&bundle.manifest.id) || !seen.insert(bundle.manifest.id.clone()) {
+        if off.contains(bundle.id()) || !seen.insert(bundle.id().to_owned()) {
             continue;
         }
         mods.push(

@@ -1399,7 +1399,8 @@ fn not_built(
     paths.sort();
     let mut out: Vec<Installed> = Vec::new();
     for path in paths {
-        let bundle = match horizon_mod_package::index::native::Bundle::read(&path) {
+        // Starling: either format, the registry's `.hnmod` bundle too (`native::Any`).
+        let bundle = match horizon_mod_package::index::native::Any::read(&path) {
             Ok(bundle) => bundle,
             // Said on its row: a file left out without a word looks like the folder isn't read.
             Err(e) => {
@@ -1422,12 +1423,12 @@ fn not_built(
                 continue;
             }
         };
-        let m = bundle.manifest;
-        let listed = rows.iter().chain(&out).any(|row| row.id == m.id);
-        if !listed && !built.iter().any(|b| b.id == m.id) {
+        let (id, version) = (bundle.id().to_owned(), bundle.version());
+        let listed = rows.iter().chain(&out).any(|row| row.id == id);
+        if !listed && !built.iter().any(|b| b.id == id) {
             out.push(Installed {
-                title: format!("{} {}", display_name(&m.id), m.version),
-                id: m.id,
+                title: format!("{} {version}", display_name(&id)),
+                id,
                 description: String::new(),
                 problem: Some(mod_list::NOT_BUILT.to_owned()),
                 dev: false,
