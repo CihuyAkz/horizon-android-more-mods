@@ -188,28 +188,74 @@ pub enum Side {
     Both,
 }
 
-/// What a content mod adds; the player sees it before turning the mod on.
+/// What a mod may do; the player sees it before turning the mod on. A content mod's is
+/// `registries`; the others are the wasm mods' of the registry's index (Starling 0.8.0 read them,
+/// and the index still lists such mods), and one this game does not know yet is `Unknown`, so a
+/// newer index still reads.
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq, PartialOrd, Ord)]
 #[serde(rename_all = "kebab-case")]
 pub enum Capability {
+    GameRead,
+    Chat,
+    Hud,
+    Storage,
+    /// Runs vanilla commands as the player, with the player's permissions.
+    Command,
     /// New blocks, items and mob effects from the mod's `data/` (API 0.2).
     Registries,
+    Ui,
+    Render,
+    Input,
+    Players,
+    World,
+    Recipes,
+    /// A capability a newer game added.
+    #[serde(other)]
+    Unknown,
 }
 impl Capability {
     /// What the player reads before turning the mod on: "May <this>".
     pub fn describe(self) -> &'static str {
         match self {
+            Capability::GameRead => "see your position, health and the time",
+            Capability::Chat => "show you chat messages",
+            Capability::Hud => "draw text on your screen",
+            Capability::Storage => "save its own settings to disk",
+            Capability::Command => "run commands as you, with your permissions",
             Capability::Registries => {
                 "add blocks, items, mob effects and entity types to your worlds"
             }
+            Capability::Ui => "show its own screens and a settings page",
+            Capability::Render => "draw on your screen, shake and zoom the camera",
+            Capability::Input => {
+                "see the keys you hold and your clicks, take over the use button on its own items and the mouse wheel, and add keys"
+            }
+            Capability::Players => "see who is on the server and message them",
+            Capability::World => "read and change the world's blocks",
+            Capability::Recipes => {
+                "read the game's recipes and items and which recipes you know, place recipes in your crafting grid and, in creative mode, give you items"
+            }
+            Capability::Unknown => "do something this version of the game does not know",
         }
     }
 }
 impl fmt::Display for Capability {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Capability::Registries => f.write_str("registries"),
-        }
+        f.write_str(match self {
+            Capability::GameRead => "game-read",
+            Capability::Chat => "chat",
+            Capability::Hud => "hud",
+            Capability::Storage => "storage",
+            Capability::Command => "command",
+            Capability::Registries => "registries",
+            Capability::Ui => "ui",
+            Capability::Render => "render",
+            Capability::Input => "input",
+            Capability::Players => "players",
+            Capability::World => "world",
+            Capability::Recipes => "recipes",
+            Capability::Unknown => "unknown",
+        })
     }
 }
 
@@ -1112,6 +1158,26 @@ pub fn find(dir: &Path) -> Vec<PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn an_index_reads_wasm_mods_capabilities_and_ones_it_does_not_know() {
+        // The registry's index lists wasm mods (`coords_hud`: game-read, hud, chat); a capability
+        // a newer game adds must not make the whole index unreadable.
+        let caps: Vec<Capability> =
+            serde_json::from_str(r#"["game-read", "hud", "chat", "registries", "telepathy"]"#)
+                .unwrap();
+        assert_eq!(
+            caps,
+            [
+                Capability::GameRead,
+                Capability::Hud,
+                Capability::Chat,
+                Capability::Registries,
+                Capability::Unknown
+            ]
+        );
+        assert_eq!(Capability::GameRead.to_string(), "game-read");
+    }
 
     #[test]
     fn windows_device_mod_ids_are_refused() {

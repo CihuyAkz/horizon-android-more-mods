@@ -68,9 +68,9 @@ impl Title {
                     .does(crate::widgets::Action::Exit),
                 ];
                 // CommonButtons' icon buttons; Horizon's Join a Friend (an
-                // invite code) sits behind vanilla's Friends button.
+                // invite code) sits behind vanilla's Friends button. Starling keeps its Mods in
+                // Options > Mods (the switches and Compile), as in 0.8.0: three icons, centred.
                 for (i, (key, plain, id, icon)) in [
-                    ("horizon.mods.screen.title", "Mods", 9, "icon/mods"),
                     ("gui.friends.open", "Friends", 5, "friends/friends"),
                     ("options.language", "Language...", 6, "icon/language"),
                     (
@@ -84,7 +84,7 @@ impl Title {
                 .enumerate()
                 {
                     let mut button = b(
-                        cx - 46.0 + i as f32 * 24.0,
+                        cx - 34.0 + i as f32 * 24.0,
                         y + 72.0,
                         20.0,
                         &lang::get_or(key, plain),

@@ -5103,11 +5103,12 @@ mod classic_tests {
             let buttons = title.buttons(w, h);
             let cx = (w / 2.0).floor();
             let y = (h / 4.0).floor() + 48.0;
+            // Starling: no Mods icon (Options > Mods), the three centred as in 0.8.0.
+            assert!(!buttons.iter().any(|b| b.id == 9));
             for (id, x, enabled, icon) in [
-                (9, cx - 46.0, true, "icon/mods"),
-                (5, cx - 22.0, true, "friends/friends"),
-                (6, cx + 2.0, true, "icon/language"),
-                (7, cx + 26.0, true, "icon/accessibility"),
+                (5, cx - 34.0, true, "friends/friends"),
+                (6, cx - 10.0, true, "icon/language"),
+                (7, cx + 14.0, true, "icon/accessibility"),
             ] {
                 let b = buttons.iter().find(|b| b.id == id).unwrap();
                 assert_eq!(
@@ -5117,7 +5118,6 @@ mod classic_tests {
                 assert_eq!(
                     title.click(x + 10.0, y + 82.0, (w, h)),
                     match id {
-                        9 => (Action::Mods, true),
                         6 => (Action::Language, true),
                         7 => (Action::Accessibility, true),
                         _ => (Action::None, true),
@@ -5136,11 +5136,11 @@ mod classic_tests {
             }
             // The four-pixel gaps around icons must not activate a button.
             assert_eq!(
-                title.click(cx + 24.0, y + 82.0, (w, h)),
+                title.click(cx + 12.0, y + 82.0, (w, h)),
                 (Action::None, false)
             );
             assert_eq!(
-                title.click(cx + 36.0, y + 92.0, (w, h)),
+                title.click(cx + 24.0, y + 92.0, (w, h)),
                 (Action::None, false)
             );
         }

@@ -66,6 +66,10 @@ impl Game<'_> {
                 CREATIVE_SHIFT.set(0.0);
             }
         }
+        // The switch happens inside the touch or click that hit-tests next (`slot_at`), which
+        // reads the screen's build: build it now for the window just chosen, not at the next
+        // frame, or the touch finds no slot there and counts as outside the window (a drop).
+        self.build_screen();
     }
     /// The window the GUI position `x` is over becomes the one worked with; a stack being shared
     /// out stays in the one it started in.
@@ -79,7 +83,14 @@ impl Game<'_> {
         if CREATIVE_SHIFT.get() == 0.0 {
             return;
         }
-        let width = HudBatch::new(self.touch_size(), horizon_client::hud::GuiScale { requested: 0, unicode: false }).width;
+        let width = HudBatch::new(
+            self.touch_size(),
+            horizon_client::hud::GuiScale {
+                requested: 0,
+                unicode: false,
+            },
+        )
+        .width;
         self.bedrock_show(slot < Creative::DISPLAY, width);
     }
     /// Where the creative screen's window, or both of Bedrock Inventory's, start and end across.
