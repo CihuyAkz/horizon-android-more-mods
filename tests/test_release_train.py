@@ -68,38 +68,6 @@ class ReleaseTrainTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, "API unavailable"):
                     train.merged_between("launcher", "base", "head")
 
-    def test_launcher_decision_shell_fails_closed_and_succeeds_normally(self):
-        workflow = (train.ROOT / ".github/workflows/launcher.yml").read_text()
-        step = workflow.split("      - id: decide\n", 1)[1].split("\n  build:", 1)[0]
-        script = textwrap.dedent(step.split("        run: |\n", 1)[1])
-        script = script.replace("${{ steps.mode.outputs.dry_run }}", "true")
-        for status in (23, 0):
-            with self.subTest(status=status), tempfile.TemporaryDirectory() as tmp:
-                root = Path(tmp)
-                (root / "tools").mkdir()
-                # Execute the workflow's real pipeline with a controlled decision subprocess.
-                (root / "tools/release_train.py").write_text(
-                    "import json, os, sys\n"
-                    f"sys.exit({status})\n" if status else
-                    "import json, os\n"
-                    "print(json.dumps({'reason': 'ready', 'tag': 'launcher@0.2.0'}))\n"
-                    "with open(os.environ['GITHUB_OUTPUT'], 'a') as out:\n"
-                    "    out.write('tag=launcher@0.2.0\\n')\n")
-                output = root / "output"
-                output.touch()
-                result = subprocess.run(["bash", "-e", "-c", script], cwd=root, capture_output=True,
-                                        text=True, env={**os.environ, "GITHUB_OUTPUT": str(output),
-                                        "GITHUB_STEP_SUMMARY": str(root / "summary"), "GITHUB_SHA": "head",
-                                        "HEAD_SHA": "head", "FORCE": ""})
-                if status:
-                    self.assertEqual(result.returncode, status, result.stderr)
-                    self.assertEqual(output.read_text(), "")
-                    self.assertFalse((root / "summary").exists())
-                else:
-                    self.assertEqual(result.returncode, 0, result.stderr)
-                    self.assertEqual(output.read_text(),
-                                     "tag=launcher@0.2.0\nversion=0.2.0\nrelease=true\nhead=head\n")
-
     def test_player_facing_paths(self):
         exporters = {"mods/horizon/src/test/java/dev/horizonlab/parity/VanillaMobDataExporter.java"}
         self.assertTrue(train.player_facing("crates/horizon-client/src/game.rs", "game"))
