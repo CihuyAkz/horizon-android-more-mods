@@ -1,4 +1,4 @@
 # The existing wrench build.
 wrench
 # All Android bundled mods, exposed in Starling Extras and built together for the release.
-zoom worldmap recipes smartf3 freecam_plus connected_textures armorhud jade basic_hud visuality_horizon punchy freelook cinematic_interactions firstpersonmodel eatinganimation veinminer
+zoom worldmap recipes smartf3 freecam_plus connected_textures armorhud jade basic_hud visuality_horizon punchy freelook cinematic_interactions firstpersonmodel eatinganimation veinminer appleskin rightharvest customhud carryblock

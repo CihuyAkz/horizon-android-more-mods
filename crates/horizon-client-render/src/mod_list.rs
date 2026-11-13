@@ -17,7 +17,7 @@ pub const DIR: &str = "horizon-mods";
 pub const NATIVE_DIR: &str = "horizon-native-mods";
 
 #[cfg(target_os = "android")]
-pub const ANDROID_BUNDLED: [&str; 16] = [
+pub const ANDROID_BUNDLED: [&str; 20] = [
     "zoom",
     "worldmap",
     "recipes",
@@ -27,6 +27,7 @@ pub const ANDROID_BUNDLED: [&str; 16] = [
     "armorhud",
     "jade",
     "basic_hud",
+    "appleskin",
     "visuality_horizon",
     "punchy",
     "freelook",
@@ -34,6 +35,9 @@ pub const ANDROID_BUNDLED: [&str; 16] = [
     "firstpersonmodel",
     "eatinganimation",
     "veinminer",
+    "rightharvest",
+    "customhud",
+    "carryblock",
 ];
 /// Why a native mod installed in [`NATIVE_DIR`] doesn't run in this game.
 #[cfg(not(target_os = "android"))]

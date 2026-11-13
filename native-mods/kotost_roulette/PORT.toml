@@ -1,0 +1,8 @@
+id = "kotost_roulette"
+name = "Kotost Roulette"
+version = "0.1.0"
+kind = "android_builtin_native_bundle"
+source_archive = "kotost_roulette-0.1.0.hnmod"
+horizon_revision = "fdc87aecdbd116bf1e08adcd062fcbaea8c2e2ca"
+mixins_revision = "5a64af938ec86b00d53d16a408aabc0038fb3e57"
+license_note = "MIT; the source archive includes its LICENSE file."

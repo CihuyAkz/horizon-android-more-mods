@@ -298,6 +298,44 @@ impl Game<'_> {
         Ok(())
     }
 
+
+    pub(super) fn native_set_inventory_slot(
+        &mut self,
+        uuid: u128,
+        kind: NativeInventoryKind,
+        slot: usize,
+        expected: Option<&ItemStack>,
+        replacement: Option<ItemStack>,
+    ) -> Result<(), String> {
+        let side = self.native_inventory_side(uuid)?;
+        let mut slots = match &side {
+            Side::Live(i) => {
+                let host = self.lan.as_ref().expect("live");
+                guest_slots(&host.hub.guests[*i], kind)
+            }
+            Side::File(level) => level_slots(level, kind),
+        };
+        let Some(current) = slots.get(slot) else {
+            return Err("invalid inventory slot".into());
+        };
+        if current.as_ref() != expected {
+            return Err("that stack changed".into());
+        }
+        slots[slot] = replacement;
+        match side {
+            Side::Live(i) => {
+                let host = self.lan.as_mut().expect("live");
+                set_guest_slots(&mut host.hub.guests[i], kind, slots);
+            }
+            Side::File(mut level) => {
+                set_level_slots(&mut level, kind, slots);
+                write_dat(&playerdata::path(&self.world_root, uuid), level.player_tag())
+                    .map_err(|e| format!("the player's file: {e}"))?;
+            }
+        }
+        Ok(())
+    }
+
     /// Sends the player `uuid` the whole picture of map `map_id`: 128 x 128
     /// colours (`MapColor` ids times 4 plus the shade, row by row), scale 0,
     /// locked, no decorations, as `ClientboundMapItemDataPacket`. A filled

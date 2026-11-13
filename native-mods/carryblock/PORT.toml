@@ -1,0 +1,8 @@
+id = "carryblock"
+name = "Carry Block"
+version = "0.1.2"
+kind = "android_builtin_native_bundle"
+source_archive = "carryblock-0.1.2-1.hnmod"
+horizon_revision = "142388e1c136e622652ec7505af15d8ad195e041"
+mixins_revision = "0d6b103c70633d8fd9443d8d0acd3aadaacedb06"
+license_note = "No license file or license declaration was present in the supplied archive; keep this local pending permission."

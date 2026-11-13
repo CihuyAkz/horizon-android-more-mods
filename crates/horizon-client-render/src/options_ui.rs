@@ -2354,9 +2354,6 @@ fn wrap_words(text: &str, max: usize) -> Vec<String> {
     lines
 }
 
-/// Where a bundled Starling mod does its work. Vein Miner changes authoritative block
-/// breaking; the other Android bundle entries only change the local client's interface,
-/// rendering, input, or presentation.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum StarlingModSide {
     Client,
@@ -2365,7 +2362,7 @@ enum StarlingModSide {
 
 fn starling_extra_mod_side(id: &str) -> StarlingModSide {
     match id {
-        "veinminer" => StarlingModSide::Server,
+        "veinminer" | "rightharvest" | "carryblock" => StarlingModSide::Server,
         _ => StarlingModSide::Client,
     }
 }
@@ -2680,6 +2677,7 @@ enum Row {
     Heading(String),
     /// A line of grey text (a path).
     Note(String),
+    YellowNote(String),
     /// A button, and another after it.
     Buttons(Widget, Option<Widget>),
     NativeSlider(usize, usize, String, f32),
@@ -3346,8 +3344,8 @@ impl OptionsUi {
             Page::Packs => "resourcePack.title",
             Page::Mods => "horizon.pages.mods",
             Page::StarlingExtra => "Starling Extras",
-            Page::StarlingExtraClient => "Client Sided",
-            Page::StarlingExtraServer => "Server Sided",
+            Page::StarlingExtraClient => "starling.mods.category.client",
+            Page::StarlingExtraServer => "starling.mods.category.server",
             Page::StarlingExtraExtras => "Extras",
             Page::NativeMod(_) => "Mod Settings",
             Page::NativeModHandEditor(_) => "Hand Editor",
@@ -4223,14 +4221,14 @@ impl OptionsUi {
                             0.0,
                             0.0,
                             150.0,
-                            Text::literal("Client Sided"),
+                            tr("starling.mods.category.client"),
                             Act::Push(Page::StarlingExtraClient),
                         ),
                         Some(button(
                             0.0,
                             0.0,
                             150.0,
-                            Text::literal("Server Sided"),
+                            tr("starling.mods.category.server"),
                             Act::Push(Page::StarlingExtraServer),
                         )),
                     ),
@@ -4256,9 +4254,15 @@ impl OptionsUi {
                 } else {
                     StarlingModSide::Server
                 };
-                let mut rows = installed_mod_rows(s, true, Some(side));
-                if rows.is_empty() {
+                let mut rows = Vec::new();
+                if side == StarlingModSide::Server {
+                    rows.push(Row::YellowNote(lang::get("starling.mods.native.restart_hint")));
+                }
+                let mut mods = installed_mod_rows(s, true, Some(side));
+                if mods.is_empty() {
                     rows.push(Row::Header("horizon.mods.empty"));
+                } else {
+                    rows.append(&mut mods);
                 }
                 rows
             }
@@ -5180,6 +5184,22 @@ impl OptionsUi {
                                 kind: WKind::Text {
                                     text: Text::literal(text),
                                     color: 0xFFA0A0A0,
+                                    centered: true,
+                                },
+                                list: false,
+                                row: 0,
+                            });
+                            y += 16.0;
+                        }
+                        Row::YellowNote(text) => {
+                            out.push(Widget {
+                                x: 0.0,
+                                y: y + 4.0,
+                                w,
+                                h: 9.0,
+                                kind: WKind::Text {
+                                    text: Text::literal(text),
+                                    color: crate::text::YELLOW,
                                     centered: true,
                                 },
                                 list: false,
@@ -8267,6 +8287,10 @@ mod tests {
             installed("eatinganimation"),
             installed("cinematic_interactions"),
             installed("veinminer"),
+            installed("appleskin"),
+            installed("rightharvest"),
+            installed("customhud"),
+            installed("carryblock"),
             installed("manual_native"),
         ];
         for id in [
@@ -8282,11 +8306,25 @@ mod tests {
             "eatinganimation",
             "cinematic_interactions",
             "veinminer",
+            "appleskin",
+            "rightharvest",
+            "customhud",
+            "carryblock",
         ] {
             assert!(crate::mod_list::ANDROID_BUNDLED.contains(&id));
         }
         assert_eq!(starling_extra_mod_side("veinminer"), StarlingModSide::Server);
-        for id in ["zoom", "worldmap", "punchy", "basic_hud", "eatinganimation"] {
+        assert_eq!(starling_extra_mod_side("rightharvest"), StarlingModSide::Server);
+        assert_eq!(starling_extra_mod_side("carryblock"), StarlingModSide::Server);
+        for id in [
+            "zoom",
+            "worldmap",
+            "punchy",
+            "basic_hud",
+            "eatinganimation",
+            "appleskin",
+            "customhud",
+        ] {
             assert_eq!(starling_extra_mod_side(id), StarlingModSide::Client);
         }
 
@@ -8303,7 +8341,7 @@ mod tests {
         // The main Mods page still shows manually installed mods, not APK-bundled extras.
         ui.show(Page::Mods);
         let (widgets, ..) = ui.layout(&s, size.0, size.1);
-        assert_eq!(visible_indices(&widgets), [5]);
+        assert_eq!(visible_indices(&widgets), [9]);
         let open = widgets
             .iter()
             .find(|w| matches!(w.kind, WKind::Button { act: Act::Push(Page::StarlingExtra), .. }))
@@ -8334,7 +8372,6 @@ mod tests {
             )));
         }
 
-        // Client-only mods include Punchy, World Map/Minimap, Basic HUD and Eating Animation.
         let client = categories
             .iter()
             .find(|w| matches!(w.kind, WKind::Button { act: Act::Push(Page::StarlingExtraClient), .. }))
@@ -8351,9 +8388,8 @@ mod tests {
         );
         assert_eq!(ui.page(), Page::StarlingExtraClient);
         let (client_widgets, ..) = ui.layout(&s, size.0, size.1);
-        assert_eq!(visible_indices(&client_widgets), [0, 1, 2, 3]);
+        assert_eq!(visible_indices(&client_widgets), [0, 1, 2, 3, 5, 7]);
 
-        // Vein Miner is the server-sided entry, and appears only in that category.
         ui.show(Page::StarlingExtra);
         let (categories, ..) = ui.layout(&s, size.0, size.1);
         let server = categories
@@ -8371,8 +8407,17 @@ mod tests {
             false,
         );
         assert_eq!(ui.page(), Page::StarlingExtraServer);
-        let (server_widgets, ..) = ui.layout(&s, size.0, size.1);
-        assert_eq!(visible_indices(&server_widgets), [4]);
+        let ((server_widgets, ..), _) = lang::scoped(
+            lang::Language::load(&[], "en_us"),
+            || ui.layout(&s, size.0, size.1),
+        );
+        assert_eq!(visible_indices(&server_widgets), [4, 6, 8]);
+        assert!(server_widgets.iter().any(|w| matches!(
+            &w.kind,
+            WKind::Text { text, color, .. }
+                if *color == crate::text::YELLOW
+                    && text.plain() == "You need to restart the game to apply this change."
+        )));
 
         // Extras is intentionally empty and shows the requested message.
         ui.show(Page::StarlingExtra);

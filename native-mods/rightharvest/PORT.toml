@@ -1,0 +1,8 @@
+id = "rightharvest"
+name = "RightClickHarvest"
+version = "0.1.1"
+kind = "android_builtin_native_bundle"
+source_archive = "rightharvest-0.1.1.hnmod"
+horizon_revision = "4aa6854a886183440256f4f4a4a9d1ed853227a1"
+mixins_revision = "a2af5c0dd4117d51ecd70066ba7a00b4a2c10dab"
+license_note = "No license file or license declaration was present in the supplied archive; keep this local pending permission."

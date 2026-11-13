@@ -85,6 +85,7 @@ BUILTIN_NATIVE_MODS = (
     "armorhud",
     "jade",
     "basic_hud",
+    "appleskin",
     "visuality_horizon",
     "punchy",
     "freelook",
@@ -92,6 +93,9 @@ BUILTIN_NATIVE_MODS = (
     "firstpersonmodel",
     "eatinganimation",
     "veinminer",
+    "rightharvest",
+    "customhud",
+    "carryblock",
 )
 
 
