@@ -1,0 +1,115 @@
+
+name: Patch Executor
+
+on:
+  workflow_dispatch:
+    inputs:
+      code_patch:
+        description: "Paste Unified Diff Patch (small patches)"
+        required: false
+        type: string
+
+      patch_file:
+        description: "Repository path to a .patch file (large patches)"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: patch-executor
+  cancel-in-progress: false
+
+jobs:
+  apply-patch:
+    name: Apply Code Patch
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Save Patch Input
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          event = json.loads(
+              Path(os.environ["GITHUB_EVENT_PATH"]).read_text(encoding="utf-8")
+          )
+
+          inputs = event.get("inputs", {})
+          inline_patch = inputs.get("code_patch", "")
+          patch_file = inputs.get("patch_file", "").strip()
+
+          if bool(inline_patch.strip()) == bool(patch_file):
+              raise SystemExit(
+                  "Provide either Code Patch or Patch File, not both."
+              )
+
+          if patch_file:
+              workspace = Path(os.environ["GITHUB_WORKSPACE"]).resolve()
+              source = (workspace / patch_file).resolve()
+
+              if workspace not in source.parents:
+                  raise SystemExit("Patch file must be inside the repository.")
+
+              if not source.is_file():
+                  raise SystemExit(f"Patch file not found: {patch_file}")
+
+              patch_bytes = source.read_bytes()
+          else:
+              patch_bytes = inline_patch.encode("utf-8")
+
+          if not patch_bytes.strip():
+              raise SystemExit("Patch is empty.")
+
+          target = Path(os.environ["RUNNER_TEMP"]) / "input.patch"
+          target.write_bytes(patch_bytes)
+
+          print(f"Patch loaded: {len(patch_bytes)} bytes")
+          PY
+
+      - name: Validate Patch
+        run: |
+          git apply --check "$RUNNER_TEMP/input.patch"
+
+      - name: Apply Patch
+        run: |
+          git apply "$RUNNER_TEMP/input.patch"
+
+      - name: Check Changes
+        run: |
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "No changes detected."
+            exit 1
+          fi
+
+      - name: Commit Changes
+        run: |
+          git add -A
+          git diff --cached --quiet && exit 1
+          git commit -m "Apply code patch via GitHub Actions"
+
+      - name: Push Changes
+        run: |
+          if [ "$GITHUB_REF_TYPE" != "branch" ]; then
+            echo "Please select a branch."
+            exit 1
+          fi
+
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+
+      - name: Success
+        run: |
+          echo "Patch successfully applied and pushed!"
