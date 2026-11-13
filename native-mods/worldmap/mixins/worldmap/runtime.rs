@@ -2338,8 +2338,7 @@ pub fn frame(game: &mut Game<'_>) {
         })
     };
     let open = ours(game);
-    let gui_size = game.gui_size();
-    let gui = [gui_size.0 as u32, gui_size.1 as u32];
+    let gui = game.gui_size();
     let radius = (game.settings.render_distance as i32).clamp(2, 16);
     let center = (
         (player.x.floor() as i32) >> 4,
@@ -2368,7 +2367,7 @@ pub fn frame(game: &mut Game<'_>) {
         if !dead {
             s.alive_at = (player.x, player.y, player.z);
         }
-        s.gui = (gui[0], gui[1]);
+        s.gui = gui;
         s.switch_world(&key, player.dimension);
         // A dot every few blocks of the way.
         let moved = s

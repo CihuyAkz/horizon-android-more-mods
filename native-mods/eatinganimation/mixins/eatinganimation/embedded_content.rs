@@ -4,8 +4,8 @@ fn eatinganimation_embedded_content(
     dev: &[std::path::PathBuf],
 ) -> core::ops::ControlFlow<std::path::PathBuf> {
     static CONTENT: &[u8] = horizon_client::native_data!("eatinganimation", "eatinganimation-content.hmod");
-    let mod_enabled = enabled.contains(CONTENT_ID);
-    crate::item_render::official_eatinganimation::set_enabled(mod_enabled);
+    let mod_enabled = enabled.contains("eatinganimation");
+    crate::item_render::set_official_eating_animation_enabled(mod_enabled);
     if !mod_enabled {
         return core::ops::ControlFlow::Continue(());
     }
