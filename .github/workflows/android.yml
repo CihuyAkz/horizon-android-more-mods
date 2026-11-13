@@ -1,0 +1,351 @@
+
+name: Build Android APK
+run-name: "${{ inputs.build_type || 'Build Android APK' }} · ${{ inputs.abi || 'arm64-v8a' }} · source: ${{ inputs.source_branch || 'starling' }} · cache: ${{ github.ref_name }}"
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: Build variant (Dev Builds do not bump the version; Public Builds bump the patch version)
+        required: true
+        type: choice
+        default: Dev Builds
+        options:
+          - Dev Builds
+          - Public Builds
+      abi:
+        description: Android CPU architecture
+        required: true
+        type: choice
+        default: arm64-v8a
+        options:
+          - arm64-v8a
+          - x86_64
+          - armeabi-v7a
+          - x86
+          - 32 + 64 arm
+          - All In One arch
+      source_branch:
+        description: Source branch to build (run this workflow on the android branch to restore its original signing key)
+        required: true
+        type: string
+        default: starling
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-apk-${{ inputs.source_branch }}-${{ inputs.build_type }}
+  cancel-in-progress: ${{ inputs.build_type == 'Dev Builds' }}
+
+jobs:
+  build:
+    name: Build ${{ inputs.build_type }} - ${{ inputs.abi }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    env:
+      CARGO_BUILD_JOBS: '2'
+      CARGO_PROFILE_DEV_DEBUG: '0'
+      HORIZON_TELEMETRY_URL: 'off'
+    steps:
+      - name: Require the original signing-cache branch
+        shell: bash
+        env:
+          SOURCE_BRANCH: ${{ inputs.source_branch }}
+        run: |
+          if [[ "$GITHUB_REF_NAME" != "android" ]]; then
+            echo "::error::Run this workflow from the android branch. The original signing key is stored in that branch's GitHub Actions cache."
+            exit 1
+          fi
+          if [[ -z "$SOURCE_BRANCH" ]]; then
+            echo "::error::Source branch must not be empty."
+            exit 1
+          fi
+
+      - name: Prevent Dev version downgrade on workflow re-runs
+        if: ${{ inputs.build_type == 'Dev Builds' && github.run_attempt > 1 }}
+        shell: bash
+        run: |
+          echo "::error::Re-running an old Dev workflow keeps the same run number and could produce a lower version. Start a new workflow run instead."
+          exit 1
+
+      - name: Checkout source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ inputs.source_branch }}
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Install Rust and Android targets
+        shell: bash
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+          rustup target add \
+            aarch64-linux-android \
+            armv7-linux-androideabi \
+            i686-linux-android \
+            x86_64-linux-android
+          cargo install cargo-ndk --version 3.5.4 --locked
+
+      - name: Install Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+
+      - name: Install Starling Android SDK packages
+        shell: bash
+        run: |
+          sdkmanager "platforms;android-36" "build-tools;35.0.0" "ndk;28.2.13676358"
+
+      - name: Cache Rust dependencies and build outputs
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+            .native-cache
+          key: android-${{ runner.os }}-${{ inputs.build_type }}-${{ inputs.abi }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: |
+            android-${{ runner.os }}-${{ inputs.build_type }}-${{ inputs.abi }}-
+            android-${{ runner.os }}-${{ inputs.build_type }}-
+            android-${{ runner.os }}-
+
+      - name: Bump public version
+        id: bump
+        if: inputs.build_type == 'Public Builds'
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF_TYPE" != "branch" ]]; then
+            echo "::error::Public Builds must be run from a branch so the version bump can be committed."
+            exit 1
+          fi
+
+          python - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          path = Path("packaging/android/build_apk.py")
+          source = path.read_text(encoding="utf-8")
+          name_pattern = re.compile(r'(?m)^VERSION_NAME = "(\d+\.\d+\.\d+)"$')
+          code_pattern = re.compile(r"(?m)^VERSION_CODE = (\d+)$")
+          name_match = name_pattern.search(source)
+          code_match = code_pattern.search(source)
+          if name_match is None or code_match is None:
+              raise SystemExit("Could not find Starling's VERSION_NAME and VERSION_CODE constants")
+
+          old_name = name_match.group(1)
+          old_code = int(code_match.group(1))
+          major, minor, patch = (int(part) for part in old_name.split("."))
+          new_name = f"{major}.{minor}.{patch + 1}"
+          new_code = old_code + 1
+          if new_code > 2_100_000_000:
+              raise SystemExit("Android versionCode exceeded the supported maximum")
+
+          source = name_pattern.sub(f'VERSION_NAME = "{new_name}"', source, count=1)
+          source = code_pattern.sub(f"VERSION_CODE = {new_code}", source, count=1)
+          path.write_text(source, encoding="utf-8")
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"version_name={new_name}\n")
+              output.write(f"version_code={new_code}\n")
+
+          print(f"Public version bumped: {old_name} ({old_code}) -> {new_name} ({new_code})")
+          PY
+
+      - name: Commit public version bump
+        if: inputs.build_type == 'Public Builds'
+        env:
+          VERSION_NAME: ${{ steps.bump.outputs.version_name }}
+          SOURCE_BRANCH: ${{ inputs.source_branch }}
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add packaging/android/build_apk.py
+          git commit -m "chore(android): bump public version to ${VERSION_NAME}"
+          git push origin "HEAD:${SOURCE_BRANCH}"
+
+      - name: Prepare temporary development version
+        id: dev
+        if: inputs.build_type == 'Dev Builds'
+        env:
+          DEV_BUILD_NUMBER: ${{ github.run_number }}
+        shell: bash
+        run: |
+          python - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          build_number = int(os.environ["DEV_BUILD_NUMBER"])
+          dev_number = 40 + build_number
+
+          path = Path("packaging/android/build_apk.py")
+          source = path.read_text(encoding="utf-8")
+          name_pattern = re.compile(r'(?m)^VERSION_NAME = "(\d+\.\d+\.\d+)"$')
+          code_pattern = re.compile(r"(?m)^VERSION_CODE = (\d+)$")
+          name_match = name_pattern.search(source)
+          code_match = code_pattern.search(source)
+
+          if name_match is None or code_match is None:
+              raise SystemExit("Could not find Starling's VERSION_NAME and VERSION_CODE constants")
+
+          base_name = name_match.group(1)
+          dev_name = f"{base_name}-dev.{dev_number}"
+          dev_code = 1_000_000_000 + dev_number
+
+          if dev_code > 2_100_000_000:
+              raise SystemExit("Android development versionCode exceeded the supported maximum")
+
+          source = name_pattern.sub(f'VERSION_NAME = "{dev_name}"', source, count=1)
+          source = code_pattern.sub(f"VERSION_CODE = {dev_code}", source, count=1)
+          path.write_text(source, encoding="utf-8")
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"version_name={dev_name}\n")
+              output.write(f"version_code={dev_code}\n")
+
+          print(f"Temporary Dev version: {dev_name} ({dev_code}); committed only for packaging, never pushed")
+          PY
+
+      - name: Commit the temporary Dev version for native compilation
+        if: inputs.build_type == 'Dev Builds'
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add packaging/android/build_apk.py
+          git commit -m "build(android): prepare temporary Dev version for native mods"
+
+      - name: Restore generated Android signing key from GitHub Actions cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: .local/android/debug.keystore
+          key: horizon-android-signing-${{ github.repository_id }}
+
+      - name: Verify the original Android signing key was restored
+        shell: bash
+        run: |
+          KEYSTORE=".local/android/debug.keystore"
+          if [[ ! -s "$KEYSTORE" ]]; then
+            echo "::error::The original signing key was not restored. Stop instead of generating a new key, because a different certificate cannot update the installed app."
+            exit 1
+          fi
+
+          echo "Original Android signing key found. Certificate fingerprint:"
+          keytool -list -v \
+            -keystore "$KEYSTORE" \
+            -storepass android \
+            -alias androiddebugkey | grep -E 'SHA256:'
+
+      - name: Make room for the bundled Dev native build
+        if: inputs.build_type == 'Dev Builds'
+        shell: bash
+        run: |
+          sudo swapoff -a || true
+          sudo fallocate -l 10G "$RUNNER_TEMP/dev-native.swap"
+          sudo chmod 600 "$RUNNER_TEMP/dev-native.swap"
+          sudo mkswap "$RUNNER_TEMP/dev-native.swap" > /dev/null
+          sudo swapon "$RUNNER_TEMP/dev-native.swap"
+          free -h
+
+      - name: Make room for the public Starling build
+        if: inputs.build_type == 'Public Builds'
+        shell: bash
+        run: |
+          sudo swapoff -a || true
+          where=/mnt
+          size=20G
+          avail=$(df --output=avail -BG "$where" 2>/dev/null | tail -1 | tr -dc 0-9)
+          if [ "${avail:-0}" -lt 30 ]; then
+            where=$RUNNER_TEMP
+            size=10G
+          fi
+          sudo fallocate -l "$size" "$where/release.swap"
+          sudo chmod 600 "$where/release.swap"
+          sudo mkswap "$where/release.swap" > /dev/null
+          sudo swapon "$where/release.swap"
+          free -h
+          echo "CARGO_BUILD_JOBS=3" >> "$GITHUB_ENV"
+
+      - name: Build Starling Extras APK
+        env:
+          BUILD_TYPE: ${{ inputs.build_type }}
+          ABI: ${{ inputs.abi }}
+          VERSION_NAME: ${{ inputs.build_type == 'Public Builds' && steps.bump.outputs.version_name || steps.dev.outputs.version_name }}
+          HORIZON_VERSION: ${{ inputs.build_type == 'Public Builds' && steps.bump.outputs.version_name || steps.dev.outputs.version_name }}
+          PROFILE: ${{ inputs.build_type == 'Public Builds' && 'fast' || 'quick' }}
+        shell: bash
+        run: |
+          rm -f target/android/starling-*.apk
+
+          if [[ "$ABI" == "All In One arch" ]]; then
+            ABIS=(arm64-v8a x86_64 armeabi-v7a x86)
+          elif [[ "$ABI" == "32 + 64 arm" ]]; then
+            ABIS=(arm64-v8a armeabi-v7a)
+          else
+            ABIS=("$ABI")
+          fi
+
+          if [[ "$BUILD_TYPE" == "Dev Builds" ]]; then
+            BUILTIN_MODS="$(python - <<'PY'
+          import runpy
+          print(" ".join(sorted(runpy.run_path("packaging/android/build_apk.py")["BUILTIN_NATIVE_MODS"])))
+          PY
+            )"
+            read -r -a MOD_IDS <<< "$BUILTIN_MODS"
+            BUNDLES=()
+            for id in "${MOD_IDS[@]}"; do
+              BUNDLES+=("native-mods/$id/mixins/$id")
+            done
+            export STARLING_APK_NATIVE_MODS="$BUILTIN_MODS"
+            export NATIVE_CACHE="$GITHUB_WORKSPACE/.native-cache"
+            export PROFILE="$PROFILE"
+            export VARIANT=--dev
+            export HORIZON_ANDROID_KEYSTORE="$GITHUB_WORKSPACE/.local/android/debug.keystore"
+            export HORIZON_ANDROID_KEY_ALIAS=androiddebugkey
+            export HORIZON_ANDROID_STORE_PASSWORD=android
+            export HORIZON_ANDROID_KEY_PASSWORD=android
+            mkdir -p target/android
+            for TARGET_ABI in "${ABIS[@]}"; do
+              echo "::group::Building Starling Extras Dev APK with bundled native mods for $TARGET_ABI ($PROFILE)"
+              ABI="$TARGET_ABI" bash packaging/android/native_build.sh . target/android "${BUNDLES[@]}"
+              echo "::endgroup::"
+            done
+          else
+            for TARGET_ABI in "${ABIS[@]}"; do
+              echo "::group::Building Starling Extras APK for $TARGET_ABI ($PROFILE)"
+              python packaging/android/build_apk.py --abi "$TARGET_ABI" --profile "$PROFILE"
+              echo "::endgroup::"
+            done
+          fi
+
+      - name: Upload Android APK
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: starling-extras-${{ inputs.build_type == 'Public Builds' && 'public' || 'dev' }}-${{ inputs.abi == 'All In One arch' && 'all-arch' || inputs.abi == '32 + 64 arm' && 'arm32-arm64' || inputs.abi }}-apk
+          path: target/android/starling-*.apk
+          if-no-files-found: error
+          retention-days: ${{ inputs.build_type == 'Public Builds' && 30 || 14 }}
+
+      - name: Upload Android symbols
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: starling-extras-${{ inputs.build_type == 'Public Builds' && 'public' || 'dev' }}-${{ inputs.abi == 'All In One arch' && 'all-arch' || inputs.abi == '32 + 64 arm' && 'arm32-arm64' || inputs.abi }}-symbols
+          path: target/android/lib*-symbols.so
+          if-no-files-found: ignore
+          retention-days: 90
