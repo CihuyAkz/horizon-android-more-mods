@@ -1,6 +1,6 @@
 
 name: Build Android APK
-run-name: ${{ inputs.build_type || 'Build Android APK' }} · ${{ inputs.abi || 'arm64-v8a' }} · ${{ github.ref_name }}
+run-name: "${{ inputs.build_type || 'Build Android APK' }} · ${{ inputs.abi || 'arm64-v8a' }} · source: ${{ inputs.source_branch || 'starling' }} · cache: ${{ github.ref_name }}"
 
 on:
   workflow_dispatch:
@@ -25,12 +25,17 @@ on:
           - x86
           - 32 + 64 arm
           - All In One arch
+      source_branch:
+        description: Source branch to build (run this workflow on the android branch to restore its original signing key)
+        required: true
+        type: string
+        default: starling
 
 permissions:
   contents: write
 
 concurrency:
-  group: android-apk-${{ github.ref }}-${{ inputs.build_type }}
+  group: android-apk-${{ inputs.source_branch }}-${{ inputs.build_type }}
   cancel-in-progress: ${{ inputs.build_type == 'Dev Builds' }}
 
 jobs:
@@ -43,6 +48,20 @@ jobs:
       CARGO_PROFILE_DEV_DEBUG: '0'
       HORIZON_TELEMETRY_URL: 'off'
     steps:
+      - name: Require the original signing-cache branch
+        shell: bash
+        env:
+          SOURCE_BRANCH: ${{ inputs.source_branch }}
+        run: |
+          if [[ "$GITHUB_REF_NAME" != "android" ]]; then
+            echo "::error::Run this workflow from the android branch. The original signing key is stored in that branch's GitHub Actions cache."
+            exit 1
+          fi
+          if [[ -z "$SOURCE_BRANCH" ]]; then
+            echo "::error::Source branch must not be empty."
+            exit 1
+          fi
+
       - name: Prevent Dev version downgrade on workflow re-runs
         if: ${{ inputs.build_type == 'Dev Builds' && github.run_attempt > 1 }}
         shell: bash
@@ -53,6 +72,7 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
+          ref: ${{ inputs.source_branch }}
           fetch-depth: 0
           persist-credentials: true
 
@@ -150,13 +170,14 @@ jobs:
         if: inputs.build_type == 'Public Builds'
         env:
           VERSION_NAME: ${{ steps.bump.outputs.version_name }}
+          SOURCE_BRANCH: ${{ inputs.source_branch }}
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add packaging/android/build_apk.py
           git commit -m "chore(android): bump public version to ${VERSION_NAME}"
-          git push origin "HEAD:${GITHUB_REF_NAME}"
+          git push origin "HEAD:${SOURCE_BRANCH}"
 
       - name: Prepare temporary development version
         id: dev
@@ -216,21 +237,20 @@ jobs:
           path: .local/android/debug.keystore
           key: horizon-android-signing-${{ github.repository_id }}
 
-      - name: Create the original Horizon Android signing key when no cached key exists
+      - name: Verify the original Android signing key was restored
         shell: bash
         run: |
-          mkdir -p .local/android
-          if [[ ! -f .local/android/debug.keystore ]]; then
-            keytool -genkeypair \
-              -keystore .local/android/debug.keystore \
-              -storepass android \
-              -keypass android \
-              -alias androiddebugkey \
-              -keyalg RSA \
-              -keysize 2048 \
-              -validity 3650 \
-              -dname "CN=Horizon Android Development"
+          KEYSTORE=".local/android/debug.keystore"
+          if [[ ! -s "$KEYSTORE" ]]; then
+            echo "::error::The original signing key was not restored. Stop instead of generating a new key, because a different certificate cannot update the installed app."
+            exit 1
           fi
+
+          echo "Original Android signing key found. Certificate fingerprint:"
+          keytool -list -v \
+            -keystore "$KEYSTORE" \
+            -storepass android \
+            -alias androiddebugkey | grep -E 'SHA256:'
 
       - name: Make room for the bundled Dev native build
         if: inputs.build_type == 'Dev Builds'
