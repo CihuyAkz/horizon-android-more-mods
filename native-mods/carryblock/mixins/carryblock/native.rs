@@ -609,8 +609,10 @@ impl Game<'_> {
                 .assets
                 .registry
                 .state(state)
-                .map(|s| s.properties.clone())
-                .unwrap_or_default().into(),
+                .map(|s| {
+                    std::collections::BTreeMap::<String, String>::from(s.properties.clone())
+                })
+                .unwrap_or_default(),
             block_entity: facts.block_entity || data.is_some(),
             hardness: facts.hardness,
             item: (&*facts.item != "minecraft:air").then(|| facts.item.to_string()),
