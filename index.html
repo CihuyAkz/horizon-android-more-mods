@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -436,6 +437,17 @@
 
     const $ = (id) => document.getElementById(id);
 
+    // Hide Recently Updated after a download is clicked.
+    let recentlyUpdatedDismissed = false;
+
+    document.addEventListener("click", (event) => {
+      const downloadLink = event.target.closest("#assets-list .asset");
+      if (!downloadLink) return;
+
+      recentlyUpdatedDismissed = true;
+      $("recently-updated").hidden = true;
+    });
+
     // Top-page scroll indicator
     const progressBar = document.createElement("div");
     progressBar.className = "scroll-progress";
@@ -596,6 +608,7 @@
       const twoDays = 2 * 24 * 60 * 60 * 1000;
 
       $("recently-updated").hidden =
+        recentlyUpdatedDismissed ||
         !Number.isFinite(publishedAt) ||
         releaseAge < 0 ||
         releaseAge >= twoDays;
