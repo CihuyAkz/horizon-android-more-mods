@@ -171,7 +171,7 @@ jobs:
           from pathlib import Path
 
           build_number = int(os.environ["DEV_BUILD_NUMBER"])
-          dev_number = 44 + build_number
+          dev_number = 40 + build_number
 
           path = Path("packaging/android/build_apk.py")
           source = path.read_text(encoding="utf-8")
