@@ -149,9 +149,12 @@ fn published_server(version: &str) -> String {
         let _ = std::fs::write(&file, &address);
         return address;
     }
-    std::fs::read_to_string(&file)
-        .ok()
-        .and_then(|text| releases::build_server_address(&text))
+    releases::default_build_server()
+        .or_else(|| {
+            std::fs::read_to_string(&file)
+                .ok()
+                .and_then(|text| releases::build_server_address(&text))
+        })
         .unwrap_or_else(|| BUILD_SERVER.to_owned())
 }
 

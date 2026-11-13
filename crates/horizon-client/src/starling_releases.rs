@@ -108,9 +108,8 @@ pub fn newest(updates: impl IntoIterator<Item = Update>) -> Option<Update> {
         })
 }
 
-/// Where Starling's own build service is: a file on the organisation's protected branch, so the
-/// service can move without an update.
-pub const BUILD_SERVER_URL: &str = "https://raw.githubusercontent.com/starling-client/starling/starling/packaging/android/build-server.txt";
+pub const BUILD_SERVER_URL: &str =
+    "https://raw.githubusercontent.com/CihuyAkz/starling-extras/starling/packaging/android/build-server.txt";
 
 /// `text` as a build server's address, when it is one: HTTPS to a host, maybe with a port, and
 /// nothing else (no account, path or query to hide where it really goes).
@@ -127,6 +126,10 @@ pub fn build_server_address(text: &str) -> Option<String> {
         && !host.ends_with(['.', '-']);
     let port_is_plain = rest.len() == host.len() || port.parse::<u16>().is_ok_and(|port| port != 0);
     (host_is_plain && port_is_plain).then_some(address)
+}
+
+pub fn default_build_server() -> Option<String> {
+    build_server_address(include_str!("../../../packaging/android/build-server.txt"))
 }
 
 /// A checked build server address as a player reads it: without `https://`.
@@ -301,6 +304,7 @@ mod tests {
     fn the_published_build_server_is_a_good_address() {
         let published = include_str!("../../../packaging/android/build-server.txt");
         assert!(build_server_address(published).is_some());
+        assert!(default_build_server().is_some());
     }
 
     #[test]

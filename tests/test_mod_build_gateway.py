@@ -489,6 +489,32 @@ class OnGitHub(unittest.TestCase):
         self.assertEqual(self.fake.asked, 0)
         self.gateway.power.assert_not_called()
 
+    def test_an_unregistered_dev_version_is_refused_with_the_mapping_needed(self):
+        self.env["GITHUB_BUILDS_REPO"] = "CihuyAkz/mod-builds"
+        self.start_gateway()
+        status, body = self.call(
+            "POST", "/v1/build?version=0.8.0-dev.81&via=github", b"mods"
+        )
+        self.assertEqual(status, 429)
+        error = json.loads(body)["error"]
+        self.assertIn("0.8.0-dev.81", error)
+        self.assertIn("CihuyAkz/mod-builds/versions.json", error)
+        self.assertEqual(self.github.dispatched, [])
+
+    def test_a_registered_dev_version_is_dispatched_to_github(self):
+        self.env["GITHUB_BUILDS_REPO"] = "CihuyAkz/mod-builds"
+        self.start_gateway()
+        self.github.versions = {"0.8.0-dev.81": "c" * 40}
+        self.gateway.releases["at"] = 0.0
+        status, body = self.call(
+            "POST", "/v1/build?version=0.8.0-dev.81&via=github", b"mods"
+        )
+        self.assertEqual(status, 200)
+        job = json.loads(body)["job"]
+        self.gateway.github_round()
+        self.assertEqual(self.github.dispatched[-1]["version"], "0.8.0-dev.81")
+        self.assertEqual(self.poll(job)["state"], "queued")
+
     def test_a_build_from_the_asking_to_the_library(self):
         status, data = self.ask()
         self.assertEqual(status, 200)

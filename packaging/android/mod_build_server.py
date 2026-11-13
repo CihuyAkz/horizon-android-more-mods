@@ -143,7 +143,10 @@ def commit_of(version):
     try:
         return json.loads((ROOT / "versions.json").read_text())[version]
     except (OSError, ValueError, KeyError):
-        raise Refused(f"The build server has no game for Starling {version[:32]}. Update the game.")
+        raise Refused(
+            f"No source commit is registered for Starling {version[:32]}. "
+            "Add this exact version and the fork's commit to MOD_BUILD_ROOT/versions.json."
+        )
 
 
 def result_of(key):

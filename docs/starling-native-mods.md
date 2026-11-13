@@ -69,6 +69,31 @@ gets the same error at once and counts nothing.
 
 Each new release needs `versions.json` updated and the clean cache rebuilt on its commit, or its first builds are slow.
 
+## Forks and development versions
+
+The hosted Starling build service only compiles versions listed in its own `versions.json`. A fork's Dev APK uses a
+version such as `0.8.0-dev.81`; the official service does not have that version or the fork's source commit. Retrying
+or choosing **Use GitHub (slower)** cannot make the official service compile a fork it does not know.
+
+For this fork, `BUILD_SERVER_URL` points at this repository's `starling` branch, so its
+`packaging/android/build-server.txt` controls the published service address. Set that file to the HTTPS address of a
+build service running this fork. On that service, add the exact APK version and the exact fork commit used to build it
+to `MOD_BUILD_ROOT/versions.json`, for example:
+
+```json
+{
+  "0.8.0-dev.81": "<fork-source-commit>"
+}
+```
+
+The service's `source/` checkout must be this fork and contain that commit. Do not map a fork version to the official
+Starling commit: the returned game library must be built from the same source as the APK.
+
+For **Use GitHub (slower)**, the gateway must also point `GITHUB_BUILDS_REPO` at a fork of `starling-client/mod-builds`.
+That repository needs the same version-to-commit entry in `versions.json`, and its `scripts/prepare.sh` must fetch this
+fork as the source instead of `starling-client/starling`. The gateway accepts prerelease version names, but still
+refuses a version that has no commit in the configured build repository.
+
 ## On GitHub's machines
 
 **Use GitHub (slower)** on the Compile card asks the gateway for GitHub's runners instead of the build machine

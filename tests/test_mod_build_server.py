@@ -58,6 +58,30 @@ def bundle(mod_id):
     return len(data).to_bytes(4, "big") + data
 
 
+class VersionMap(unittest.TestCase):
+    def test_unknown_version_explains_the_fork_mapping(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            (root / "versions.json").write_text(
+                json.dumps({"0.8.0": "a" * 40}), encoding="utf-8"
+            )
+            with mock.patch.object(server, "ROOT", root):
+                with self.assertRaises(server.Refused) as refused:
+                    server.commit_of("0.8.0-dev.81")
+        self.assertIn("0.8.0-dev.81", str(refused.exception))
+        self.assertIn("MOD_BUILD_ROOT/versions.json", str(refused.exception))
+
+    def test_registered_version_uses_its_exact_commit(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            commit = "b" * 40
+            (root / "versions.json").write_text(
+                json.dumps({"0.8.0-dev.81": commit}), encoding="utf-8"
+            )
+            with mock.patch.object(server, "ROOT", root):
+                self.assertEqual(server.commit_of("0.8.0-dev.81"), commit)
+
+
 class AskedAgain(unittest.TestCase):
     def setUp(self):
         folder = tempfile.TemporaryDirectory()

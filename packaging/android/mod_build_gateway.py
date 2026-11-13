@@ -573,8 +573,16 @@ def github_ask(address, request, version, body):
     """This request's job on GitHub, asked for before or now: (job, None), or (None, why not)."""
     if not github_open():
         return None, "Building on GitHub isn't available right now."
-    if not re.fullmatch(r"\d+(\.\d+){1,3}", version):
+    if not re.fullmatch(
+        r"\d+(?:\.\d+){1,3}(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?",
+        version,
+    ):
         return None, "That is not a version of the game."
+    if "-" in version and version not in release_commits():
+        return None, (
+            f"No source commit is registered for Starling {version[:32]}. "
+            f"Add this exact version and the fork's commit to {GITHUB_REPO}/versions.json."
+        )
     job = request[:24]
     now = time.time()
     with lock:

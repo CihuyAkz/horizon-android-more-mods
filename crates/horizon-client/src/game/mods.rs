@@ -486,6 +486,12 @@ impl Game<'_> {
     /// the next start runs (`native_builds.rs`). Only a phone has builds.
     #[cfg(target_os = "android")]
     pub(super) fn mod_toggled(&mut self, i: usize) {
+        if let Some(server) = &self.integrated {
+            let disabled = self.settings.mods.disabled.clone();
+            let _ = server.call(move |game| {
+                game.settings.mods.disabled = disabled;
+            });
+        }
         self.native_mod_toggled(i);
     }
     #[cfg(not(target_os = "android"))]
