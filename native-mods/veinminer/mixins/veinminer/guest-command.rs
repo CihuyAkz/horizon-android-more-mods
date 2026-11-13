@@ -1,5 +1,7 @@
 fn guest_command(game: &mut crate::game::Game<'_>, host: &mut crate::game::lan::LanHost, conn: u32, command: &str) -> core::ops::ControlFlow<()> {
-    if command.trim_start_matches('/').split_whitespace().next() != Some("veinminer") {
+    if !game.native_on("veinminer")
+        || command.trim_start_matches('/').split_whitespace().next() != Some("veinminer")
+    {
         return core::ops::ControlFlow::Continue(());
     }
     if let Some(permission) = host.hub.guest(conn).map(|g| g.permission) {

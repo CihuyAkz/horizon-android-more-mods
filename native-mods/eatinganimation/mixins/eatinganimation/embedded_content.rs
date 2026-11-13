@@ -4,6 +4,11 @@ fn eatinganimation_embedded_content(
     dev: &[std::path::PathBuf],
 ) -> core::ops::ControlFlow<std::path::PathBuf> {
     static CONTENT: &[u8] = horizon_client::native_data!("eatinganimation", "eatinganimation-content.hmod");
+    let mod_enabled = enabled.contains(CONTENT_ID);
+    crate::item_render::official_eatinganimation::set_enabled(mod_enabled);
+    if !mod_enabled {
+        return core::ops::ControlFlow::Continue(());
+    }
     let dir = std::env::current_dir().unwrap_or_default().join(".horizon-cache");
     let file = dir.join("eatinganimation-embedded-content.hmod");
     if dev.contains(&file) {

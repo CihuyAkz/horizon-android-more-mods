@@ -840,6 +840,15 @@ impl Game<'_> {
     /// no native mod on, the APK's own game; with the set of a build already on the phone, that
     /// build. Another set waits for a Compile, which the page offers.
     pub(super) fn native_mod_toggled(&mut self, i: usize) {
+        if self
+            .settings
+            .mods
+            .installed
+            .get(i)
+            .is_some_and(|m| m.id == "eatinganimation")
+        {
+            crate::item_render::set_official_eating_animation_enabled(self.settings.mods.is_on(i));
+        }
         let mods = &self.settings.mods;
         if !SERVICE_SUPPORTED || !mods.installed.get(i).is_some_and(|m| m.native.is_some()) {
             return;

@@ -1,5 +1,13 @@
 pub const CONTENT_ID: &str = "eatinganimation";
 
+pub fn set_enabled(enabled: bool) {
+    crate::item_render::set_official_eating_animation_enabled(enabled);
+}
+
+pub fn enabled() -> bool {
+    crate::item_render::official_eating_animation_enabled()
+}
+
 const TICKS_PER_STAGE: f32 = 30.0;
 const STAGES: [f32; 3] = [0.35, 0.70, 0.90];
 

@@ -1998,7 +1998,8 @@ impl Game<'_> {
         let error = matches!(trust, ChatTrust::Error);
         let shown = self.signed_chat_line(line, source, signature, trust);
         if shown && error {
-            self.say_system_chat_queued(&horizon_client::text::Text::literal(narration));
+            let narration_text = horizon_client::text::Text::literal(narration);
+            self.say_system_chat_queued(&narration_text);
         } else if shown {
             self.say_chat_queued(narration);
         }

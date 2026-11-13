@@ -33,8 +33,24 @@ use std::{
     collections::{BTreeMap, HashMap},
     fs,
     path::{Path, PathBuf},
-    sync::{Arc, Mutex},
+    sync::{
+        Arc, Mutex,
+        atomic::{AtomicBool, Ordering},
+    },
 };
+
+/// The Android native Eating Animation mod has a render hook without a `Game` reference.
+/// Keep its switch here so the Mods page can disable the effect immediately, even though
+/// the mod's model assets are retained until the next resource load.
+static OFFICIAL_EATING_ANIMATION_ENABLED: AtomicBool = AtomicBool::new(false);
+
+pub fn set_official_eating_animation_enabled(enabled: bool) {
+    OFFICIAL_EATING_ANIMATION_ENABLED.store(enabled, Ordering::Release);
+}
+
+pub fn official_eating_animation_enabled() -> bool {
+    OFFICIAL_EATING_ANIMATION_ENABLED.load(Ordering::Acquire)
+}
 
 /// One quad as submitted for drawing: pose-space corners, atlas UVs, the
 /// transformed unit normal, ARGB colour (tint, `-1` white) and its glint.

@@ -1740,8 +1740,11 @@ pub enum Page {
     Font,
     Packs,
     Mods,
-    /// The native mods bundled with Starling, separate from manually installed mods.
+    /// The native mods bundled with Starling, grouped by where they run.
     StarlingExtra,
+    StarlingExtraClient,
+    StarlingExtraServer,
+    StarlingExtraExtras,
     /// A native mod's settings page: its index in `mods.installed`.
     NativeMod(usize),
     NativeModHandEditor(usize),
@@ -2351,6 +2354,22 @@ fn wrap_words(text: &str, max: usize) -> Vec<String> {
     lines
 }
 
+/// Where a bundled Starling mod does its work. Vein Miner changes authoritative block
+/// breaking; the other Android bundle entries only change the local client's interface,
+/// rendering, input, or presentation.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum StarlingModSide {
+    Client,
+    Server,
+}
+
+fn starling_extra_mod_side(id: &str) -> StarlingModSide {
+    match id {
+        "veinminer" => StarlingModSide::Server,
+        _ => StarlingModSide::Client,
+    }
+}
+
 /// True when `id` is one of the native mods included in Starling's Android APK.
 fn starling_extra_mod(id: &str) -> bool {
     #[cfg(target_os = "android")]
@@ -2366,12 +2385,19 @@ fn starling_extra_mod(id: &str) -> bool {
 
 /// The installed mods assigned to one of the two Mods pages. Keep the original index in every
 /// action: settings and toggles are keyed by `mods.installed`, not by the filtered page.
-fn installed_mod_rows(s: &Settings, bundled: bool) -> Vec<Row> {
+fn installed_mod_rows(
+    s: &Settings,
+    bundled: bool,
+    side: Option<StarlingModSide>,
+) -> Vec<Row> {
     s.mods
         .installed
         .iter()
         .enumerate()
-        .filter(|(_, installed)| starling_extra_mod(&installed.id) == bundled)
+        .filter(|(_, installed)| {
+            starling_extra_mod(&installed.id) == bundled
+                && side.map_or(true, |side| starling_extra_mod_side(&installed.id) == side)
+        })
         .map(|(i, installed)| {
             let on = s.mods.is_on(i);
             let not_built = installed.problem.as_deref() == Some(crate::mod_list::NOT_BUILT);
@@ -3320,6 +3346,9 @@ impl OptionsUi {
             Page::Packs => "resourcePack.title",
             Page::Mods => "horizon.pages.mods",
             Page::StarlingExtra => "Starling Extras",
+            Page::StarlingExtraClient => "Client Sided",
+            Page::StarlingExtraServer => "Server Sided",
+            Page::StarlingExtraExtras => "Extras",
             Page::NativeMod(_) => "Mod Settings",
             Page::NativeModHandEditor(_) => "Hand Editor",
             Page::ShaderPacks => "horizon.pages.shader_packs",
@@ -4179,7 +4208,7 @@ impl OptionsUi {
                 {
                     rows.extend(native_game_rows(s));
                 }
-                let mods = installed_mod_rows(s, false);
+                let mods = installed_mod_rows(s, false, None);
                 if mods.is_empty() {
                     rows.push(Row::Header("horizon.mods.empty"));
                 } else {
@@ -4188,14 +4217,53 @@ impl OptionsUi {
                 rows
             }
             Page::StarlingExtra => {
-                let mut rows = native_game_rows(s);
-                let mods = installed_mod_rows(s, true);
-                if mods.is_empty() {
-                    rows.push(Row::Header("horizon.mods.empty"));
+                let mut rows = vec![
+                    Row::Buttons(
+                        button(
+                            0.0,
+                            0.0,
+                            150.0,
+                            Text::literal("Client Sided"),
+                            Act::Push(Page::StarlingExtraClient),
+                        ),
+                        Some(button(
+                            0.0,
+                            0.0,
+                            150.0,
+                            Text::literal("Server Sided"),
+                            Act::Push(Page::StarlingExtraServer),
+                        )),
+                    ),
+                    Row::Buttons(
+                        button(
+                            0.0,
+                            0.0,
+                            310.0,
+                            Text::literal("Extras"),
+                            Act::Push(Page::StarlingExtraExtras),
+                        ),
+                        None,
+                    ),
+                ];
+                // Compilation applies to the selected bundle as a whole, so keep its status
+                // and actions on the category picker rather than duplicating them per side.
+                rows.extend(native_game_rows(s));
+                rows
+            }
+            Page::StarlingExtraClient | Page::StarlingExtraServer => {
+                let side = if self.page() == Page::StarlingExtraClient {
+                    StarlingModSide::Client
                 } else {
-                    rows.extend(mods);
+                    StarlingModSide::Server
+                };
+                let mut rows = installed_mod_rows(s, true, Some(side));
+                if rows.is_empty() {
+                    rows.push(Row::Header("horizon.mods.empty"));
                 }
                 rows
+            }
+            Page::StarlingExtraExtras => {
+                vec![Row::Note("Nobody here but us chickens!".to_owned())]
             }
             Page::NativeMod(i) => self.native_rows(s, i, false),
             Page::NativeModHandEditor(i) => self.native_rows(s, i, true),
@@ -8180,7 +8248,7 @@ mod tests {
 
     #[cfg(target_os = "android")]
     #[test]
-    fn starling_extra_separates_bundled_mods_from_manual_mods() {
+    fn starling_extra_routes_bundled_mods_by_side_and_keeps_manual_mods_separate() {
         let atlas = atlas();
         let mut s = Settings::default();
         let mut ui = OptionsUi::default();
@@ -8217,26 +8285,29 @@ mod tests {
         ] {
             assert!(crate::mod_list::ANDROID_BUNDLED.contains(&id));
         }
+        assert_eq!(starling_extra_mod_side("veinminer"), StarlingModSide::Server);
+        for id in ["zoom", "worldmap", "punchy", "basic_hud", "eatinganimation"] {
+            assert_eq!(starling_extra_mod_side(id), StarlingModSide::Client);
+        }
 
+        let visible_indices = |widgets: &[Widget]| -> Vec<usize> {
+            widgets
+                .iter()
+                .filter_map(|w| match &w.kind {
+                    WKind::Button { act: Act::ToggleMod(i), .. } => Some(*i),
+                    _ => None,
+                })
+                .collect()
+        };
+
+        // The main Mods page still shows manually installed mods, not APK-bundled extras.
         ui.show(Page::Mods);
         let (widgets, ..) = ui.layout(&s, size.0, size.1);
-        assert!(widgets.iter().any(|w| matches!(
-            &w.kind,
-            WKind::Button {
-                act: Act::Push(Page::StarlingExtra),
-                ..
-            }
-        )));
-        let visible: Vec<_> = widgets.iter().filter_map(|w| match &w.kind {
-            WKind::Button { act: Act::ToggleMod(i), label, .. } => Some((*i, label.plain())),
-            _ => None,
-        }).collect();
-        assert_eq!(visible.iter().map(|(i, _)| *i).collect::<Vec<_>>(), [5]);
-
-        let open = widgets.iter().find(|w| matches!(
-            w.kind,
-            WKind::Button { act: Act::Push(Page::StarlingExtra), .. }
-        )).unwrap();
+        assert_eq!(visible_indices(&widgets), [5]);
+        let open = widgets
+            .iter()
+            .find(|w| matches!(w.kind, WKind::Button { act: Act::Push(Page::StarlingExtra), .. }))
+            .unwrap();
         let events = ui.click(
             &mut s,
             &atlas,
@@ -8250,12 +8321,82 @@ mod tests {
         assert!(events.contains(&Event::ListMods));
         assert_eq!(ui.page(), Page::StarlingExtra);
 
-        let (built_in, ..) = ui.layout(&s, size.0, size.1);
-        let visible: Vec<_> = built_in.iter().filter_map(|w| match &w.kind {
-            WKind::Button { act: Act::ToggleMod(i), label, .. } => Some((*i, label.plain())),
-            _ => None,
-        }).collect();
-        assert_eq!(visible.iter().map(|(i, _)| *i).collect::<Vec<_>>(), [0, 1, 2, 3, 4, 5]);
+        // The Starling Extras page is now a category picker.
+        let (categories, ..) = ui.layout(&s, size.0, size.1);
+        for page in [
+            Page::StarlingExtraClient,
+            Page::StarlingExtraServer,
+            Page::StarlingExtraExtras,
+        ] {
+            assert!(categories.iter().any(|w| matches!(
+                w.kind,
+                WKind::Button { act: Act::Push(p), .. } if p == page
+            )));
+        }
+
+        // Client-only mods include Punchy, World Map/Minimap, Basic HUD and Eating Animation.
+        let client = categories
+            .iter()
+            .find(|w| matches!(w.kind, WKind::Button { act: Act::Push(Page::StarlingExtraClient), .. }))
+            .unwrap();
+        ui.click(
+            &mut s,
+            &atlas,
+            client.x + 1.0,
+            client.y + 1.0,
+            size,
+            [480, 320],
+            false,
+            false,
+        );
+        assert_eq!(ui.page(), Page::StarlingExtraClient);
+        let (client_widgets, ..) = ui.layout(&s, size.0, size.1);
+        assert_eq!(visible_indices(&client_widgets), [0, 1, 2, 3]);
+
+        // Vein Miner is the server-sided entry, and appears only in that category.
+        ui.show(Page::StarlingExtra);
+        let (categories, ..) = ui.layout(&s, size.0, size.1);
+        let server = categories
+            .iter()
+            .find(|w| matches!(w.kind, WKind::Button { act: Act::Push(Page::StarlingExtraServer), .. }))
+            .unwrap();
+        ui.click(
+            &mut s,
+            &atlas,
+            server.x + 1.0,
+            server.y + 1.0,
+            size,
+            [480, 320],
+            false,
+            false,
+        );
+        assert_eq!(ui.page(), Page::StarlingExtraServer);
+        let (server_widgets, ..) = ui.layout(&s, size.0, size.1);
+        assert_eq!(visible_indices(&server_widgets), [4]);
+
+        // Extras is intentionally empty and shows the requested message.
+        ui.show(Page::StarlingExtra);
+        let (categories, ..) = ui.layout(&s, size.0, size.1);
+        let extras = categories
+            .iter()
+            .find(|w| matches!(w.kind, WKind::Button { act: Act::Push(Page::StarlingExtraExtras), .. }))
+            .unwrap();
+        ui.click(
+            &mut s,
+            &atlas,
+            extras.x + 1.0,
+            extras.y + 1.0,
+            size,
+            [480, 320],
+            false,
+            false,
+        );
+        assert_eq!(ui.page(), Page::StarlingExtraExtras);
+        let (extras_widgets, ..) = ui.layout(&s, size.0, size.1);
+        assert!(extras_widgets.iter().any(|w| matches!(
+            &w.kind,
+            WKind::Text { text, .. } if text.plain() == "Nobody here but us chickens!"
+        )));
     }
 
     #[test]

@@ -12,6 +12,9 @@ fn official_eatinganimation_frame(
     use horizon_assets::item_model::{Context, FoilType, LayerContent};
     use std::ops::ControlFlow::{Break, Continue};
 
+    if !ea::enabled() {
+        return Continue(());
+    }
     let Some(in_use) = owner.filter(|o| o.using_this_item) else {
         return Continue(());
     };
