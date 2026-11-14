@@ -442,7 +442,7 @@ fn not_built(dir: &std::path::Path, built: &str, rows: &[Installed]) -> Vec<Inst
         };
         let m = bundle.manifest;
         let listed = rows.iter().chain(&out).any(|row| row.id == m.id);
-        if !listed && !in_build(&m.id) {
+        if !listed && !in_build(&m.id) && !mod_list::is_android_bundled(&m.id) {
             out.push(Installed {
                 title: format!("{} {}", display_name(&m.id), m.version),
                 id: m.id,
@@ -649,6 +649,25 @@ mod tests {
         zip.finish().unwrap();
     }
 
+    #[cfg(target_os = "android")]
+    #[test]
+    fn bundled_native_mods_are_not_listed_as_external_compile_candidates() {
+        let dir = std::env::temp_dir().join(format!(
+            "horizon-bundled-native-{}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        hnmod(&dir, "veinminer");
+        hnmod(&dir, "external_miner");
+        let rows = not_built(&dir, "", &[]);
+        assert_eq!(
+            rows.iter().map(|row| row.id.as_str()).collect::<Vec<_>>(),
+            ["external_miner"]
+        );
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
     #[test]
     fn the_crash_report_lists_the_builds_native_mods() {
         let built = r#"{"mods":[{"id":"machine_sample","version":"0.1.0","sha256":null},{"id":"pipes","version":"2.0"}]}"#;
@@ -661,6 +680,7 @@ mod tests {
         assert_eq!(native_mods_detail(r#"{"mods":[]}"#), None);
     }
 
+    #[cfg(not(target_os = "android"))]
     #[test]
     fn native_mods_installed_but_not_built_get_a_row_saying_so() {
         let dir = std::env::temp_dir().join(format!("horizon-not-built-{}", std::process::id()));

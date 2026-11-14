@@ -17,6 +17,16 @@ pub const DIR: &str = "horizon-mods";
 pub const NATIVE_DIR: &str = "horizon-native-mods";
 
 #[cfg(target_os = "android")]
+pub fn is_android_bundled(id: &str) -> bool {
+    ANDROID_BUNDLED.contains(&id)
+}
+
+#[cfg(not(target_os = "android"))]
+pub fn is_android_bundled(_id: &str) -> bool {
+    false
+}
+
+#[cfg(target_os = "android")]
 pub const ANDROID_BUNDLED: [&str; 20] = [
     "zoom",
     "worldmap",
@@ -264,6 +274,14 @@ mod tests {
             assert!(!ANDROID_BUNDLED.contains(&id));
             assert!(!list.disabled.contains(id));
         }
+    }
+
+    #[cfg(target_os = "android")]
+    #[test]
+    fn bundled_native_mods_are_identified() {
+        assert!(is_android_bundled("veinminer"));
+        assert!(is_android_bundled("zoom"));
+        assert!(!is_android_bundled("external_miner"));
     }
 
     #[cfg(target_os = "android")]

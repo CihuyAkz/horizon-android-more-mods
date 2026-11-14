@@ -292,6 +292,7 @@ fn folder_mods_on(off: &BTreeSet<String>) -> BTreeSet<String> {
         .filter_map(|p| horizon_mods::index::native::Bundle::read(&p).ok())
         .map(|bundle| bundle.manifest.id)
         .filter(|id| !off.contains(id))
+        .filter(|id| !horizon_client::mod_list::is_android_bundled(id))
         .collect()
 }
 
@@ -455,7 +456,9 @@ fn bundles_body() -> Result<Vec<u8>, String> {
         let Ok(bundle) = horizon_mods::index::native::Bundle::read(&path) else {
             continue;
         };
-        if off.contains(&bundle.manifest.id) {
+        if off.contains(&bundle.manifest.id)
+            || horizon_client::mod_list::is_android_bundled(&bundle.manifest.id)
+        {
             continue;
         }
         mods.push(
