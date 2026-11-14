@@ -1,0 +1,2855 @@
+diff --git a/AGENTS.md b/AGENTS.md
+index 2578901..adfc7b7 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -167,7 +167,7 @@ state stays separate from the library tests. This compiles gameplay twice for ex
+ | Resource packs | L: `packs.rs` + `packs/`, `pack_screen.rs`, `atlas_sources.rs`, `sprites.rs`, `mipmap.rs`, `model_library.rs`, `font.rs`, `mobs/cem.rs` + `mobs/cem_anim.rs` (OptiFine/EMF entity models and their animations); `horizon-client-core/src/lang.rs`; crates `horizon-assets`, `horizon-optifine`; G: `packs.rs` |
+ | Agent control | L: `control.rs` (socket), `bin/horizon-ctl/`; G: `control.rs`, `agent.rs`, `events.rs`, `ui_control.rs` ([docs/agent-control.md](docs/agent-control.md)) |
+ | Mods | crate `horizon-mods`; G: `mods.rs`; L: `mod_content.rs`, `mod_list.rs` |
+-| Horizon extras, settings | L: `extras.rs`, `graphics.rs`, `settings.rs`, `minimap.rs`; G: `extras.rs`, `tweaks.rs`, `options.rs` |
++| Horizon extras, settings | L: `extras.rs`, `graphics.rs`, `settings.rs`; G: `extras.rs`, `tweaks.rs`, `options.rs` |
+ 
+ ## How `Game` is organised
+ 
+diff --git a/OVERLAY_MANIFEST.txt b/OVERLAY_MANIFEST.txt
+index ff08713..26d2093 100644
+--- a/OVERLAY_MANIFEST.txt
++++ b/OVERLAY_MANIFEST.txt
+@@ -17,10 +17,6 @@ docs/native-mods-android-port.md
+ java/dev/horizon/android/HorizonImport.java
+ java/dev/horizon/android/StarlingActivity.java
+ me.patch
+-minimap/mixins/minimap/click.rs
+-minimap/mixins/minimap/list.rs
+-minimap/mixins/minimap/minimap.rs
+-minimap/mixins/minimap/settings.rs
+ native-mods/armorhud/horizon-native.json
+ native-mods/armorhud/mixins/armorhud/click.rs
+ native-mods/armorhud/mixins/armorhud/horizon-mixin.toml
+@@ -352,27 +348,6 @@ native-mods/visuality_horizon/mixins/visuality_horizon/settings_click.rs
+ native-mods/visuality_horizon/mixins/visuality_horizon/slime.rs
+ native-mods/visuality_horizon/mixins/visuality_horizon/tick.rs
+ native-mods/visuality_horizon/mixins/visuality_horizon/world_drawn.rs
+-native-mods/worldmap/horizon-native.json
+-native-mods/worldmap/mixins/worldmap/chat.rs
+-native-mods/worldmap/mixins/worldmap/chattree.rs
+-native-mods/worldmap/mixins/worldmap/click.rs
+-native-mods/worldmap/mixins/worldmap/command.rs
+-native-mods/worldmap/mixins/worldmap/commands.rs
+-native-mods/worldmap/mixins/worldmap/core.rs
+-native-mods/worldmap/mixins/worldmap/drag.rs
+-native-mods/worldmap/mixins/worldmap/frame.rs
+-native-mods/worldmap/mixins/worldmap/horizon-mixin.toml
+-native-mods/worldmap/mixins/worldmap/hud.rs
+-native-mods/worldmap/mixins/worldmap/key.rs
+-native-mods/worldmap/mixins/worldmap/list.rs
+-native-mods/worldmap/mixins/worldmap/press.rs
+-native-mods/worldmap/mixins/worldmap/release.rs
+-native-mods/worldmap/mixins/worldmap/render.rs
+-native-mods/worldmap/mixins/worldmap/runtime.rs
+-native-mods/worldmap/mixins/worldmap/screenkey.rs
+-native-mods/worldmap/mixins/worldmap/scroll.rs
+-native-mods/worldmap/mixins/worldmap/settings.rs
+-native-mods/worldmap/mixins/worldmap/typed.rs
+ native-mods/zoom/horizon-native.json
+ native-mods/zoom/mixins/zoom/LICENSE
+ native-mods/zoom/mixins/zoom/click.rs
+diff --git a/ROADMAP.md b/ROADMAP.md
+index 3b09035..47d9432 100644
+--- a/ROADMAP.md
++++ b/ROADMAP.md
+@@ -508,11 +508,11 @@ A native port (a horizon-mixins bundle, docs/native-mods.md) of [https://github.
+ 
+ #### Native versions of popular client mods
+ 
+-Built-in versions of the client mods players ask for: block info on hover, a world map, inventory tweaks and schematic overlays.
++Built-in versions of the client mods players ask for: block info on hover, inventory tweaks and schematic overlays.
+ 
+ <details><summary>Technical</summary>
+ 
+-Done: a mod list and menu, minimap, zoom, keystrokes, an FPS counter and a recipe viewer, as native mods (horizon-mods/native/). Asked for: an angled world map that shows hills, overhangs and caves, inventory tweaks (drag and scroll to move items), block info tooltips and schematic overlays.
++Done: a mod list and menu, zoom, keystrokes, an FPS counter and a recipe viewer, as native mods (horizon-mods/native/). Asked for: inventory tweaks (drag and scroll to move items), block info tooltips and schematic overlays.
+ 
+ More: [docs/extras.md](docs/extras.md) · [docs/native-mods.md](docs/native-mods.md)
+ 
+diff --git a/SYNC.md b/SYNC.md
+index 0c000a6..358d80b 100644
+--- a/SYNC.md
++++ b/SYNC.md
+@@ -26,7 +26,7 @@ clippy-android, fmt, test, raw CMD). On the VM: `~/sync4`, `~/sync4-target`, `~/
+ 
+ ## What fell
+ - Wasm mods and their API: horizon-mod-sdk, starling-mod-sdk, starling-mod-cli, mods/official
+-  (far-view, fps-overlay, keystrokes, minimap, recipes, zoom) and the SDK examples.
++  (far-view, fps-overlay, keystrokes, recipes, zoom) and the SDK examples.
+ - Create: own block states (`states`, `own-states.json`) and so placement orientation and belt
+   funnels (`belt_funnel_for`); `fuel` on items; the support and occlusion part of `properties.shape`.
+   The local .hmod data has to move to `state_properties` and `components`.
+diff --git a/build_apk.py b/build_apk.py
+index a09e8bb..eb3c74c 100644
+--- a/build_apk.py
++++ b/build_apk.py
+@@ -77,7 +77,6 @@ PREPARE_KIT = (
+ )
+ BUILTIN_NATIVE_MODS = (
+     "zoom",
+-    "worldmap",
+     "recipes",
+     "smartf3",
+     "freecam_plus",
+diff --git a/crates/horizon-client-render/src/extras.rs b/crates/horizon-client-render/src/extras.rs
+index d04ba4a..a9724bf 100644
+--- a/crates/horizon-client-render/src/extras.rs
++++ b/crates/horizon-client-render/src/extras.rs
+@@ -1,4 +1,4 @@
+-//! Horizon's optional extras (minimap, lighting, inventory tools): their
++//! Horizon's optional extras (lighting, inventory tools): their
+ //! settings, kept in `horizon-extras.txt` next to `options.txt` so that file
+ //! stays exactly vanilla's, and the logic behind them. Every extra is off by
+ //! default; see `docs/extras.md`. Horizon's own switches outside the Extras page
+@@ -9,10 +9,6 @@ pub const FILE: &str = "horizon-extras.txt";
+ /// The name the options screen uses while the sort key waits for a key.
+ pub const SORT_KEY: &str = "horizon.sort";
+ 
+-/// The minimap's sizes in GUI pixels, and its zooms in blocks per pixel.
+-pub const MINIMAP_SIZES: [(u8, &str); 3] = [(64, "Small"), (96, "Medium"), (128, "Large")];
+-pub const MINIMAP_ZOOMS: [f32; 4] = [0.5, 1.0, 2.0, 4.0];
+-
+ /// A screen corner for an overlay.
+ #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+ pub enum Corner {
+@@ -85,15 +81,6 @@ pub struct Extras {
+     /// The official mods once installed for the extras they replace, by mod
+     /// id (`movedToMods`).
+     pub moved: Vec<String>,
+-    pub minimap: bool,
+-    pub minimap_corner: Corner,
+-    /// Side in GUI pixels (`MINIMAP_SIZES`).
+-    pub minimap_size: u8,
+-    pub minimap_round: bool,
+-    /// Blocks per pixel (`MINIMAP_ZOOMS`).
+-    pub minimap_zoom: f32,
+-    /// Turn with the player (forward up) instead of north up.
+-    pub minimap_rotate: bool,
+     /// Retry lost multiplayer connections (`reconnect`).
+     pub auto_reconnect: bool,
+     /// Positional sounds leave a few static sound channels free for UI sounds
+@@ -168,12 +155,6 @@ impl Default for Extras {
+             keystrokes_corner: Corner::TopLeft,
+             keystrokes_cps: true,
+             moved: Vec::new(),
+-            minimap: false,
+-            minimap_corner: Corner::TopRight,
+-            minimap_size: 96,
+-            minimap_round: false,
+-            minimap_zoom: 1.0,
+-            minimap_rotate: false,
+             auto_reconnect: false,
+             ui_sound_reserve: false,
+             own_name_tag: false,
+@@ -249,20 +230,6 @@ impl Extras {
+                         .map(str::to_owned)
+                         .collect()
+                 }
+-                "minimap" => e.minimap = flag(e.minimap),
+-                "minimapCorner" => e.minimap_corner = Corner::parse(value, e.minimap_corner),
+-                "minimapSize" => {
+-                    if let Some(&(v, _)) = MINIMAP_SIZES.iter().find(|s| s.0.to_string() == value) {
+-                        e.minimap_size = v;
+-                    }
+-                }
+-                "minimapShape" => e.minimap_round = value == "round",
+-                "minimapZoom" => {
+-                    if let Some(&z) = MINIMAP_ZOOMS.iter().find(|z| z.to_string() == value) {
+-                        e.minimap_zoom = z;
+-                    }
+-                }
+-                "minimapRotate" => e.minimap_rotate = flag(e.minimap_rotate),
+                 "autoReconnect" => e.auto_reconnect = flag(e.auto_reconnect),
+                 "uiSoundReserve" => e.ui_sound_reserve = flag(e.ui_sound_reserve),
+                 "ownNameTag" => e.own_name_tag = flag(e.own_name_tag),
+@@ -300,7 +267,7 @@ impl Extras {
+     }
+     pub fn serialize(&self) -> String {
+         format!(
+-            "fullbright:{}\ndynamicLights:{}\nzoom:{}\nzoomKey:{}\nzoomLevel:{}\nzoomSmooth:{}\nzoomSensitivity:{}\nfps:{}\nfpsCorner:{}\nfpsLows:{}\nkeystrokes:{}\nkeystrokesCorner:{}\nkeystrokesCps:{}\nmovedToMods:{}\nminimap:{}\nminimapCorner:{}\nminimapSize:{}\nminimapShape:{}\nminimapZoom:{}\nminimapRotate:{}\nautoReconnect:{}\nuiSoundReserve:{}\nownNameTag:{}\nhideBlockParticles:{}\nmouseTweaks:{}\nmouseTweaksWheel:{}\nsort:{}\nsortKey:{}\nchatAnimation:{}\nchatIndicator:{}\n{}:{}\nagentControl:{}\nreproKeys:{}\ndiscordPresence:{}\nsplitscreen:{}\nsplitscreenTwo:{}\nsplitscreenThree:{}\nsplitscreenNames:{}\nwheelCyclesSettings:{}\nmusicOff:{}\nmusicPage:{}\ncosmeticsMine:{}\ncosmeticsOthers:{}\n",
++            "fullbright:{}\ndynamicLights:{}\nzoom:{}\nzoomKey:{}\nzoomLevel:{}\nzoomSmooth:{}\nzoomSensitivity:{}\nfps:{}\nfpsCorner:{}\nfpsLows:{}\nkeystrokes:{}\nkeystrokesCorner:{}\nkeystrokesCps:{}\nmovedToMods:{}\nautoReconnect:{}\nuiSoundReserve:{}\nownNameTag:{}\nhideBlockParticles:{}\nmouseTweaks:{}\nmouseTweaksWheel:{}\nsort:{}\nsortKey:{}\nchatAnimation:{}\nchatIndicator:{}\n{}:{}\nagentControl:{}\nreproKeys:{}\ndiscordPresence:{}\nsplitscreen:{}\nsplitscreenTwo:{}\nsplitscreenThree:{}\nsplitscreenNames:{}\nwheelCyclesSettings:{}\nmusicOff:{}\nmusicPage:{}\ncosmeticsMine:{}\ncosmeticsOthers:{}\n",
+             bool_text(self.fullbright),
+             bool_text(self.dynamic_lights),
+             bool_text(self.zoom),
+@@ -315,16 +282,6 @@ impl Extras {
+             self.keystrokes_corner.name(),
+             bool_text(self.keystrokes_cps),
+             self.moved.join(","),
+-            bool_text(self.minimap),
+-            self.minimap_corner.name(),
+-            self.minimap_size,
+-            if self.minimap_round {
+-                "round"
+-            } else {
+-                "square"
+-            },
+-            self.minimap_zoom,
+-            bool_text(self.minimap_rotate),
+             bool_text(self.auto_reconnect),
+             bool_text(self.ui_sound_reserve),
+             bool_text(self.own_name_tag),
+@@ -803,7 +760,7 @@ mod tests {
+     fn everything_is_off_by_default_and_round_trips() {
+         let d = Extras::default();
+         assert!(!d.fullbright && !d.dynamic_lights);
+-        assert!(!d.zoom && !d.fps && !d.keystrokes && !d.minimap && !d.auto_reconnect);
++        assert!(!d.zoom && !d.fps && !d.keystrokes && !d.auto_reconnect);
+         assert!(!d.mouse_tweaks && !d.sort && !d.own_name_tag && !d.ui_sound_reserve);
+         assert!(!d.hide_block_particles);
+         assert!(!d.music_page && d.music_off.is_empty());
+@@ -823,12 +780,6 @@ mod tests {
+         e.keystrokes = true;
+         e.keystrokes_cps = false;
+         e.moved = vec!["fps_overlay".into(), "keystrokes".into()];
+-        e.minimap = true;
+-        e.minimap_size = 128;
+-        e.minimap_round = true;
+-        e.minimap_zoom = 0.5;
+-        e.minimap_rotate = true;
+-        e.minimap_corner = Corner::BottomLeft;
+         e.auto_reconnect = true;
+         Item::OwnNameTag.cycle(&mut e, false);
+         assert_eq!(Item::OwnNameTag.switch(&e), Some(true));
+@@ -949,11 +900,7 @@ mod tests {
+         let mut e = Extras::default();
+         Item::Sort.cycle(&mut e, true);
+         assert_eq!(Item::Sort.value(&e), "On");
+-        // The minimap's old keys still parse, for the move to its mod.
+-        assert_eq!(
+-            Extras::parse("minimapSize:7\nminimapZoom:3").minimap_zoom,
+-            1.0
+-        );
++        assert_eq!(Extras::parse("minimap:true\nminimapSize:7\nminimapZoom:3"), Extras::default());
+         for item in rows().into_iter().flatten() {
+             assert!(!item.caption().is_empty() && !item.description().is_empty());
+         }
+diff --git a/crates/horizon-client-render/src/hud.rs b/crates/horizon-client-render/src/hud.rs
+index 2b4b75d..9b3b112 100644
+--- a/crates/horizon-client-render/src/hud.rs
++++ b/crates/horizon-client-render/src/hud.rs
+@@ -159,10 +159,8 @@ pub fn map_slot_sprite(slot: usize) -> Option<&'static str> {
+         std::sync::LazyLock::new(|| (0..MAP_SLOTS).map(|i| format!("horizon/map{i}")).collect());
+     NAMES.get(slot).map(String::as_str)
+ }
+-/// The atlas slot the minimap extra draws into.
+-pub const MINIMAP_SPRITE: &str = "horizon/minimap";
+ /// A mod's own image (`native_mod_image`), drawn with `native_sprite`; big
+-/// enough for a world map's 1024 blocks at a block a pixel.
++/// enough for a large native mod image, such as a 1024-pixel-wide texture.
+ pub const MOD_IMAGE_SPRITE: &str = "horizon/modimage";
+ pub const MOD_IMAGE_SIZE: u32 = 1024;
+ /// Atlas slots for downloaded player skins (`skins/<sha1>`), 64x64 each.
+@@ -1138,20 +1136,13 @@ impl HudAtlas {
+         Ok(atlas)
+     }
+     /// Empty slots written at run time: map textures (game/maps.rs), the
+-    /// minimap, a native mod's own image, downloaded skins, world and pack
++    /// a native mod's own image, downloaded skins, world and pack
+     /// icons and the on-screen keyboard's text.
+     fn slots(images: &mut Vec<PackedImage>, trim: (u32, u32), mod_image: bool) {
+         for i in 0..MAP_SLOTS {
+             let name = map_slot_sprite(i).unwrap_or_default();
+             images.push((name.into(), 128, 128, vec![0; 128 * 128 * 4]));
+         }
+-        // The minimap extra's image (game/extras.rs).
+-        images.push((
+-            MINIMAP_SPRITE.into(),
+-            crate::minimap::SIZE as u32,
+-            crate::minimap::SIZE as u32,
+-            vec![0; crate::minimap::SIZE * crate::minimap::SIZE * 4],
+-        ));
+         // A mod's own image (native `mod_image`), only when a mod is loaded.
+         if mod_image {
+             images.push((
+diff --git a/crates/horizon-client-render/src/lib.rs b/crates/horizon-client-render/src/lib.rs
+index 4abc362..024a64f 100644
+--- a/crates/horizon-client-render/src/lib.rs
++++ b/crates/horizon-client-render/src/lib.rs
+@@ -60,7 +60,6 @@ pub mod lod;
+ pub mod logging;
+ pub mod menu_blur;
+ pub mod mesher;
+-pub mod minimap;
+ pub mod mipmap;
+ pub mod mod_list;
+ pub mod model_library;
+diff --git a/crates/horizon-client-render/src/minimap.rs b/crates/horizon-client-render/src/minimap.rs
+deleted file mode 100644
+index 8d10690..0000000
+--- a/crates/horizon-client-render/src/minimap.rs
++++ /dev/null
+@@ -1,682 +0,0 @@
+-//! The minimap extra (`docs/extras.md`): a 16x16 tile per loaded chunk with
+-//! each column's vanilla map colour (`MapColor`, as `MapItem.update` picks
+-//! it), height and water depth, and a 128x128 image composed from the tiles
+-//! around the player with the map item's height and water shading.
+-//!
+-//! Tiles are filled nearest first within a time budget and rescanned after
+-//! block changes; the image is recomposed only when the view moved or a tile
+-//! changed.
+-use crate::{
+-    blocks::{BlockFacts, Fluid, MAP_COLORS},
+-    chunk::Chunk,
+-    fast_hash::FxHashMap,
+-    world::World,
+-};
+-use std::time::{Duration, Instant};
+-
+-/// The image's side in texels.
+-pub const SIZE: usize = 128;
+-/// Marks a column the map cuts through (a wall at the player's height).
+-const WALL: u8 = 0x80;
+-/// Water's and lava's map colours (`MapColor.WATER`, `FIRE`).
+-const WATER: u8 = 12;
+-const LAVA: u8 = 4;
+-/// A tile whose chunk changed is rescanned at most this often.
+-const RESCAN: Duration = Duration::from_secs(1);
+-
+-/// What the map shows of each column.
+-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+-pub enum Layer {
+-    /// The top block, as map items show it.
+-    Surface,
+-    /// Underground, in the Nether or under a roof: the floor below this
+-    /// height (the player's head), and walls cut at it.
+-    Below(i32),
+-}
+-
+-/// What the scan needs of each block state.
+-pub struct Palette {
+-    /// Map colour id, 0 for none.
+-    color: Vec<u8>,
+-    /// 0 none, 1 water, 2 lava; | 4 for air; | 8 when sturdy on top.
+-    flags: Vec<u8>,
+-}
+-const FLUID: u8 = 3;
+-const AIR: u8 = 4;
+-const STURDY_TOP: u8 = 8;
+-impl Palette {
+-    pub fn new(facts: &BlockFacts) -> Self {
+-        let mut color = Vec::with_capacity(facts.states.len());
+-        let mut flags = Vec::with_capacity(facts.states.len());
+-        for (i, f) in facts.states.iter().enumerate() {
+-            color.push(f.map_color);
+-            let mut b = match f.fluid {
+-                Fluid::None => 0,
+-                Fluid::Water => 1,
+-                Fluid::Lava => 2,
+-            };
+-            if facts.is_air(horizon_world::registry::BlockStateId(i as u32)) {
+-                b |= AIR;
+-            }
+-            // isFaceSturdy(UP, FULL): Direction.UP's ordinal is 1.
+-            if f.sturdy_full >> 1 & 1 != 0 {
+-                b |= STURDY_TOP;
+-            }
+-            flags.push(b);
+-        }
+-        Self { color, flags }
+-    }
+-    /// A palette from (colour, flags) per state id (tests).
+-    #[cfg(test)]
+-    fn from_parts(parts: &[(u8, u8)]) -> Self {
+-        Self {
+-            color: parts.iter().map(|p| p.0).collect(),
+-            flags: parts.iter().map(|p| p.1).collect(),
+-        }
+-    }
+-    #[inline]
+-    fn get(&self, id: u32) -> (u8, u8) {
+-        let i = id as usize;
+-        (
+-            self.color.get(i).copied().unwrap_or(0),
+-            self.flags.get(i).copied().unwrap_or(AIR),
+-        )
+-    }
+-}
+-
+-#[derive(Clone)]
+-struct Tile {
+-    /// Map colour id per column (`z * 16 + x`), `| WALL` for cut walls.
+-    color: [u8; 256],
+-    height: [i16; 256],
+-    /// Water depth below the surface, for the map's water shading.
+-    depth: [u8; 256],
+-    revision: u64,
+-    layer: Layer,
+-    scanned: Instant,
+-}
+-/// `MapItem.update` for one column: the first block with a map colour
+-/// going down, the fluid's colour over a fluid unless the block is sturdy on
+-/// top (`getCorrectStateForFluidBlock`), and the fluid's depth.
+-fn scan_column(
+-    chunk: &Chunk,
+-    palette: &Palette,
+-    x: i32,
+-    z: i32,
+-    top: i32,
+-    layer: Layer,
+-) -> (u8, i16, u8) {
+-    let mut y = top;
+-    if let Layer::Below(head) = layer {
+-        let (color, flags) = palette.get(chunk.get(x, head, z));
+-        if flags & AIR == 0 && color != 0 && flags & FLUID == 0 {
+-            return (color | WALL, head as i16, 0);
+-        }
+-    }
+-    let bottom = chunk.min_y();
+-    while y > bottom {
+-        let (mut color, flags) = palette.get(chunk.get(x, y, z));
+-        if color == 0 {
+-            y -= 1;
+-            continue;
+-        }
+-        let mut depth = 0u8;
+-        let fluid = flags & FLUID;
+-        if fluid != 0 {
+-            let mut below = y - 1;
+-            while below > bottom && palette.get(chunk.get(x, below, z)).1 & FLUID != 0 {
+-                depth = depth.saturating_add(1);
+-                below -= 1;
+-            }
+-            depth = depth.saturating_add(1);
+-            if flags & STURDY_TOP == 0 {
+-                color = if fluid == 2 { LAVA } else { WATER };
+-            }
+-        }
+-        return (color, y as i16, depth);
+-    }
+-    (0, bottom as i16, 0)
+-}
+-/// The highest block of a chunk worth scanning from.
+-fn top_of(chunk: &Chunk, air: u32, layer: Layer) -> i32 {
+-    let surface = (0..chunk.sections.len())
+-        .rev()
+-        .find(|&s| {
+-            chunk
+-                .sections
+-                .get(s)
+-                .is_some_and(|sec| !sec.is_uniform(air))
+-        })
+-        .map_or(chunk.min_y(), |s| chunk.min_y() + s as i32 * 16 + 15);
+-    match layer {
+-        Layer::Surface => surface,
+-        Layer::Below(head) => surface.min(head),
+-    }
+-}
+-fn scan_tile(chunk: &Chunk, palette: &Palette, air: u32, layer: Layer, revision: u64) -> Tile {
+-    let top = top_of(chunk, air, layer);
+-    let mut tile = Tile {
+-        color: [0; 256],
+-        height: [chunk.min_y() as i16; 256],
+-        depth: [0; 256],
+-        revision,
+-        layer,
+-        scanned: Instant::now(),
+-    };
+-    for z in 0..16 {
+-        for x in 0..16 {
+-            let (c, h, d) = scan_column(chunk, palette, x, z, top, layer);
+-            let i = (z * 16 + x) as usize;
+-            tile.color[i] = c;
+-            tile.height[i] = h;
+-            tile.depth[i] = d;
+-        }
+-    }
+-    tile
+-}
+-
+-/// Where the map looks from and how.
+-#[derive(Clone, Copy, Debug, PartialEq)]
+-pub struct View {
+-    pub x: f64,
+-    pub z: f64,
+-    /// The player's yaw in degrees (0 faces south).
+-    pub yaw: f32,
+-    /// The map turns with the player (forward is up), or north is up.
+-    pub rotate: bool,
+-    pub blocks_per_pixel: f32,
+-    pub round: bool,
+-}
+-impl View {
+-    /// Whether the image for `self` would look different from `other`'s.
+-    fn differs(&self, other: &View) -> bool {
+-        let moved = ((self.x - other.x).abs().max((self.z - other.z).abs()) as f32)
+-            >= self.blocks_per_pixel / 4.0;
+-        let turned = self.rotate && (self.yaw - other.yaw).abs() >= 0.5;
+-        moved
+-            || turned
+-            || self.rotate != other.rotate
+-            || self.round != other.round
+-            || self.blocks_per_pixel != other.blocks_per_pixel
+-    }
+-    /// The world's right and forward directions as the map's x and up.
+-    fn axes(&self) -> ([f64; 2], [f64; 2]) {
+-        if !self.rotate {
+-            return ([1.0, 0.0], [0.0, -1.0]);
+-        }
+-        let (s, c) = f64::from(self.yaw).to_radians().sin_cos();
+-        ([-c, -s], [-s, c])
+-    }
+-    /// Where north is on the map's rim, as a unit direction (x right, y down).
+-    pub fn north(&self) -> (f32, f32) {
+-        let (r, f) = self.axes();
+-        // The direction (0, -1) in the map's (right, -forward) basis.
+-        (-r[1] as f32, f[1] as f32)
+-    }
+-}
+-
+-/// `MapColor.getColorFromPackedId` as RGBA.
+-fn packed_rgba(id: u8, brightness: u8) -> [u8; 4] {
+-    let id = usize::from(id);
+-    if id == 0 || id >= MAP_COLORS.len() {
+-        return [0; 4];
+-    }
+-    let modifier = [180u32, 220, 255, 135][usize::from(brightness & 3)];
+-    let col = MAP_COLORS[id];
+-    let ch = |s: u32| ((col >> s & 255) * modifier / 255) as u8;
+-    [ch(16), ch(8), ch(0), 255]
+-}
+-/// The map item's shading at scale 1: brighter facing a lower north
+-/// neighbour, darker facing a higher one, dithered; water by depth.
+-fn brightness(color: u8, height: i16, north: Option<i16>, depth: u8, parity: i32) -> u8 {
+-    if color & WALL != 0 {
+-        return 3;
+-    }
+-    let parity = f64::from(parity & 1);
+-    if color == WATER {
+-        let diff = f64::from(depth) * 0.1 + parity * 0.2;
+-        return if diff < 0.5 {
+-            2
+-        } else if diff > 0.9 {
+-            0
+-        } else {
+-            1
+-        };
+-    }
+-    let north = north.unwrap_or(height);
+-    let diff = f64::from(height - north) * 4.0 / 5.0 + (parity - 0.5) * 0.4;
+-    if diff > 0.6 {
+-        2
+-    } else if diff < -0.6 {
+-        0
+-    } else {
+-        1
+-    }
+-}
+-const UNKNOWN: [u8; 4] = [20, 20, 20, 200];
+-const BORDER: [u8; 4] = [10, 10, 10, 230];
+-
+-#[derive(Default)]
+-pub struct Minimap {
+-    tiles: FxHashMap<(i32, i32), Tile>,
+-    palette: Option<Palette>,
+-    composed: Option<View>,
+-    /// Tiles changed since the image was composed.
+-    changed: bool,
+-    /// The composed image, `SIZE` x `SIZE` RGBA.
+-    pub image: Vec<u8>,
+-}
+-impl Minimap {
+-    /// Forget everything (a new world or dimension, or the minimap turned off).
+-    pub fn clear(&mut self) {
+-        let palette = self.palette.take();
+-        *self = Self {
+-            palette,
+-            ..Self::default()
+-        };
+-    }
+-    /// Fill and refresh tiles around chunk `center` within `radius` chunks,
+-    /// nearest first, until `budget` is spent. Returns the tiles scanned.
+-    pub fn update(
+-        &mut self,
+-        world: &World,
+-        facts: &BlockFacts,
+-        center: (i32, i32),
+-        radius: i32,
+-        layer: Layer,
+-        budget: Duration,
+-    ) -> usize {
+-        let palette = self.palette.get_or_insert_with(|| Palette::new(facts));
+-        let started = Instant::now();
+-        let air = world.air.0;
+-        // Tiles of unloaded or distant chunks go.
+-        self.tiles.retain(|k, _| {
+-            (k.0 - center.0).abs() <= radius + 2
+-                && (k.1 - center.1).abs() <= radius + 2
+-                && world.chunks.contains_key(k)
+-        });
+-        let mut scanned = 0;
+-        for ring in 0..=radius {
+-            for (dx, dz) in ring_offsets(ring) {
+-                let key = (center.0 + dx, center.1 + dz);
+-                let Some(chunk) = world.chunks.get(&key) else {
+-                    continue;
+-                };
+-                let stale = match self.tiles.get(&key) {
+-                    None => true,
+-                    Some(t) if t.layer != layer => true,
+-                    Some(t) => t.revision != world.revision && t.scanned.elapsed() >= RESCAN,
+-                };
+-                if !stale {
+-                    continue;
+-                }
+-                let tile = scan_tile(chunk, palette, air, layer, world.revision);
+-                if self.tiles.get(&key).is_none_or(|t| {
+-                    t.color != tile.color || t.height != tile.height || t.depth != tile.depth
+-                }) {
+-                    self.changed = true;
+-                }
+-                self.tiles.insert(key, tile);
+-                scanned += 1;
+-                if started.elapsed() >= budget {
+-                    return scanned;
+-                }
+-            }
+-        }
+-        scanned
+-    }
+-    /// Recompose the image if the view or the tiles changed; true when it did.
+-    pub fn compose(&mut self, view: View) -> bool {
+-        if !self.changed
+-            && self.composed.is_some_and(|c| !view.differs(&c))
+-            && !self.image.is_empty()
+-        {
+-            return false;
+-        }
+-        self.changed = false;
+-        self.composed = Some(view);
+-        self.image.resize(SIZE * SIZE * 4, 0);
+-        let (r, f) = view.axes();
+-        let bpp = f64::from(view.blocks_per_pixel);
+-        let half = SIZE as f64 / 2.0;
+-        let mut cached: Option<((i32, i32), &Tile)> = None;
+-        let mut column = |x: i32, z: i32| -> Option<(u8, i16, u8)> {
+-            let key = (x >> 4, z >> 4);
+-            let tile = match cached {
+-                Some((k, t)) if k == key => t,
+-                _ => {
+-                    let t = self.tiles.get(&key)?;
+-                    cached = Some((key, t));
+-                    t
+-                }
+-            };
+-            let i = ((z & 15) * 16 + (x & 15)) as usize;
+-            Some((tile.color[i], tile.height[i], tile.depth[i]))
+-        };
+-        for j in 0..SIZE {
+-            for i in 0..SIZE {
+-                let (u, v) = (i as f64 + 0.5 - half, j as f64 + 0.5 - half);
+-                let o = (j * SIZE + i) * 4;
+-                let edge = if view.round {
+-                    let d = (u * u + v * v).sqrt();
+-                    if d > half {
+-                        self.image[o..o + 4].copy_from_slice(&[0; 4]);
+-                        continue;
+-                    }
+-                    d > half - 1.5
+-                } else {
+-                    i == 0 || j == 0 || i == SIZE - 1 || j == SIZE - 1
+-                };
+-                if edge {
+-                    self.image[o..o + 4].copy_from_slice(&BORDER);
+-                    continue;
+-                }
+-                let wx = view.x + bpp * (u * r[0] - v * f[0]);
+-                let wz = view.z + bpp * (u * r[1] - v * f[1]);
+-                let (x, z) = (wx.floor() as i32, wz.floor() as i32);
+-                let rgba = match column(x, z) {
+-                    Some((color, height, depth)) if color & !WALL != 0 => {
+-                        let north = column(x, z - 1).filter(|c| c.0 & !WALL != 0).map(|c| c.1);
+-                        let b = brightness(color, height, north, depth, x + z);
+-                        packed_rgba(color & !WALL, b)
+-                    }
+-                    _ => UNKNOWN,
+-                };
+-                self.image[o..o + 4].copy_from_slice(&rgba);
+-            }
+-        }
+-        true
+-    }
+-    pub fn tile_count(&self) -> usize {
+-        self.tiles.len()
+-    }
+-}
+-/// Chunk offsets at Chebyshev distance `ring`.
+-fn ring_offsets(ring: i32) -> impl Iterator<Item = (i32, i32)> {
+-    (-ring..=ring).flat_map(move |dz| {
+-        (-ring..=ring)
+-            .filter(move |&dx| dx.abs() == ring || dz.abs() == ring)
+-            .map(move |dx| (dx, dz))
+-    })
+-}
+-
+-#[cfg(test)]
+-mod tests {
+-    use super::*;
+-    use std::sync::Arc;
+-
+-    // States: 0 air, 1 grass (colour 1), 2 stone (11), 3 water, 4 glass (no
+-    // colour), 5 waterlogged slab (sturdy on top? no), 6 lava.
+-    fn palette() -> Palette {
+-        Palette::from_parts(&[
+-            (0, AIR),
+-            (1, STURDY_TOP),
+-            (11, STURDY_TOP),
+-            (WATER, 1),
+-            (0, 0),
+-            (11, 1),
+-            (LAVA, 2),
+-        ])
+-    }
+-    fn chunk(columns: &[(i32, i32, &[(i32, u32)])]) -> Chunk {
+-        let mut c = Chunk::empty(0, 0);
+-        for &(x, z, blocks) in columns {
+-            for &(y, id) in blocks {
+-                c.set(x, y, z, id);
+-            }
+-        }
+-        c
+-    }
+-
+-    #[test]
+-    fn columns_take_the_first_coloured_block_and_fluids_over_it() {
+-        let p = palette();
+-        let c = chunk(&[
+-            (0, 0, &[(60, 2), (61, 1)]),
+-            // Glass has no map colour: the grass under it shows.
+-            (1, 0, &[(61, 1), (62, 4)]),
+-            // Three water over stone.
+-            (2, 0, &[(60, 2), (61, 3), (62, 3), (63, 3)]),
+-            (3, 0, &[(70, 6)]),
+-        ]);
+-        let top = top_of(&c, 0, Layer::Surface);
+-        assert_eq!(top, 79);
+-        assert_eq!(scan_column(&c, &p, 0, 0, top, Layer::Surface), (1, 61, 0));
+-        assert_eq!(scan_column(&c, &p, 1, 0, top, Layer::Surface), (1, 61, 0));
+-        assert_eq!(
+-            scan_column(&c, &p, 2, 0, top, Layer::Surface),
+-            (WATER, 63, 3)
+-        );
+-        assert_eq!(
+-            scan_column(&c, &p, 3, 0, top, Layer::Surface),
+-            (LAVA, 70, 1)
+-        );
+-        assert_eq!(scan_column(&c, &p, 4, 0, top, Layer::Surface).0, 0);
+-    }
+-
+-    #[test]
+-    fn a_waterlogged_block_not_sturdy_on_top_shows_water() {
+-        let p = palette();
+-        let c = chunk(&[(0, 0, &[(60, 2), (61, 5)])]);
+-        assert_eq!(
+-            scan_column(&c, &p, 0, 0, 70, Layer::Surface),
+-            (WATER, 61, 1)
+-        );
+-    }
+-
+-    #[test]
+-    fn below_a_height_shows_the_floor_and_cuts_walls() {
+-        let p = palette();
+-        // A cave: stone everywhere from 0 to 20, air at 10 and 11 in column 0.
+-        let mut blocks: Vec<(i32, u32)> = (0..=20).map(|y| (y, 2)).collect();
+-        let solid = blocks.clone();
+-        blocks.retain(|&(y, _)| y != 10 && y != 11);
+-        let c = chunk(&[(0, 0, &blocks), (1, 0, &solid)]);
+-        let layer = Layer::Below(11);
+-        let top = top_of(&c, 0, layer);
+-        assert_eq!(top, 11);
+-        assert_eq!(scan_column(&c, &p, 0, 0, top, layer), (11, 9, 0));
+-        assert_eq!(scan_column(&c, &p, 1, 0, top, layer), (11 | WALL, 11, 0));
+-        // The surface view sees the roof.
+-        assert_eq!(scan_column(&c, &p, 0, 0, 31, Layer::Surface), (11, 20, 0));
+-    }
+-
+-    #[test]
+-    fn shading_follows_the_map_item() {
+-        // Higher than the north neighbour: bright; lower: dark; level: normal.
+-        assert_eq!(brightness(1, 65, Some(64), 0, 0), 2);
+-        assert_eq!(brightness(1, 63, Some(64), 0, 1), 0);
+-        assert_eq!(brightness(1, 64, Some(64), 0, 0), 1);
+-        assert_eq!(brightness(1, 64, Some(64), 0, 1), 1);
+-        // Shallow water is bright, deep water dark.
+-        assert_eq!(brightness(WATER, 62, None, 1, 0), 2);
+-        assert_eq!(brightness(WATER, 62, None, 10, 0), 0);
+-        assert_eq!(brightness(1 | WALL, 0, None, 0, 0), 3);
+-        assert_eq!(packed_rgba(1, 2), [127, 178, 56, 255]);
+-        assert_eq!(packed_rgba(0, 2), [0; 4]);
+-    }
+-
+-    fn world_with(chunks: Vec<Chunk>) -> World {
+-        let mut w = World::new(horizon_world::registry::BlockStateId(0), 0);
+-        for c in chunks {
+-            w.chunks.insert((c.x, c.z), Arc::new(c));
+-        }
+-        w
+-    }
+-    fn grass_chunk(x: i32, z: i32) -> Chunk {
+-        let mut c = Chunk::empty(x, z);
+-        for bz in 0..16 {
+-            for bx in 0..16 {
+-                c.set(bx, 64, bz, 1);
+-            }
+-        }
+-        c
+-    }
+-
+-    #[test]
+-    fn tiles_fill_nearest_first_and_follow_changes() {
+-        let mut map = Minimap {
+-            palette: Some(palette()),
+-            ..Default::default()
+-        };
+-        let facts = BlockFacts {
+-            states: Vec::new(),
+-            air: horizon_world::registry::BlockStateId(0),
+-            woods: Default::default(),
+-        };
+-        let mut world = world_with(
+-            (-2..=2)
+-                .flat_map(|x| (-2..=2).map(move |z| grass_chunk(x, z)))
+-                .collect(),
+-        );
+-        // A zero budget still scans one tile: the player's own chunk.
+-        assert_eq!(
+-            map.update(&world, &facts, (0, 0), 2, Layer::Surface, Duration::ZERO),
+-            1
+-        );
+-        assert!(map.tiles.contains_key(&(0, 0)));
+-        let n = map.update(
+-            &world,
+-            &facts,
+-            (0, 0),
+-            2,
+-            Layer::Surface,
+-            Duration::from_secs(1),
+-        );
+-        assert_eq!(n, 24);
+-        assert_eq!(map.tile_count(), 25);
+-        // Nothing changed: nothing to scan.
+-        assert_eq!(
+-            map.update(
+-                &world,
+-                &facts,
+-                (0, 0),
+-                2,
+-                Layer::Surface,
+-                Duration::from_secs(1)
+-            ),
+-            0
+-        );
+-        // A changed world is rescanned once the tiles are old enough.
+-        world
+-            .set(0, 70, 0, horizon_world::registry::BlockStateId(2))
+-            .unwrap();
+-        assert_eq!(
+-            map.update(
+-                &world,
+-                &facts,
+-                (0, 0),
+-                2,
+-                Layer::Surface,
+-                Duration::from_secs(1)
+-            ),
+-            0
+-        );
+-        for t in map.tiles.values_mut() {
+-            t.scanned -= RESCAN;
+-        }
+-        assert_eq!(
+-            map.update(
+-                &world,
+-                &facts,
+-                (0, 0),
+-                2,
+-                Layer::Surface,
+-                Duration::from_secs(1)
+-            ),
+-            25
+-        );
+-        assert_eq!(map.tiles[&(0, 0)].color[0], 11);
+-        // A new layer rescans everything; unloaded chunks drop out.
+-        world.chunks.remove(&(2, 2));
+-        let n = map.update(
+-            &world,
+-            &facts,
+-            (0, 0),
+-            2,
+-            Layer::Below(70),
+-            Duration::from_secs(1),
+-        );
+-        assert_eq!(n, 24);
+-        assert!(!map.tiles.contains_key(&(2, 2)));
+-    }
+-
+-    #[test]
+-    fn the_image_is_north_up_or_turns_with_the_player() {
+-        let mut map = Minimap {
+-            palette: Some(palette()),
+-            ..Default::default()
+-        };
+-        let facts = BlockFacts {
+-            states: Vec::new(),
+-            air: horizon_world::registry::BlockStateId(0),
+-            woods: Default::default(),
+-        };
+-        // Grass everywhere, one stone block 10 blocks north of the player.
+-        let mut world = world_with(
+-            (-4..=4)
+-                .flat_map(|x| (-4..=4).map(move |z| grass_chunk(x, z)))
+-                .collect(),
+-        );
+-        world
+-            .set(0, 64, -10, horizon_world::registry::BlockStateId(2))
+-            .unwrap();
+-        map.update(
+-            &world,
+-            &facts,
+-            (0, 0),
+-            4,
+-            Layer::Surface,
+-            Duration::from_secs(1),
+-        );
+-        let pixel = |map: &Minimap, i: usize, j: usize| {
+-            let o = (j * SIZE + i) * 4;
+-            [map.image[o], map.image[o + 1], map.image[o + 2]]
+-        };
+-        let stone = [96, 96, 96];
+-        let mut view = View {
+-            x: 0.0,
+-            z: 0.0,
+-            yaw: 0.0,
+-            rotate: false,
+-            blocks_per_pixel: 1.0,
+-            round: false,
+-        };
+-        assert!(map.compose(view));
+-        assert!(!map.compose(view), "the same view is not recomposed");
+-        // North up: the stone is 10 pixels above the centre.
+-        assert_eq!(pixel(&map, 64, 54), stone);
+-        // Turning with the player facing east (yaw -90): north is to the left.
+-        view.rotate = true;
+-        view.yaw = -90.0;
+-        assert!(map.compose(view));
+-        assert_eq!(pixel(&map, 54, 63), stone);
+-        let (nx, ny) = view.north();
+-        assert!((nx + 1.0).abs() < 1e-5 && ny.abs() < 1e-5, "{nx} {ny}");
+-        // Facing north, north is up.
+-        view.yaw = 180.0;
+-        map.compose(view);
+-        assert_eq!(pixel(&map, 64, 54), stone);
+-        // Round maps are transparent in the corners, framed at the edge.
+-        view.round = true;
+-        map.compose(view);
+-        assert_eq!(map.image[3], 0);
+-        assert_eq!(&map.image[(64 * SIZE) * 4..(64 * SIZE) * 4 + 4], &BORDER);
+-        // A small move recomposes only once it is visible.
+-        view.x += 0.1;
+-        assert!(!map.compose(view));
+-        view.x += 0.2;
+-        assert!(map.compose(view));
+-    }
+-
+-    #[test]
+-    fn rings_cover_each_offset_once() {
+-        let mut seen = std::collections::HashSet::new();
+-        for r in 0..=3 {
+-            for o in ring_offsets(r) {
+-                assert!(seen.insert(o));
+-            }
+-        }
+-        assert_eq!(seen.len(), 49);
+-    }
+-}
+diff --git a/crates/horizon-client-render/src/mod_list.rs b/crates/horizon-client-render/src/mod_list.rs
+index 54b8004..c5110a3 100644
+--- a/crates/horizon-client-render/src/mod_list.rs
++++ b/crates/horizon-client-render/src/mod_list.rs
+@@ -9,6 +9,10 @@ use std::{
+     path::Path,
+ };
+ 
++pub fn is_retired_map_mod(id: &str) -> bool {
++    matches!(id, "minimap" | "worldmap")
++}
++
+ pub const FILE: &str = "horizon-mods.txt";
+ /// The folder holding `.hmod` files, beside `options.txt`.
+ pub const DIR: &str = "horizon-mods";
+@@ -27,9 +31,8 @@ pub fn is_android_bundled(_id: &str) -> bool {
+ }
+ 
+ #[cfg(target_os = "android")]
+-pub const ANDROID_BUNDLED: [&str; 20] = [
++pub const ANDROID_BUNDLED: [&str; 19] = [
+     "zoom",
+-    "worldmap",
+     "recipes",
+     "smartf3",
+     "freecam_plus",
+@@ -150,23 +153,15 @@ impl ModList {
+                 .map(str::to_owned)
+                 .collect()
+         };
+-        let enabled = ids("true");
++        let mut enabled = ids("true");
+         let mut disabled = ids("false");
++        enabled.retain(|id| !is_retired_map_mod(id));
++        disabled.retain(|id| !is_retired_map_mod(id));
+         #[cfg(target_os = "android")]
+-        let enabled = {
+-            let mut enabled = enabled;
+-            let has_worldmap_preference = text
+-                .lines()
+-                .filter_map(|line| line.split_once(':'))
+-                .any(|(key, _)| key.trim() == "mod.worldmap");
+-            if enabled.remove("minimap") && !has_worldmap_preference {
+-                enabled.insert("worldmap".to_owned());
+-            }
+-            disabled.remove("minimap");
++        {
+             enabled.remove("horizon_physics");
+             disabled.remove("horizon_physics");
+-            enabled
+-        };
++        }
+         #[cfg(target_os = "android")]
+         for id in ANDROID_BUNDLED.iter() {
+             if !enabled.contains(*id) {
+@@ -266,6 +261,7 @@ mod tests {
+         let list = ModList::parse("");
+         for id in [
+             "minimap",
++            "worldmap",
+             "accurate_block_placement",
+             "voicechat",
+             "horizon_physics",
+@@ -291,17 +287,15 @@ mod tests {
+         assert!(!list.disabled.contains("horizon_physics"));
+     }
+ 
+-    #[cfg(target_os = "android")]
+     #[test]
+-    fn previous_minimap_opt_in_migrates_to_worldmap_unless_worldmap_was_set() {
+-        let migrated = ModList::parse("mod.minimap:true\n");
+-        assert!(migrated.enabled.contains("worldmap"));
+-        assert!(!migrated.enabled.contains("minimap"));
+-        assert!(!migrated.disabled.contains("minimap"));
+-
+-        let explicit_off = ModList::parse("mod.minimap:true\nmod.worldmap:false\n");
+-        assert!(!explicit_off.enabled.contains("worldmap"));
+-        assert!(explicit_off.disabled.contains("worldmap"));
++    fn retired_map_mod_preferences_are_ignored() {
++        let list = ModList::parse(
++            "mod.minimap:true\nmod.worldmap:true\nmod.worldmap:false\n",
++        );
++        for id in ["minimap", "worldmap"] {
++            assert!(!list.enabled.contains(id));
++            assert!(!list.disabled.contains(id));
++        }
+     }
+ 
+     #[test]
+diff --git a/crates/horizon-client-render/src/options_ui.rs b/crates/horizon-client-render/src/options_ui.rs
+index acb7ffd..957623d 100644
+--- a/crates/horizon-client-render/src/options_ui.rs
++++ b/crates/horizon-client-render/src/options_ui.rs
+@@ -8294,6 +8294,7 @@ mod tests {
+             installed("manual_native"),
+         ];
+         for id in [
++            "worldmap",
+             "minimap",
+             "accurate_block_placement",
+             "voicechat",
+@@ -8318,7 +8319,6 @@ mod tests {
+         assert_eq!(starling_extra_mod_side("carryblock"), StarlingModSide::Server);
+         for id in [
+             "zoom",
+-            "worldmap",
+             "punchy",
+             "basic_hud",
+             "eatinganimation",
+diff --git a/crates/horizon-client-render/src/settings.rs b/crates/horizon-client-render/src/settings.rs
+index 1ccdbe9..29c64a3 100644
+--- a/crates/horizon-client-render/src/settings.rs
++++ b/crates/horizon-client-render/src/settings.rs
+@@ -949,7 +949,6 @@ mod tests {
+     fn an_option_set_keeps_horizon_files() {
+         let mut s = Settings::parse("fov:70\n");
+         s.mods.enabled.insert("zoom".into());
+-        s.extras.minimap = true;
+         s.horizon.fog = !s.horizon.fog;
+         s.controller.vibration = !s.controller.vibration;
+         let set = s.with_option("fov", "90").unwrap();
+diff --git a/crates/horizon-client/src/client_lib.rs b/crates/horizon-client/src/client_lib.rs
+index a9b81a8..29c08a4 100644
+--- a/crates/horizon-client/src/client_lib.rs
++++ b/crates/horizon-client/src/client_lib.rs
+@@ -15,7 +15,7 @@ pub use horizon_client_render::{
+     collisions, command_block, containers, crash, datapack, dynamic_light, effects, elyby,
+     environment, extras, fast_hash, fog, font, gfx, graphics, graphics_style, graphics_ui,
+     hdr_calibration, hud, hud_layout, hud_overlays, inventory_effects, java_text, jigsaw_block,
+-    json_folder, level_loading, light, lod, logging, menu_blur, mesher, minimap, mipmap, mod_list,
++    json_folder, level_loading, light, lod, logging, menu_blur, mesher, mipmap, mod_list,
+     model_library, models, multiline_edit, native_emissive, offline_name, options_file,
+     options_fixes, options_ui, overlay, own_buttons, own_skin, pack_screen, packs, par, particles,
+     poi_sections, post_chain, potent_sulfur, preedit, providers, screen_draw, screen_effects,
+diff --git a/crates/horizon-client/src/extras_hud.rs b/crates/horizon-client/src/extras_hud.rs
+index cc26e15..87ffe4e 100644
+--- a/crates/horizon-client/src/extras_hud.rs
++++ b/crates/horizon-client/src/extras_hud.rs
+@@ -1,8 +1,8 @@
+-//! HUD boxes in the corners: the minimap's place and mods' panels, small
++//! HUD boxes in the corners: mods' panels, small
+ //! boxes in GUI pixels stacked per corner (`docs/extras.md`).
+ use crate::{
+     extras::Corner,
+-    hud::{HudAtlas, HudBatch, Rect, rgba},
++    hud::{HudAtlas, HudBatch, rgba},
+ };
+ 
+ /// The gap between an overlay and the screen edge or the next overlay.
+@@ -45,60 +45,6 @@ impl Corners {
+     }
+ }
+ 
+-/// How the minimap shows: its corner and side in GUI pixels, its image (an
+-/// atlas rect), the player arrow (the map item's decoration sprite) turned
+-/// `arrow` degrees clockwise from up, and the rim's N toward `north` when the
+-/// map turns.
+-pub struct MinimapLook {
+-    pub corner: Corner,
+-    pub size: f32,
+-    pub image: Rect,
+-    pub arrow: f32,
+-    pub north: Option<(f32, f32)>,
+-}
+-pub fn draw_minimap(
+-    batch: &mut HudBatch,
+-    atlas: &HudAtlas,
+-    corners: &mut Corners,
+-    look: &MinimapLook,
+-) {
+-    let MinimapLook {
+-        corner,
+-        size,
+-        image,
+-        arrow,
+-        north,
+-    } = *look;
+-    let (x, y) = corners.place(corner, size, size);
+-    batch.rect_uv(x, y, size, size, image, u32::MAX);
+-    let (cx, cy) = (x + size / 2.0, y + size / 2.0);
+-    if let Some(r) = atlas.sprites.get("map/decorations/player").copied() {
+-        // MapRenderer's decorations draw the sprite flipped: its arrow
+-        // points down the texture, so up on screen is half a turn.
+-        let (s, c) = (arrow + 180.0).to_radians().sin_cos();
+-        let p = |dx: f32, dy: f32| [cx + dx * c - dy * s, cy + dx * s + dy * c];
+-        let h = 4.0;
+-        batch.quad(
+-            [p(-h, h), p(h, h), p(h, -h), p(-h, -h)],
+-            [[r.u0, r.v0], [r.u1, r.v0], [r.u1, r.v1], [r.u0, r.v1]],
+-            u32::MAX,
+-        );
+-    }
+-    if let Some((nx, ny)) = north {
+-        let reach = size / 2.0 - 6.0;
+-        let tw = HudBatch::text_width(atlas, "N");
+-        let (tx, ty) = (cx + nx * reach - tw / 2.0, cy + ny * reach - 4.0);
+-        batch.text(
+-            atlas,
+-            "N",
+-            tx.round(),
+-            ty.round(),
+-            rgba(255, 255, 255, 255),
+-            true,
+-        );
+-    }
+-}
+-
+ /// A box of text lines (a mod's HUD panel): `(text, 0xRRGGBB)` each.
+ pub fn draw_lines(
+     batch: &mut HudBatch,
+diff --git a/crates/horizon-client/src/game.rs b/crates/horizon-client/src/game.rs
+index c8c0724..515e2fe 100644
+--- a/crates/horizon-client/src/game.rs
++++ b/crates/horizon-client/src/game.rs
+@@ -2969,7 +2969,7 @@ struct Game<'a> {
+     /// A new world's folder, until its level.dat is there to keep its content mods beside
+     /// (world_content.rs).
+     content_record: Option<String>,
+-    /// Horizon's extras (minimap, auto-reconnect; mods' counters): `game/extras.rs`.
++    /// Horizon's extras (auto-reconnect; mods' counters): `game/extras.rs`.
+     extras: extras::ExtrasState,
+     /// Horizon mods (`game/mods.rs`), none running unless turned on.
+     mods: mods::ModsState,
+diff --git a/crates/horizon-client/src/game/extras.rs b/crates/horizon-client/src/game/extras.rs
+index a66d0a6..5efcd83 100644
+--- a/crates/horizon-client/src/game/extras.rs
++++ b/crates/horizon-client/src/game/extras.rs
+@@ -1,13 +1,11 @@
+-//! Horizon's extras in the game (`docs/extras.md`); a native mod's minimap
+-//! (`native_minimap`: its tiles, image and HUD) and zoom (`native_zoom`) on the camera; clicks
++//! Horizon's extras in the game (`docs/extras.md`): zoom (`native_zoom`) on the camera, clicks
+ //! and frame times for mods (`native_clicks`, `native_frame_rate`).
+ //! Each hook does nothing while its extra is off and no mod uses it.
+-use super::{Dim, Game, Screen, native_hooks::NativeMinimap};
++use super::{Game, Screen};
+ use horizon_client::{
+-    extras::{Corner, Cps, FpsCounter, fov_target},
+-    extras_hud::{self, Corners},
+-    hud::{HudBatch, MINIMAP_SPRITE},
+-    minimap::{self, Layer, Minimap, View},
++    extras::{Cps, FpsCounter, fov_target},
++    extras_hud::Corners,
++    hud::HudBatch,
+     multiplayer,
+     reconnect::{Retry, Tracker},
+     title::Mode,
+@@ -21,15 +19,9 @@ pub(super) struct ExtrasState {
+     /// Left and right mouse buttons: held, and their clicks.
+     mouse: [bool; 2],
+     cps: [Cps; 2],
+-    minimap: Minimap,
+-    /// The dimension the minimap's tiles belong to.
+-    minimap_dim: Option<Dim>,
+     /// Auto-reconnect's attempts at the current server.
+     reconnect: Tracker,
+ }
+-/// CPU time the minimap's tiles may take per frame.
+-const MINIMAP_BUDGET: Duration = Duration::from_micros(300);
+-
+ impl Game<'_> {
+     fn extras_now(&self) -> f64 {
+         self.started.elapsed().as_secs_f64()
+@@ -57,7 +49,6 @@ impl Game<'_> {
+         if !playing {
+             self.extras.mouse = [false; 2];
+         }
+-        self.update_minimap();
+         // For mods (`render.frame-stats`, `native_frame_rate`).
+         let now = self.extras_now();
+         self.extras.fps.record(now, elapsed.as_secs_f32() * 1000.0);
+@@ -134,80 +125,6 @@ impl Game<'_> {
+         }
+         Ok(())
+     }
+-    /// The minimap a mod shows (`native_minimap`): its corner, its side
+-    /// in GUI pixels and its view of the player.
+-    fn minimap_shown(&self) -> Option<(Corner, f32, View)> {
+-        let p = self.player.as_ref()?;
+-        if self.title.is_some() || self.ui.hide_gui {
+-            return None;
+-        }
+-        let m = self.minimap_wanted()?;
+-        let view = View {
+-            x: p.position.x,
+-            z: p.position.z,
+-            yaw: self.yaw,
+-            rotate: m.rotate,
+-            blocks_per_pixel: m.blocks_per_pixel,
+-            round: m.round,
+-        };
+-        Some((m.corner, m.size, view))
+-    }
+-    /// The minimap shown: a native mod's (`native_minimap`).
+-    fn minimap_wanted(&self) -> Option<NativeMinimap> {
+-        self.native_minimap_now()
+-    }
+-    /// Refresh the minimap's tiles within the frame budget, recompose its
+-    /// image when the view or a tile changed, and queue the upload.
+-    fn update_minimap(&mut self) {
+-        let Some((_, _, view)) = self.minimap_shown() else {
+-            if self.minimap_wanted().is_none() || self.player.is_none() {
+-                self.extras.minimap.clear();
+-                self.extras.minimap_dim = None;
+-            }
+-            return;
+-        };
+-        if self.extras.minimap_dim != Some(self.dim) {
+-            self.extras.minimap.clear();
+-            self.extras.minimap_dim = Some(self.dim);
+-        }
+-        let Some(p) = self.player.as_ref() else {
+-            return;
+-        };
+-        let head = (p.position.y + f64::from(p.dimensions.eye_height)).floor() as i32;
+-        let (bx, bz) = (view.x.floor() as i32, view.z.floor() as i32);
+-        // Underground, under a roof or in the Nether: the floor around the player.
+-        let covered = self.world.light(bx, head, bz) >> 4 == 0;
+-        let layer = if self.dim == Dim::Nether || covered {
+-            Layer::Below(head)
+-        } else {
+-            Layer::Surface
+-        };
+-        // The chunks the image can reach (its corners when it turns).
+-        let reach = minimap::SIZE as f32 / 2.0 * view.blocks_per_pixel * std::f32::consts::SQRT_2;
+-        let radius = ((reach / 16.0).ceil() as i32 + 1).min(self.settings.render_distance.max(2));
+-        self.extras.minimap.update(
+-            &self.world,
+-            self.res.facts(),
+-            (bx >> 4, bz >> 4),
+-            radius,
+-            layer,
+-            MINIMAP_BUDGET,
+-        );
+-        if !self.extras.minimap.compose(view) {
+-            return;
+-        }
+-        let Some(rect) = self.gui.atlas.sprites.get(MINIMAP_SPRITE).copied() else {
+-            return;
+-        };
+-        let (w, h) = (self.gui.atlas.width as f32, self.gui.atlas.height as f32);
+-        self.map_patches.push(horizon_client::font::Patch {
+-            x: (rect.u0 * w).round() as u32,
+-            y: (rect.v0 * h).round() as u32,
+-            width: minimap::SIZE as u32,
+-            height: minimap::SIZE as u32,
+-            rgba: self.extras.minimap.image.clone(),
+-        });
+-    }
+     /// A mod's zoom in effect (`native_zoom`): (factor, smooth, turning
+     /// scale); none is 1.
+     fn zoom_now(&self) -> (f32, bool, f64) {
+@@ -233,32 +150,9 @@ impl Game<'_> {
+     pub(super) fn zoom_turn_scale(&self) -> f64 {
+         self.zoom_now().2
+     }
+-    /// The minimap and mods' corner panels, in the HUD layer (hidden with F1
+-    /// by the caller). The top left corner gives way to the debug screen.
++    /// Mods' corner panels, in the HUD layer (hidden with F1 by the caller).
+     pub(super) fn draw_extras(&mut self, batch: &mut HudBatch) {
+-        let map = self.minimap_shown();
+-        let visible = |corner| !(self.debug && corner == Corner::TopLeft);
+         let mut corners = Corners::new(batch.width, batch.height, self.effect_rows_height());
+-        let atlas = &self.gui.atlas;
+-        if let Some((map_corner, map_size, view)) = map
+-            && visible(map_corner)
+-            && !self.extras.minimap.image.is_empty()
+-            && let Some(image) = atlas.sprites.get(MINIMAP_SPRITE).copied()
+-        {
+-            let (arrow, north) = if view.rotate {
+-                (0.0, Some(view.north()))
+-            } else {
+-                (180.0 + view.yaw, None)
+-            };
+-            let look = extras_hud::MinimapLook {
+-                corner: map_corner,
+-                size: map_size,
+-                image,
+-                arrow,
+-                north,
+-            };
+-            extras_hud::draw_minimap(batch, atlas, &mut corners, &look);
+-        }
+         self.native_hud(batch, &mut corners);
+     }
+     /// The height the status effect icons take at the top right
+diff --git a/crates/horizon-client/src/game/mods.rs b/crates/horizon-client/src/game/mods.rs
+index b55cd4a..1ac1b91 100644
+--- a/crates/horizon-client/src/game/mods.rs
++++ b/crates/horizon-client/src/game/mods.rs
+@@ -441,6 +441,9 @@ fn not_built(dir: &std::path::Path, built: &str, rows: &[Installed]) -> Vec<Inst
+             }
+         };
+         let m = bundle.manifest;
++        if horizon_client::mod_list::is_retired_map_mod(&m.id) {
++            continue;
++        }
+         let listed = rows.iter().chain(&out).any(|row| row.id == m.id);
+         if !listed && !in_build(&m.id) && !mod_list::is_android_bundled(&m.id) {
+             out.push(Installed {
+@@ -686,7 +689,7 @@ mod tests {
+         let dir = std::env::temp_dir().join(format!("horizon-not-built-{}", std::process::id()));
+         let _ = std::fs::remove_dir_all(&dir);
+         std::fs::create_dir_all(&dir).unwrap();
+-        for id in ["veinminer", "zoom", "worldmap"] {
++        for id in ["veinminer", "zoom", "test_native_mod"] {
+             hnmod(&dir, id);
+         }
+         std::fs::write(dir.join("notes.txt"), "not a mod").unwrap();
+@@ -704,15 +707,15 @@ mod tests {
+                 .is_some_and(|p| p.starts_with("Not a native mod Starling can read"))
+         );
+         let ids: Vec<&str> = rows.iter().map(|r| r.id.as_str()).collect();
+-        assert_eq!(ids, ["veinminer", "worldmap", "zoom"]);
+-        assert_eq!(rows[0].title, "Veinminer 0.3.0");
+-        assert_eq!(rows[0].problem.as_deref(), Some(mod_list::NOT_BUILT));
++        assert_eq!(ids, ["test_native_mod", "veinminer", "zoom"]);
++        assert_eq!(rows[1].title, "Veinminer 0.3.0");
++        assert_eq!(rows[1].problem.as_deref(), Some(mod_list::NOT_BUILT));
+         assert!(rows.iter().all(|r| r.native.is_none() && !r.dev));
+-        // A native build with zoom, and worldmap's row already listed by its own hook.
++        // A native build with zoom, and the test mod already listed by its own hook.
+         let built =
+             r#"{"base":"nightly-2026-10-30-1da354b","mods":[{"id":"zoom","version":"0.3.0"}]}"#;
+         let listed = Installed {
+-            id: "worldmap".into(),
++            id: "test_native_mod".into(),
+             ..rows[0].clone()
+         };
+         // The broken file's row, listed already, isn't added again when the page reads the folder.
+diff --git a/crates/horizon-client/src/game/native_builds.rs b/crates/horizon-client/src/game/native_builds.rs
+index d49b42b..27a081d 100644
+--- a/crates/horizon-client/src/game/native_builds.rs
++++ b/crates/horizon-client/src/game/native_builds.rs
+@@ -226,6 +226,10 @@ fn loads(name: &str, version: &str) -> bool {
+             .map(|t| t.trim().to_owned())
+     };
+     folder.join(LIBRARY).is_file()
++        && on_phone(name)
++            .mods
++            .iter()
++            .all(|id| !horizon_client::mod_list::is_retired_map_mod(id))
+         && read("for").as_deref() == Some(version)
+         && apk_stamp().is_some_and(|stamp| read(APK) == Some(stamp))
+ }
+@@ -286,6 +290,7 @@ fn folder_mods_on(off: &BTreeSet<String>) -> BTreeSet<String> {
+         .filter(|p| p.extension().is_some_and(|e| e == "hnmod"))
+         .filter_map(|p| horizon_mods::index::native::Bundle::read(&p).ok())
+         .map(|bundle| bundle.manifest.id)
++        .filter(|id| !horizon_client::mod_list::is_retired_map_mod(id))
+         .filter(|id| !off.contains(id))
+         .filter(|id| !horizon_client::mod_list::is_android_bundled(id))
+         .collect()
+@@ -451,7 +456,8 @@ fn bundles_body() -> Result<Vec<u8>, String> {
+         let Ok(bundle) = horizon_mods::index::native::Bundle::read(&path) else {
+             continue;
+         };
+-        if off.contains(&bundle.manifest.id)
++        if horizon_client::mod_list::is_retired_map_mod(&bundle.manifest.id)
++            || off.contains(&bundle.manifest.id)
+             || horizon_client::mod_list::is_android_bundled(&bundle.manifest.id)
+         {
+             continue;
+diff --git a/crates/horizon-client/src/game/native_hooks.rs b/crates/horizon-client/src/game/native_hooks.rs
+index e86f5d2..0e26451 100644
+--- a/crates/horizon-client/src/game/native_hooks.rs
++++ b/crates/horizon-client/src/game/native_hooks.rs
+@@ -863,11 +863,10 @@
+ //! `native_known_recipes`, `native_place_recipe`, `native_give`): what a
+ //! recipe viewer needs.
+ //!
+-//! Names, parameters and call sites are kept from release to release, and
+-//! hook points are only ever added: each addition raises [`NATIVE_HOOKS_API`].
++//! The hook set is versioned by [`NATIVE_HOOKS_API`].
+ //! A bundle that hooks only these names the API it needs (`hooks`), and the
+-//! launcher builds it on any Horizon whose API is at least that one. A change
+-//! that would break such a bundle is not made.
++//! launcher checks that Horizon serves at least that version. A removed hook
++//! may require updating mods that used it.
+ //! Bodies have no `cfg` and no macros: horizon-mixins refuses a target with
+ //! either (`tests::hook_points_stay_hookable`).
+ use super::native_data_maps::NativeDataMapType;
+@@ -886,7 +885,7 @@ use horizon_client::mod_api::{
+ };
+ use horizon_client::mod_api::{AttachmentResult, Attachments, Holder, Suggestion};
+ pub(crate) use horizon_client::mod_api::{
+-    NativeBlockRim, NativeColoredLight, NativeLootDrops, NativeMinimap, NativeMod,
++    NativeBlockRim, NativeColoredLight, NativeLootDrops, NativeMod,
+     NativePanelEvent, NativeScreen, NativeScreenView, NativeStack, NativeZoom,
+ };
+ use horizon_client::{
+@@ -1046,7 +1045,7 @@ pub(super) use horizon_world::level::flags;
+ /// The hook points' API version. The launcher reads this line from the
+ /// source it builds; keep its form.
+ #[allow(dead_code)]
+-pub(crate) const NATIVE_HOOKS_API: u32 = 359;
++pub(crate) const NATIVE_HOOKS_API: u32 = 360;
+ 
+ impl GameLevel<'_> {
+     /// A hopper at `pos` is about to pick up `count` of `item`. Set `cancel` to leave the dropped stack in the world. Server-side. 232.
+@@ -2239,7 +2238,7 @@ impl Game<'_> {
+     pub(super) fn native_level_tick_post(&mut self, dimension: &str) {
+         mod_api::dispatch_level_tick_post(self, mod_api::mods(), dimension);
+     }
+-    /// The HUD (not drawn under F1), after the minimap: place a box with
++    /// The HUD (not drawn under F1): place a box with
+     /// `corners.place` (boxes stack away from their edge) and draw it with
+     /// `native_fill` and `native_text`. Skip a corner `native_corner_shown`
+     /// says is taken.
+@@ -2661,10 +2660,6 @@ impl Game<'_> {
+     pub(super) fn native_shader_params(&self, partial: f32, params: &mut [[f32; 4]; 8]) {
+         mod_api::dispatch_shader_params(self, mod_api::mods(), partial, params);
+     }
+-    /// The minimap a native mod shows: set `minimap` when it is none yet.
+-    pub(super) fn native_minimap(&self, minimap: &mut Option<NativeMinimap>) {
+-        mod_api::dispatch_minimap(self, mod_api::mods(), minimap);
+-    }
+     /// Register namespaced NBT component types before content loads.
+     pub(super) fn native_component_types(types: &mut Vec<String>) {
+         mod_api::dispatch_component_types(mod_api::mods(), types);
+@@ -9535,16 +9530,6 @@ impl Game<'_> {
+         self.native_shader_params(partial, &mut params);
+         finite_params(params)
+     }
+-    /// The minimap a native mod shows.
+-    pub(super) fn native_minimap_now(&self) -> Option<NativeMinimap> {
+-        let mut minimap = None;
+-        self.native_minimap(&mut minimap);
+-        minimap.map(|m| NativeMinimap {
+-            size: finite(m.size, 16.0, 256.0),
+-            blocks_per_pixel: finite(m.blocks_per_pixel, 0.5, 4.0),
+-            ..m
+-        })
+-    }
+ }
+ 
+ /// Whether `rgba` is a whole `width` x `height` image that fits a
+diff --git a/crates/horizon-client/src/mod_api.rs b/crates/horizon-client/src/mod_api.rs
+index 0c899f4..b050e58 100644
+--- a/crates/horizon-client/src/mod_api.rs
++++ b/crates/horizon-client/src/mod_api.rs
+@@ -180,18 +180,6 @@ pub struct NativeColoredLight {
+     pub intensity: f32,
+ }
+ 
+-/// The minimap a native mod shows (`native_minimap`), drawn by Horizon's
+-/// minimap: its corner, its side in GUI pixels, blocks per map pixel,
+-/// turning with the player or north up, round or square.
+-#[derive(Clone, Copy, Debug, PartialEq)]
+-pub struct NativeMinimap {
+-    pub corner: Corner,
+-    pub size: f32,
+-    pub blocks_per_pixel: f32,
+-    pub rotate: bool,
+-    pub round: bool,
+-}
+-
+ /// A mod block's screen over its menu (`native_screen`): its size, where
+ /// each of the container's slots is (`Slot.x`, `Slot.y`; none hides the
+ /// slot, and so do slots past the list; the server's menu does not have a
+diff --git a/crates/horizon-client/src/mod_api/generated.rs b/crates/horizon-client/src/mod_api/generated.rs
+index 3bdd4a9..79c8501 100644
+--- a/crates/horizon-client/src/mod_api/generated.rs
++++ b/crates/horizon-client/src/mod_api/generated.rs
+@@ -145,7 +145,7 @@ pub trait Hooks: Send + Sync {
+         let _ = event;
+         None
+     }
+-    /// The HUD (not drawn under F1), after the minimap: place a box with
++    /// The HUD (not drawn under F1): place a box with
+     /// `corners.place` (boxes stack away from their edge) and draw it with
+     /// `native_fill` and `native_text`. Skip a corner `native_corner_shown`
+     /// says is taken.
+@@ -197,14 +197,6 @@ pub trait Hooks: Send + Sync {
+         let _ = event;
+         None
+     }
+-    /// The minimap a native mod shows: set `minimap` when it is none yet.
+-    ///
+-    /// Return `Some` to set `minimap`; the first mod returning `Some` wins.
+-    fn minimap(&self, host: &dyn Host, event: &mut MinimapEvent) -> Option<NativeMinimap> {
+-        let _ = host;
+-        let _ = event;
+-        None
+-    }
+     /// Options > Mods lists the native mods: push yours.
+     ///
+     /// Every mod gets `event.mods` in order and may add, change or remove mods.
+@@ -5035,25 +5027,6 @@ pub fn dispatch_zoom(host: &dyn Host, mods: &[Box<dyn Hooks>], zoom: &mut Option
+         }
+     }
+ }
+-/// What [`Hooks::minimap`] is told. Fields may be added: the struct is `#[non_exhaustive]`.
+-#[non_exhaustive]
+-pub struct MinimapEvent {}
+-pub fn dispatch_minimap(
+-    host: &dyn Host,
+-    mods: &[Box<dyn Hooks>],
+-    minimap: &mut Option<NativeMinimap>,
+-) {
+-    if minimap.is_some() {
+-        return;
+-    }
+-    let mut event = MinimapEvent {};
+-    for mod_hook in super::entered(mods, "minimap") {
+-        if let Some(replacement) = mod_hook.minimap(host, &mut event) {
+-            *minimap = Some(replacement);
+-            break;
+-        }
+-    }
+-}
+ /// What [`Hooks::mods`] is told. Fields may be added: the struct is `#[non_exhaustive]`.
+ #[non_exhaustive]
+ pub struct ModsEvent<'a> {
+diff --git a/crates/horizon-mod-registry/src/ratings.rs b/crates/horizon-mod-registry/src/ratings.rs
+index 0cba851..3b38651 100644
+--- a/crates/horizon-mod-registry/src/ratings.rs
++++ b/crates/horizon-mod-registry/src/ratings.rs
+@@ -101,7 +101,7 @@ mod tests {
+         r.rate("zoom", 1, 5, 10).unwrap();
+         r.rate("zoom", 2, 2, 10).unwrap();
+         r.rate("zoom", 1, 4, 11).unwrap();
+-        r.rate("minimap", 1, 3, 11).unwrap();
++        r.rate("sample_client_mod", 1, 3, 11).unwrap();
+         assert_eq!(r.mine("zoom", 1).unwrap(), Some(4));
+         assert_eq!(r.mine("zoom", 3).unwrap(), None);
+         let all = r.summaries().unwrap();
+@@ -113,7 +113,7 @@ mod tests {
+             }
+         );
+         assert_eq!(
+-            all["minimap"],
++            all["sample_client_mod"],
+             Summary {
+                 average: 3.0,
+                 count: 1
+diff --git a/crates/horizon-mod-registry/tests/submit.rs b/crates/horizon-mod-registry/tests/submit.rs
+index ab08ac9..632d593 100644
+--- a/crates/horizon-mod-registry/tests/submit.rs
++++ b/crates/horizon-mod-registry/tests/submit.rs
+@@ -730,7 +730,7 @@ async fn ratings() {
+     assert_eq!(json["count"], 1);
+     let (_, json, _) = client.send(client.get("/api/mods/zoom/rating")).await;
+     assert_eq!(json, json!({"stars": 2}));
+-    let (_, json, _) = client.send(client.get("/api/mods/minimap/rating")).await;
++    let (_, json, _) = client.send(client.get("/api/mods/sample_client_mod/rating")).await;
+     assert_eq!(json, json!({"stars": null}));
+ 
+     // Not one's own project, nor one that isn't published.
+diff --git a/crates/horizon-mods/src/api_level.rs b/crates/horizon-mods/src/api_level.rs
+index e3df644..04c4a95 100644
+--- a/crates/horizon-mods/src/api_level.rs
++++ b/crates/horizon-mods/src/api_level.rs
+@@ -42,7 +42,6 @@ pub const FUNCTIONS: [(&str, u32); 46] = [
+     ("render.text-width", 0),
+     ("render.frame-stats", 0),
+     ("render.set-zoom", 0),
+-    ("render.set-minimap", 1),
+     ("players.online", 1),
+     ("players.tell", 1),
+     ("players.broadcast", 1),
+@@ -187,11 +186,12 @@ mod tests {
+     fn a_mod_needs_its_newest_function() {
+         assert_eq!(needed(["log.write", "hud.set-panel"]), (0, None));
+         assert_eq!(
+-            needed(["log.write", "render.set-minimap", "hud.clear"]),
+-            (1, Some("render.set-minimap"))
++            needed(["log.write", "hud.clear"]),
++            (1, None)
+         );
++        assert_eq!(needed(["render.set-minimap"]), (0, None));
+         assert_eq!(
+-            needed(["render.set-minimap", "render.set-sky"]),
++            needed(["render.set-sky"]),
+             (LEVEL + 1, Some("render.set-sky"))
+         );
+         assert_eq!(too_new(LEVEL, None), None);
+diff --git a/crates/horizon-protocol/src/mod_list.rs b/crates/horizon-protocol/src/mod_list.rs
+index 9fc777e..ed8e12b 100644
+--- a/crates/horizon-protocol/src/mod_list.rs
++++ b/crates/horizon-protocol/src/mod_list.rs
+@@ -30,7 +30,7 @@ pub enum Side {
+     Both,
+     /// Only the server needs it.
+     Server,
+-    /// Only the player's game: a HUD, keys, a minimap. Any server accepts it.
++    /// Only the player's game: a HUD and keys. Any server accepts it.
+     Client,
+ }
+ 
+@@ -234,7 +234,7 @@ mod tests {
+     fn only_shared_mods_are_sent() {
+         let list = [
+             entry("ruby", "1.0", 1, Side::Both),
+-            entry("minimap", "2.0", 2, Side::Client),
++            entry("client_hud_example", "2.0", 2, Side::Client),
+             entry("admin", "3.0", 3, Side::Server),
+         ];
+         let sent = shared(&list);
+@@ -321,11 +321,11 @@ mod tests {
+             entry("ruby", "1", 2, Side::Both),
+         ];
+         let client = [
+-            entry("minimap", "3", 3, Side::Client),
++            entry("client_hud_example", "3", 3, Side::Client),
+             entry("ruby", "1", 2, Side::Both),
+         ];
+         assert!(compare(&server, &client).is_empty());
+-        assert!(compare(&[], &[entry("minimap", "3", 3, Side::Client)]).is_empty());
++        assert!(compare(&[], &[entry("client_hud_example", "3", 3, Side::Client)]).is_empty());
+     }
+ 
+     #[test]
+diff --git a/docs/README.md b/docs/README.md
+index 85d58ec..796a37e 100644
+--- a/docs/README.md
++++ b/docs/README.md
+@@ -19,7 +19,7 @@ To play, use [the launcher](../launcher/README.md); the project site is [playhor
+ - [Graphics](graphics.md): the graphics settings screen (pages, search, descriptions), the graphics benchmark and what it measured.
+ - [Server against Pumpkin](performance/server-vs-pumpkin.md): Horizon's server and Pumpkin (Rust) under the same bots at 0, 20, 60 and 100 players: tick time, CPU, memory, chunks, join; where Horizon loses, and how to run it again.
+ - [Benchmark](benchmark.md): Horizon against vanilla 26.3 and vanilla with performance mods, on the same machine, world, path and settings: what is measured, how it is kept fair, how to reproduce it.
+-- [Extras](extras.md): optional zoom, World Map, FPS and keystroke overlays and auto-reconnect, all off by default.
++- [Extras](extras.md): optional zoom, FPS and keystroke overlays and auto-reconnect, all off by default.
+ - [Narrator](narrator.md): vanilla's text-to-speech (Ctrl+B): the voices per platform, how screens record what they narrate, `horizon-ctl narration`, and where it still differs from vanilla.
+ - [Shader packs](shaders.md): Horizon's own WGSL shader packs, how to make and check one (`horizon-shader`).
+ - [Mods](mods.md): content mods (data) and native mods (Rust), how to make, install and publish them. [Native mods](native-mods.md): how the launcher builds them. [Native hook points modelled on NeoForge](native-hooks-neoforge.md): the proposal for new hooks.
+diff --git a/docs/api/launcher.md b/docs/api/launcher.md
+index 8b100d9..f61f27f 100644
+--- a/docs/api/launcher.md
++++ b/docs/api/launcher.md
+@@ -32,7 +32,7 @@ and its MCP tool.
+ 
+ ```sh
+ horizon-launcher versions --installed --json
+-horizon-launcher mods search minimap --kind mod --json
++horizon-launcher mods search veinminer --kind mod --json
+ horizon-launcher servers create --name "Weekend" --player Alex --json
+ ```
+ 
+diff --git a/docs/api/stability.md b/docs/api/stability.md
+index a972790..e738cdc 100644
+--- a/docs/api/stability.md
++++ b/docs/api/stability.md
+@@ -68,7 +68,7 @@ Every preview and stable API has tests that run old users against the current co
+ | API | The test |
+ | --- | --- |
+ | Content mods | the content template builds and checks with `cargo horizon-mod`, and `mod_content`'s tests load content mods; a line is served as long as they pass |
+-| Native mods | hook points are only ever added, and tests keep each one hookable (`tests::hook_points_stay_hookable` and `tests::loot_table_load_stays_hookable`, `game/native_hooks.rs`) |
++| Native mods | hook changes are versioned (`NATIVE_HOOKS_API`); tests keep each remaining hookable (`tests::hook_points_stay_hookable` and `tests::loot_table_load_stays_hookable`, `game/native_hooks.rs`) |
+ | Agent control | a transcript per protocol version: commands and the reply keys each must have |
+ | Server | `api::ROUTES` against `route()` (generated reference); a `server.toml` from each release line parses to the same settings; golden replies per endpoint |
+ | Launcher | the generated reference; golden `--json` output per command |
+diff --git a/docs/extras.md b/docs/extras.md
+index d63f1a3..ace731f 100644
+--- a/docs/extras.md
++++ b/docs/extras.md
+@@ -12,8 +12,7 @@ again restores vanilla's behaviour completely.
+ | Settings, parsing and saving | `crates/horizon-client-render/src/extras.rs` |
+ | FPS and click counters (for native mods) | `extras.rs` (pure logic, unit tested) |
+ | Dynamic lights: item glow, nearest sources | `crates/horizon-client-render/src/dynamic_light.rs` (unit tested), `game/dynamic_lights.rs`, `terrain.wgsl` and `entity.wgsl` (`dynamic_block_light`) |
+-| HUD drawing (a native mod's minimap, corner stacking) | `crates/horizon-client/src/extras_hud.rs` |
+-| Minimap colours, tiles and terrain scan (shared with World Map) | `crates/horizon-client-render/src/minimap.rs` |
++| HUD drawing (native mods' corner panels) | `crates/horizon-client/src/extras_hud.rs` |
+ | Reconnect policy and backoff | `crates/horizon-client/src/reconnect.rs` |
+ | Game glue (input hooks, per-frame update) | `crates/horizon-client/src/game/extras.rs` |
+ | Mouse Tweaks-style controls, sort buttons | `crates/horizon-client/src/game/tweaks.rs` |
+@@ -62,19 +61,11 @@ in Controls, and adding one would put a non-vanilla mapping into `options.txt`.
+ - Off: nothing is gathered and the shaders' loop runs zero times (the count is 0), so it costs
+   nothing measurable (numbers in the pull request, #814).
+ 
+-### Moved to native mods
++### Native mods
+ 
+-The **FPS counter**, **Keystrokes**, **Zoom** and upstream **Minimap** are official native mods (in
+-horizon-rust/horizon-mods under `native/<name>/`, [mods.md](mods.md#horizons-official-mods)). In Starling Extras'
+-Android bundle, the standalone Minimap bundle is replaced by **World Map** (`worldmap` 0.7.1). It adds a persistent
+-explored map, cave layers, waypoints and an optional corner minimap. The game's hook points remain in
+-`crates/horizon-client/src/game/native_hooks.rs`, while the World Map bundle owns its screen and controls.
+-
+-World Map reuses the terrain scanner, vanilla map colours, height shading, water-depth dithering and per-chunk tile
+-cache in `crates/horizon-client-render/src/minimap.rs`. It stores explored regions on disk, refreshes nearby chunks,
+-and draws both its full-screen map and optional corner image through the native mod image hook. The
+-standalone Minimap 2.0.0 bundle is removed from the Android package; the shared renderer file is
+-deliberately kept.
++The **FPS counter**, **Keystrokes** and **Zoom** are supplied as native mods.
++World Map and Minimap are not included in Starling Extras. Vanilla map items,
++map screens and map decorations remain part of the game.
+ 
+ ### Own name tag (`ownNameTag`, default off)
+ - In third person (F5, either view), the player's own name shows above its head,
+@@ -243,11 +234,9 @@ Joining P1 on an external server follows separately.
+   the world, like vanilla's HUD. Extras in the top left corner give way to the
+   debug screen (F3), which shows the FPS anyway.
+ - Corners stack: extras placed in the same corner stack downward (top corners)
+-  or upward (bottom corners) in the order a mod's minimap, then mods' panels. The top
++  or upward (bottom corners) as native mods place their panels. The top
+   right corner starts below the status effect icons.
+ 
+ ## Perf budget
+ 
+ Off: a flag check per frame per extra (no allocations, no world access).
+-A mod's minimap stays under 0.3 ms of CPU
+-per frame (tile budget) plus a 64 KiB texture upload when its image changes.
+diff --git a/docs/mods.md b/docs/mods.md
+index 8b96ee0..a5d64a9 100644
+--- a/docs/mods.md
++++ b/docs/mods.md
+@@ -84,7 +84,7 @@ A server that has content mods on also checks them one by one (`horizon_protocol
+ `horizon:mod_list`): in the configuration phase it sends the id, version and SHA-256 of each `.hmod` with
+ `side = "both"`, the client answers with its own, and a client that differs is refused with the mods named: missing,
+ not on this server, or another version or file. Only `side = "both"` mods are compared and sent: a `client` mod (a
+-HUD, a minimap) never blocks a join and is never told to a server, and a `server` mod stays private to it. A manifest
++HUD) never blocks a join and is never told to a server, and a `server` mod stays private to it. A manifest
+ with no `side` line is `client`, so a content mod meant for both halves must say `side = "both"`, or this check
+ ignores it. A mod run from a folder (`--dev-mod`) has no file hash and matches by version. Native mods are not in the
+ list yet: their manifest has no side.
+@@ -483,12 +483,8 @@ Horizon's own mods are native. They live in
+ | FPS Counter | `native/fps-overlay` | Extras > FPS counter |
+ | Keystrokes | `native/keystrokes` | Extras > Keystrokes |
+ | Zoom | `native/zoom` | Extras > Zoom |
+-| Minimap | `native/minimap` | Extras > Minimap |
+ | Recipes | `native/recipes` | The Recipes mod (item panel and recipe pages, on hook points version 2) |
+ | Coordinates HUD | `native/coords-hud` | A small example mod (position and facing, `/where`, `/coords`) |
+ 
+-The game keeps the parts that must be fast, such as drawing the minimap's map, and a native mod picks the options
+-([extras.md](extras.md)). In Starling Extras' Android bundle, the standalone Minimap bundle is replaced by World Map
+-(`worldmap` 0.7.1): the explored world map, cave layers, waypoints and an optional corner minimap. Its terrain scanner
+-and map-colour code still live in `crates/horizon-client-render/src/minimap.rs`. Far View is not a mod any more: its
++World Map and Minimap are not included in Starling Extras. Vanilla map items and screens remain supported. Far View is not a mod any more: its
+ distance and detail are Graphics > LOD Distance and Far Detail ([graphics.md](graphics.md)).
+diff --git a/docs/native-hooks-neoforge.md b/docs/native-hooks-neoforge.md
+index 9bcea3c..3dcc310 100644
+--- a/docs/native-hooks-neoforge.md
++++ b/docs/native-hooks-neoforge.md
+@@ -25,7 +25,7 @@ from vanilla 26.3's own methods, and the hooks stay Horizon's own Rust.
+ 
+ 1. **Name.** A hook with a NeoForge counterpart takes the event's name in snake case, its nested class
+    included: `ServerTickEvent.Pre` → `server_tick_pre`, function `native_server_tick_pre`;
+-   `PlayerInteractEvent.RightClickBlock` → `right_click_block`. A hook with no counterpart (the minimap, the
++   `PlayerInteractEvent.RightClickBlock` → `right_click_block`. A hook with no counterpart (a client-only HUD hook, for example,
+    mods list, the item panel) keeps a Horizon name.
+ 2. **Firing point.** It fires in Horizon's port of the vanilla method where the documented event happens
+    (the tick starts, a block is broken), at the point vanilla's own steps make that true. The catalog names the vanilla method, so a
+diff --git a/docs/native-mods-android-port.md b/docs/native-mods-android-port.md
+index abf9794..5cea966 100644
+--- a/docs/native-mods-android-port.md
++++ b/docs/native-mods-android-port.md
+@@ -8,13 +8,12 @@ The following supplied HNMOD source bundles are included in the Starling Extras
+ | First-person Model | 1.0.0 | `2ebf00a0281c592f79191e76fce0e7d522c6f425` |
+ | Eating Animation | 0.2.0 | `6d99e14ff0c70ae60bc56b67829b526409fa068e` |
+ | Veinminer | 0.3.2 | `d91cab68ded29bd2b004f7050c468fb98c41a00b` |
+-| World Map | 0.7.1 | `fdc87aecdbd116bf1e08adcd062fcbaea8c2e2ca` |
+ | AppleSkin | 0.1.3 | `02c8607ee8ebd216f2f535c1eb7b62b572830df2` |
+ | RightClickHarvest | 0.1.1 | `4aa6854a886183440256f4f4a4a9d1ed853227a1` |
+ | Beautiful Day Counter (CustomHUD) | 1.7.0 | `c9d474dd9116e84c243f8992d75c11314df56f06` |
+ | Carry Block | 0.1.2 | `142388e1c136e622652ec7505af15d8ad195e041` |
+ 
+-Each source archive is unpacked under `native-mods/<id>/`, with its `horizon-native.json`, mixin manifest, Rust helpers, and supplied assets retained. The Android asset bundler packages these folders as `.hnmod` archives. The nine IDs are added to the Android build manifests and `native-mods/prebuilt.txt`. World Map replaces the former standalone `minimap` bundle; the shared terrain scanner and map-colour code in `crates/horizon-client-render/src/minimap.rs` remains because World Map uses it.
++Each source archive is unpacked under `native-mods/<id>/`, with its `horizon-native.json`, mixin manifest, Rust helpers, and supplied assets retained. The Android asset bundler packages these folders as `.hnmod` archives. The eight IDs are added to the Android build manifests and `native-mods/prebuilt.txt`. World Map and Minimap are intentionally excluded from the Android bundle.
+ 
+ At native-build time, `packaging/android/native_build.sh` copies the selected bundles, pins the copied manifests to the Starling source revision, and runs `native_mod_adapt.py` before applying the mixins. This is the project's intended route for older Horizon HNMOD bundles; they are not copied into the game as runtime-loaded Rust source. The packages are made available to the Android native-mod build flow, not automatically compiled into the default APK library.
+ 
+@@ -26,7 +25,6 @@ The supplied archives have different Horizon source pins. Those original pins ar
+ - Eating Animation includes its MIT license.
+ - Cinematic Interactions includes a notice that identifies the port as MIT and attributes the adapted hammer model under CC BY 4.0, but its notice refers to a `LICENSE` file that is absent from the supplied archive.
+ - Veinminer contains no license file or license declaration in the supplied archive. Keep it local and obtain clarification before redistributing it publicly.
+-- World Map 0.7.1 contains no license file or license declaration in the supplied HNMOD. Keep it local and obtain licensing clarification before redistributing it publicly. Its metadata's hooks requirement was adapted from 404 to this source tree's `NATIVE_HOOKS_API` 359; the manifest and compatibility source pin are kept aligned.
+ - AppleSkin 0.1.3 and RightClickHarvest 0.1.1 contain no license file or license declaration in their supplied HNMOD archives. Keep them local and obtain licensing clarification before redistributing them publicly. RightHarvest is listed as Server-Side because its crop interaction runs in `Game::use_hand` on the game that owns the world; AppleSkin is Client-Side because it draws HUD overlays and client settings.
+ - Beautiful Day Counter (CustomHUD) 1.7.0 and Carry Block 0.1.2 contain no license file or license declaration in their supplied HNMOD archives. Keep them local and obtain licensing clarification before redistributing them publicly. CustomHUD is Client-Side and explicitly gated to singleplayer; Carry Block is Server-Side because pickup and placement act on the game that owns the world.
+ 
+diff --git a/docs/native-mods.md b/docs/native-mods.md
+index 8236ea9..3883dfe 100644
+--- a/docs/native-mods.md
++++ b/docs/native-mods.md
+@@ -50,12 +50,13 @@ components](#items-default-components), `horizon_world::loot::native_loot_table_
+ rules](#menu-slot-rules); empty functions the game
+ calls at fixed places, plus helpers, kept stable across releases) can name the version it
+ needs instead of pinning: `"hooks": 1` in its `.hnmod`'s `horizon-native.json`, the `NATIVE_HOOKS_API` of that
+-file when it was made. Hook points are only ever added: each addition raises `NATIVE_HOOKS_API`, and a mod builds
+-on any Horizon whose version is the one it needs or a later one. Its `horizon` is then only the commit it was tested on. The launcher builds it on the commit the other mods
++file when it was made. Hook additions and removals change `NATIVE_HOOKS_API`. The launcher checks that
++Horizon serves at least the requested version; a mod that implements a hook later removed from the API must be
++updated to compile. API 360 removes the `native_minimap` hook and `NativeMinimap` contract. Its `horizon` is then only the commit it was tested on. The launcher builds it on the commit the other mods
+ pin, else on the installed version's commit (the game the player plays), after checking that commit's
+ `NATIVE_HOOKS_API` (read from GitHub) is at least the mod's; when it isn't and nothing pins, it builds on the commit the
+ mod was tested on. In its own copy of the mod it sets `horizon_revision` to the commit it builds on. Horizon's
+-own native mods (Zoom, FPS counter, Keystrokes, Minimap; horizon-rust/horizon-mods, `native/<name>/`) are made this way, so any of them build together
++own native mods (Zoom, FPS counter and Keystrokes; horizon-rust/horizon-mods, `native/<name>/`) are made this way, so any of them build together
+ with no re-release for each Nightly.
+ 
+ Hook and helper authors use [API fragments](../tools/native-hook-fragments/README.md) to request a number.
+diff --git a/docs/world-height.md b/docs/world-height.md
+index 31d87f9..4cedcff 100644
+--- a/docs/world-height.md
++++ b/docs/world-height.md
+@@ -35,7 +35,7 @@ dimension type codec checks them (`LevelShape::new`). **`LevelShapes`** holds a
+ | World, streaming, meshing, renderer | `World::layout()`, the chunk's `min_y`, the renderer's layout |
+ | Saves (`save.rs`) | `SaveDir.shape` (sections, `yPos`, heightmaps, light layers, far tiles) |
+ | Network (`lan/`, `game/remote_chunks.rs`) | the level's shape on the host, the server's dimension type on the client |
+-| Section caches, generation glue, far terrain, minimap, flat worlds | the chunk's column, the generator's level range |
++| Section caches, generation glue, far terrain, flat worlds | the chunk's column, the generator's level range |
+ | Gameplay (bounds, searches, commands, mobs) | `World::bottom_y`/`top_y` (the column), `World.shape`, `Game.level_shapes` |
+ 
+ Section sets are `SectionMask`s (256 bits: vanilla's tallest level has 254 sections, light data one more
+diff --git a/launcher/src/browser/horizon/tests.rs b/launcher/src/browser/horizon/tests.rs
+index 0b33132..dd83563 100644
+--- a/launcher/src/browser/horizon/tests.rs
++++ b/launcher/src/browser/horizon/tests.rs
+@@ -336,7 +336,6 @@ fn versions_for_a_newer_horizon_are_not_installed() {
+ fn ratings_keep_only_what_is_well_formed() {
+     let text = r#"{"projects": {
+         "zoom": {"average": 4.25, "count": 12},
+-        "minimap": {"average": 9, "count": 3},
+         "keystrokes": {"average": 3, "count": 0},
+         "Bad Id": {"average": 4, "count": 1},
+         "fps_overlay": {"average": "5", "count": 1}
+diff --git a/launcher/src/native_mods.rs b/launcher/src/native_mods.rs
+index b497bc6..97933d0 100644
+--- a/launcher/src/native_mods.rs
++++ b/launcher/src/native_mods.rs
+@@ -8,8 +8,8 @@
+ //! Mods pinning different ones build on the newest of them, once the player agreed to try (they
+ //! often still apply and compile). A mod that hooks only Horizon's native hook points
+ //! (`game/native_hooks.rs`) names the version it needs instead (`hooks`): it builds on any Horizon
+-//! whose hook points have that version or a later one (they are only ever added to), the player's own
+-//! by default, so such mods always build together. The build compiles that revision's source, from
++//! whose hook API is at least that version, the player's own by default. A hook removed from the
++//! API can still require an older mod to be updated. The build compiles that revision's source, from
+ //! GitHub, never a checkout on this computer, and installs as its own version,
+ //! `native-<revision>-<key>` (the key hashes the revision, the mods' files, the tool's commit and
+ //! the profile, so the same set builds once). The instance the mods are installed in plays it, and
+@@ -417,6 +417,10 @@ fn logged<T>(build: impl FnOnce() -> Result<T, String>) -> Result<T, String> {
+ }
+ 
+ const MANIFEST: &str = "horizon-mixin.toml";
++
++fn retired_map_mod(id: &str) -> bool {
++    matches!(id, "minimap" | "worldmap")
++}
+ /// A registry download's manifest (`.hnmod`, `horizon_mods::index::native`), beside `mixins/<id>/`.
+ const NATIVE_MANIFEST: &str = horizon_mods::index::native::MANIFEST;
+ /// Where an instance keeps the native mods installed from the registry, `<id>.hnmod`, each on or
+@@ -438,6 +442,9 @@ pub fn installed_mods(home: &Path) -> Result<PathBuf, String> {
+     for path in paths {
+         let bundle = horizon_mods::index::native::Bundle::read(&path)
+             .map_err(|e| format!("{}: {e}", path.display()))?;
++        if retired_map_mod(&bundle.manifest.id) {
++            continue;
++        }
+         if !crate::browser::java::is_enabled(home, &bundle.manifest.id) {
+             continue;
+         }
+@@ -580,7 +587,8 @@ pub fn bundles(folder: &Path) -> Result<Vec<Bundle>, String> {
+ 
+ pub(crate) fn bundle_in(dir: &Path) -> Result<Option<Bundle>, String> {
+     if dir.join(MANIFEST).is_file() {
+-        return bundle(dir, None).map(Some);
++        let found = bundle(dir, None)?;
++        return Ok((!retired_map_mod(&found.id)).then_some(found));
+     }
+     let path = dir.join(NATIVE_MANIFEST);
+     if !path.is_file() {
+@@ -594,6 +602,9 @@ pub(crate) fn bundle_in(dir: &Path) -> Result<Option<Bundle>, String> {
+     if !api::valid_id(&id) {
+         return Err(format!("{}: invalid mod id {id:?}", path.display()));
+     }
++    if retired_map_mod(&id) {
++        return Ok(None);
++    }
+     let found = bundle(&dir.join("mixins").join(&id), field("mixins"))?;
+     match (&found.horizon, field("horizon")) {
+         (Some(pinned), Some(native)) if *pinned != native => Err(format!(
+@@ -2410,6 +2421,22 @@ mod tests {
+         bundles(&at).unwrap().remove(0)
+     }
+ 
++    #[test]
++    fn retired_map_mod_bundles_are_not_discovered() {
++        for id in ["minimap", "worldmap"] {
++            let at = dir(&format!("retired-{id}"));
++            write_bundle(&at, id, "fn hook() {}");
++            assert!(bundle_in(&at).unwrap().is_none());
++            let native = dir(&format!("retired-native-{id}"));
++            fs::write(
++                native.join(NATIVE_MANIFEST),
++                format!(r#"{{"schema":1,"id":"{id}"}}"#),
++            )
++            .unwrap();
++            assert!(bundle_in(&native).unwrap().is_none());
++        }
++    }
++
+     #[test]
+     fn two_mods_on_one_hook_warn_in_run_order() {
+         let mods = [
+@@ -2842,10 +2869,10 @@ mod tests {
+         assert_eq!(agreed(&same, "Horizon", get, never).unwrap(), A);
+         let none = [pinned("a", None)];
+         assert_eq!(agreed(&none, "Horizon", get, || Ok(B.into())).unwrap(), B);
+-        let split = [pinned("veinminer", Some(A)), pinned("minimap", Some(B))];
++        let split = [pinned("veinminer", Some(A)), pinned("example_client_mod", Some(B))];
+         let err = agreed(&split, "Horizon", get, never).unwrap_err();
+         assert!(
+-            err.contains("veinminer → aaaaaaa") && err.contains("minimap → bbbbbbb"),
++            err.contains("veinminer → aaaaaaa") && err.contains("example_client_mod → bbbbbbb"),
+             "{err}"
+         );
+         let bad = [pinned("a", Some("nightly"))];
+@@ -2919,7 +2946,7 @@ mod tests {
+         assert_eq!(mismatch(&same, A), None);
+         let hooked = [Bundle {
+             hooks: Some(1),
+-            ..pinned("minimap", Some(A), None)
++            ..pinned("example_client_mod", Some(A), None)
+         }];
+         assert_eq!(mismatch(&hooked, B), None, "hook mods follow the build");
+     }
+@@ -2979,7 +3006,7 @@ mod tests {
+             _ => None,
+         };
+         let none = || None;
+-        let zoom = [mod_("zoom", B, Some(1)), mod_("minimap", &c, Some(1))];
++        let zoom = [mod_("zoom", B, Some(1)), mod_("example_client_mod", &c, Some(1))];
+         assert_eq!(
+             with_hooks(&zoom, A.into(), true, none, at).unwrap(),
+             A,
+diff --git a/minimap/mixins/minimap/click.rs b/minimap/mixins/minimap/click.rs
+deleted file mode 100644
+index ac5019b..0000000
+--- a/minimap/mixins/minimap/click.rs
++++ /dev/null
+@@ -1,16 +0,0 @@
+-// Copyright (c) 2026 Ludovic Marie and the Horizon contributors
+-// SPDX-License-Identifier: MIT; see LICENSE in this directory.
+-// Source revision: e3ee0a7c450b28c3ed58fa59a4881ec78c5ee2e0. Android static-bundle adaptation.
+-// A click on the mod's settings page: change the setting and keep it.
+-fn run(game: &mut crate::game::Game<'_>, mod_id: &str, button: usize) {
+-    use crate::game::official_minimap as m;
+-    if mod_id != m::ID {
+-        return;
+-    }
+-    let mut settings = m::settings(|key| game.native_setting(m::ID, key));
+-    settings.click(button);
+-    m::set_settings(settings);
+-    for (key, value) in settings.stored() {
+-        game.native_set_setting(m::ID, key, &value);
+-    }
+-}
+diff --git a/minimap/mixins/minimap/list.rs b/minimap/mixins/minimap/list.rs
+deleted file mode 100644
+index 7b202ee..0000000
+--- a/minimap/mixins/minimap/list.rs
++++ /dev/null
+@@ -1,13 +0,0 @@
+-// Copyright (c) 2026 Ludovic Marie and the Horizon contributors
+-// SPDX-License-Identifier: MIT; see LICENSE in this directory.
+-// Source revision: e3ee0a7c450b28c3ed58fa59a4881ec78c5ee2e0. Android static-bundle adaptation.
+-// The mod's row in Options > Mods.
+-fn run(mods: &mut Vec<crate::game::native_hooks::NativeMod>) {
+-    use crate::game::official_minimap as m;
+-    mods.push(crate::game::native_hooks::NativeMod {
+-        id: m::ID.into(),
+-        title: format!("{} {}", m::NAME, m::VERSION),
+-        description: m::DESCRIPTION.into(),
+-        keys: Vec::new(),
+-    });
+-}
+diff --git a/minimap/mixins/minimap/minimap.rs b/minimap/mixins/minimap/minimap.rs
+deleted file mode 100644
+index e610bcc..0000000
+--- a/minimap/mixins/minimap/minimap.rs
++++ /dev/null
+@@ -1,29 +0,0 @@
+-// Copyright (c) 2026 Ludovic Marie and the Horizon contributors
+-// SPDX-License-Identifier: MIT; see LICENSE in this directory.
+-// Source revision: e3ee0a7c450b28c3ed58fa59a4881ec78c5ee2e0. Android static-bundle adaptation.
+-// The minimap Horizon draws for the mod, unless another mod's came first.
+-fn run(
+-    game: &crate::game::Game<'_>,
+-    minimap: &mut Option<crate::game::native_hooks::NativeMinimap>,
+-) {
+-    use crate::game::official_minimap as m;
+-    use horizon_client::extras::Corner;
+-    // Turned off in Options > Mods: nothing until the next build leaves it out.
+-    if minimap.is_some() || !game.native_on(m::ID) {
+-        return;
+-    }
+-    let settings = m::settings(|key| game.native_setting(m::ID, key));
+-    let (size, blocks_per_pixel) = settings.view();
+-    *minimap = Some(crate::game::native_hooks::NativeMinimap {
+-        corner: [
+-            Corner::TopLeft,
+-            Corner::TopRight,
+-            Corner::BottomLeft,
+-            Corner::BottomRight,
+-        ][settings.corner],
+-        size,
+-        blocks_per_pixel,
+-        rotate: settings.rotate,
+-        round: settings.round,
+-    });
+-}
+diff --git a/minimap/mixins/minimap/settings.rs b/minimap/mixins/minimap/settings.rs
+deleted file mode 100644
+index 1b836df..0000000
+--- a/minimap/mixins/minimap/settings.rs
++++ /dev/null
+@@ -1,12 +0,0 @@
+-// Copyright (c) 2026 Ludovic Marie and the Horizon contributors
+-// SPDX-License-Identifier: MIT; see LICENSE in this directory.
+-// Source revision: e3ee0a7c450b28c3ed58fa59a4881ec78c5ee2e0. Android static-bundle adaptation.
+-// The mod's settings page: the WebAssembly mod's buttons.
+-fn run(game: &mut crate::game::Game<'_>, mod_id: &str, buttons: &mut Vec<String>) {
+-    use crate::game::official_minimap as m;
+-    if mod_id != m::ID {
+-        return;
+-    }
+-    let game = &*game;
+-    buttons.extend(m::settings(|key| game.native_setting(m::ID, key)).labels());
+-}
+diff --git a/native-hooks.json b/native-hooks.json
+index 12163a3..558c65a 100644
+--- a/native-hooks.json
++++ b/native-hooks.json
+@@ -636,15 +636,6 @@
+         "out": "zoom"
+       }
+     },
+-    {
+-      "name": "minimap",
+-      "version": 1,
+-      "target": "horizon_client::game::native_hooks::Game<'_>::native_minimap",
+-      "mod_api": {
+-        "contract": "replace",
+-        "out": "minimap"
+-      }
+-    },
+     {
+       "name": "mods",
+       "version": 1,
+diff --git a/native-mods/carryblock/mixins/carryblock/native.rs b/native-mods/carryblock/mixins/carryblock/native.rs
+index 03a05e4..2b12e92 100644
+--- a/native-mods/carryblock/mixins/carryblock/native.rs
++++ b/native-mods/carryblock/mixins/carryblock/native.rs
+@@ -1182,7 +1182,7 @@ impl Game<'_> {
+         let (x, y) = if ca::hud_crosses_hotbar(hud, batch.width, width) {
+             // A bottom box that would cover the hotbar, the bars over it or
+             // the action bar goes up over them. How far up its corner is
+-            // taken already (the minimap, boxes placed before it) is
++            // taken already (other HUD boxes placed before it) is
+             // `Corners`' own: an empty box finds out, then the room left
+             // under the box makes up the rest.
+             let (_, probe) = corners.place(corner, width, 0.0);
+diff --git a/native-mods/customhud/mixins/customhud/extras.rs b/native-mods/customhud/mixins/customhud/extras.rs
+index dd9dce4..fc04596 100644
+--- a/native-mods/customhud/mixins/customhud/extras.rs
++++ b/native-mods/customhud/mixins/customhud/extras.rs
+@@ -1,4 +1,4 @@
+-// Dopo le bossbar e prima di minimappa e HUD delle mod: le sposta sotto l'HUD.
++// Dopo le bossbar e prima degli HUD delle mod: le sposta sotto l'HUD.
+ fn shift_boss_bars(game: &crate::game::Game<'_>, batch: &mut horizon_client::hud::HudBatch) {
+     crate::game::customhud_screen::shift_boss_bars(game, batch);
+ }
+diff --git a/native-mods/customhud/mixins/customhud/horizon-mixin.toml b/native-mods/customhud/mixins/customhud/horizon-mixin.toml
+index 1123388..d710969 100644
+--- a/native-mods/customhud/mixins/customhud/horizon-mixin.toml
++++ b/native-mods/customhud/mixins/customhud/horizon-mixin.toml
+@@ -102,7 +102,7 @@ bindings = [
+ ]
+ 
+ # Le bossbar vanilla scendono sotto l'HUD quando è in alto: si ricorda dove
+-# iniziano i loro vertici e li si sposta prima di minimappa e HUD delle mod.
++# iniziano i loro vertici e li si sposta prima degli HUD delle mod.
+ [[injection]]
+ id = "boss-bars"
+ target = "horizon_client::game::dragon::Game<'_>::draw_boss_bars"
+diff --git a/native-mods/customhud/mixins/customhud/screen.rs b/native-mods/customhud/mixins/customhud/screen.rs
+index e41fc8d..256ec88 100644
+--- a/native-mods/customhud/mixins/customhud/screen.rs
++++ b/native-mods/customhud/mixins/customhud/screen.rs
+@@ -137,7 +137,7 @@ fn draw_out(game: &mut Game<'_>, batch: &mut HudBatch, out: &hud::Hud) {
+     }
+ }
+ 
+-// Dopo le bossbar e prima di minimappa e HUD delle mod: le sposta in basso
++// Dopo le bossbar e prima degli HUD delle mod: le sposta in basso
+ // quando l'HUD è in alto, come `pushBossBarShift` in Java.
+ pub(super) fn shift_boss_bars(game: &Game<'_>, batch: &mut HudBatch) {
+     let Some(start) = hud::take_boss_bars_mark() else {
+diff --git a/native-mods/prebuilt.txt b/native-mods/prebuilt.txt
+index 1f2f055..48cf040 100644
+--- a/native-mods/prebuilt.txt
++++ b/native-mods/prebuilt.txt
+@@ -1,4 +1,4 @@
+ # The existing wrench build.
+ wrench
+ # All Android bundled mods, exposed in Starling Extras and built together for the release.
+-zoom worldmap recipes smartf3 freecam_plus connected_textures armorhud jade basic_hud visuality_horizon punchy freelook cinematic_interactions firstpersonmodel eatinganimation veinminer appleskin rightharvest customhud carryblock
++zoom recipes smartf3 freecam_plus connected_textures armorhud jade basic_hud visuality_horizon punchy freelook cinematic_interactions firstpersonmodel eatinganimation veinminer appleskin rightharvest customhud carryblock
+diff --git a/native-mods/worldmap/horizon-native.json b/native-mods/worldmap/horizon-native.json
+deleted file mode 100644
+index ad68a45..0000000
+--- a/native-mods/worldmap/horizon-native.json
++++ /dev/null
+@@ -1,9 +0,0 @@
+-{
+-  "game": "26.3",
+-  "hooks": 359,
+-  "horizon": "fdc87aecdbd116bf1e08adcd062fcbaea8c2e2ca",
+-  "id": "worldmap",
+-  "mixins": "5a64af938ec86b00d53d16a408aabc0038fb3e57",
+-  "schema": 1,
+-  "version": "0.7.1"
+-}
+diff --git a/native-mods/worldmap/mixins/worldmap/chat.rs b/native-mods/worldmap/mixins/worldmap/chat.rs
+deleted file mode 100644
+index dfae9a4..0000000
+--- a/native-mods/worldmap/mixins/worldmap/chat.rs
++++ /dev/null
+@@ -1,8 +0,0 @@
+-// A chat line with a shared place: add the map's clickable [Add] action.
+-fn official_worldmap_chat(
+-    mut message: horizon_client::text::Text,
+-    game: &crate::game::Game<'_>,
+-) -> horizon_client::text::Text {
+-    crate::game::official_worldmap::chat_received(game, &mut message);
+-    message
+-}
+diff --git a/native-mods/worldmap/mixins/worldmap/chattree.rs b/native-mods/worldmap/mixins/worldmap/chattree.rs
+deleted file mode 100644
+index 78a6acd..0000000
+--- a/native-mods/worldmap/mixins/worldmap/chattree.rs
++++ /dev/null
+@@ -1,4 +0,0 @@
+-// The chat box's command tree: /wp gets its words (add, del, ...) to complete.
+-fn official_worldmap_chat_tree(value: horizon_client::command::Dispatcher) -> horizon_client::command::Dispatcher {
+-    crate::game::official_worldmap::extend_tree(value)
+-}
+diff --git a/native-mods/worldmap/mixins/worldmap/click.rs b/native-mods/worldmap/mixins/worldmap/click.rs
+deleted file mode 100644
+index c26b88e..0000000
+--- a/native-mods/worldmap/mixins/worldmap/click.rs
++++ /dev/null
+@@ -1,4 +0,0 @@
+-// A click on a button of the mod's page: a switch.
+-fn official_worldmap_click(game: &mut crate::game::Game<'_>, mod_id: &str, button: usize) {
+-    crate::game::official_worldmap::settings_click(game, mod_id, button);
+-}
+diff --git a/native-mods/worldmap/mixins/worldmap/command.rs b/native-mods/worldmap/mixins/worldmap/command.rs
+deleted file mode 100644
+index 8ed0c9a..0000000
+--- a/native-mods/worldmap/mixins/worldmap/command.rs
++++ /dev/null
+@@ -1,4 +0,0 @@
+-// A command from chat: the mod's own, which the green [Add] of a shared place runs.
+-fn official_worldmap_command(game: &mut crate::game::Game<'_>, command: &str, ran: &mut bool) {
+-    crate::game::official_worldmap::command(game, command, ran);
+-}
+diff --git a/native-mods/worldmap/mixins/worldmap/commands.rs b/native-mods/worldmap/mixins/worldmap/commands.rs
+deleted file mode 100644
+index 79a7597..0000000
+--- a/native-mods/worldmap/mixins/worldmap/commands.rs
++++ /dev/null
+@@ -1,4 +0,0 @@
+-// The names of the mod's own chat commands, for the chat box to colour, complete and list.
+-fn official_worldmap_commands(game: &crate::game::Game<'_>, commands: &mut Vec<&'static str>) {
+-    crate::game::official_worldmap::commands(game, commands);
+-}
+diff --git a/native-mods/worldmap/mixins/worldmap/core.rs b/native-mods/worldmap/mixins/worldmap/core.rs
+deleted file mode 100644
+index 657078e..0000000
+--- a/native-mods/worldmap/mixins/worldmap/core.rs
++++ /dev/null
+@@ -1,1419 +0,0 @@
+-// World Map core: the terrain the player has seen, kept between visits, and the
+-// image drawn from it. It lives in the minimap's file to reuse its column scan
+-// (`scan_tile`) and its map-item colours and shading. One cell per chunk the
+-// player has had loaded, in layers: the surface, and cave layers (the floor
+-// below a height, in slices of 16 blocks), on disk in 32 x 32 chunk regions.
+-use super::{
+-    BlockFacts, Layer, Palette, WALL, World, brightness, packed_rgba, ring_offsets, scan_tile,
+-};
+-use std::{
+-    collections::{HashMap, HashSet},
+-    fs, io,
+-    path::{Path, PathBuf},
+-    sync::{Arc, Mutex},
+-    time::{Duration, Instant},
+-};
+-
+-/// Chunks per side of a region file.
+-pub const REGION: i32 = 32;
+-/// The surface's layer id; a cave layer's is its slice (the height divided by 16).
+-pub const SURFACE: i32 = i32::MAX;
+-/// The layer of "full" caves: one map for every height.
+-pub const FULL: i32 = i32::MIN;
+-/// The minimap's own layer underground: the floor below the player's head, cut again when
+-/// their height changes. It is not kept on disk.
+-pub const LIVE: i32 = i32::MIN + 1;
+-const MAGIC: &[u8; 6] = b"HZWM2\n";
+-/// The first format, without the light of each column; still read.
+-const MAGIC_V1: &[u8; 6] = b"HZWM1\n";
+-/// Full daylight: the map is drawn as it is. Less is a darker sky, in steps.
+-pub const DAY: u8 = 32;
+-/// What is left of a colour in the darkest night, of 256.
+-const NIGHT_FLOOR: u32 = 72;
+-/// A loaded chunk is scanned again after a block change at most this often.
+-const RESCAN_AFTER: Duration = Duration::from_secs(3);
+-/// Only the chunks this near the player are read again after a block change somewhere in the
+-/// world (it can change all the time on a busy server); the farther ones are read when new,
+-/// or from disk, and again when the player comes near.
+-const REFRESH_RING: i32 = 4;
+-/// Never seen (or void).
+-const UNEXPLORED: [u8; 4] = [14, 14, 18, 255];
+-/// Bytes of a cell on disk: chunk x and z, colours, heights, water depths, block light.
+-const CELL_BYTES: usize = 8 + 256 + 512 + 256 + 256;
+-/// The same in the first format, which had no block light.
+-const CELL_BYTES_V1: usize = CELL_BYTES - 256;
+-/// Bytes of a cell's block light, 8 x 8, 4 x 4, 2 x 2 and 1 x 1, and where each starts.
+-const GLOW_MIP_BYTES: usize = 64 + 16 + 4 + 1;
+-const GLOW_MIP_OFFSET: [usize; 5] = [0, 0, 64, 80, 84];
+-/// Bytes of a cell's smaller pictures of itself, 8 x 8, 4 x 4, 2 x 2 and 1 x 1
+-/// pixels of RGBA, and where each starts, by level (1 to 4).
+-const MIP_BYTES: usize = 256 + 64 + 16 + 4;
+-const MIP_OFFSET: [usize; 5] = [0, 0, 256, 320, 336];
+-
+-/// Bytes of a cell's full picture: 16 x 16 pixels of RGBA.
+-const PICTURE_BYTES: usize = 1024;
+-
+-/// The cell shaded as the map is: a column's north is the column above it, in the cell
+-/// or in the cell north of it. The map draws from this picture as it is when it shows
+-/// less than 2 blocks to a pixel, so drawing it costs a copy a pixel.
+-fn shade(
+-    cells: &HashMap<(i32, i32, i32), Box<Cell>>,
+-    id: (i32, i32, i32),
+-    cell: &Cell,
+-) -> [u8; PICTURE_BYTES] {
+-    let north_cell = cells.get(&(id.0, id.1, id.2 - 1));
+-    let mut out = [0u8; PICTURE_BYTES];
+-    for z in 0..16usize {
+-        for x in 0..16usize {
+-            let i = z * 16 + x;
+-            let c = cell.color[i];
+-            let rgba = if c & !WALL != 0 {
+-                let north = if z > 0 {
+-                    (cell.color[i - 16] & !WALL != 0).then(|| cell.height[i - 16])
+-                } else {
+-                    north_cell
+-                        .and_then(|n| (n.color[240 + x] & !WALL != 0).then(|| n.height[240 + x]))
+-                };
+-                packed_rgba(
+-                    c & !WALL,
+-                    brightness(c, cell.height[i], north, cell.depth[i], (x + z) as i32),
+-                )
+-            } else {
+-                UNEXPLORED
+-            };
+-            out[i * 4..i * 4 + 4].copy_from_slice(&rgba);
+-        }
+-    }
+-    out
+-}
+-
+-/// The picture half the size four times over: the pictures the map draws from when it
+-/// shows 2 blocks or more to a pixel. Each pixel is the mean of four, so a far map
+-/// blurs instead of flickering.
+-fn build_mips(picture: &[u8; PICTURE_BYTES]) -> [u8; MIP_BYTES] {
+-    let mut prev: Vec<[u8; 4]> = picture
+-        .chunks_exact(4)
+-        .map(|p| [p[0], p[1], p[2], p[3]])
+-        .collect();
+-    let mut out = [0u8; MIP_BYTES];
+-    let mut size = 16usize;
+-    for level in 1..=4usize {
+-        let n = size / 2;
+-        let mut next: Vec<[u8; 4]> = Vec::with_capacity(n * n);
+-        for z in 0..n {
+-            for x in 0..n {
+-                let mut sum = [0u32; 4];
+-                for (dx, dz) in [(0, 0), (1, 0), (0, 1), (1, 1)] {
+-                    let p = prev[(z * 2 + dz) * size + x * 2 + dx];
+-                    for k in 0..4 {
+-                        sum[k] += u32::from(p[k]);
+-                    }
+-                }
+-                next.push([
+-                    (sum[0] / 4) as u8,
+-                    (sum[1] / 4) as u8,
+-                    (sum[2] / 4) as u8,
+-                    (sum[3] / 4) as u8,
+-                ]);
+-            }
+-        }
+-        let at = MIP_OFFSET[level];
+-        for (j, p) in next.iter().enumerate() {
+-            out[at + j * 4..at + j * 4 + 4].copy_from_slice(p);
+-        }
+-        prev = next;
+-        size = n;
+-    }
+-    out
+-}
+-
+-/// The block light halved four times over, a mean of four each: what a far map lights from.
+-fn build_glow_mips(glow: &[u8; 256]) -> [u8; GLOW_MIP_BYTES] {
+-    let mut prev: Vec<u8> = glow.to_vec();
+-    let mut out = [0u8; GLOW_MIP_BYTES];
+-    let mut size = 16usize;
+-    for level in 1..=4usize {
+-        let n = size / 2;
+-        let mut next = Vec::with_capacity(n * n);
+-        for z in 0..n {
+-            for x in 0..n {
+-                let mut sum = 0u32;
+-                for (dx, dz) in [(0, 0), (1, 0), (0, 1), (1, 1)] {
+-                    sum += u32::from(prev[(z * 2 + dz) * size + x * 2 + dx]);
+-                }
+-                next.push(sum.div_ceil(4) as u8);
+-            }
+-        }
+-        out[GLOW_MIP_OFFSET[level]..GLOW_MIP_OFFSET[level] + next.len()].copy_from_slice(&next);
+-        prev = next;
+-        size = n;
+-    }
+-    out
+-}
+-
+-/// A colour in the dark: the sky's `light` of `DAY`, or the block's own `glow` (0 to 15),
+-/// whichever is more, keeps it from going down to `NIGHT_FLOOR`.
+-fn lit(rgba: [u8; 4], glow: u8, light: u8) -> [u8; 4] {
+-    if light >= DAY || rgba == UNEXPLORED {
+-        return rgba;
+-    }
+-    let own = (u32::from(glow) * u32::from(DAY)).div_ceil(15);
+-    let f = u32::from(light).max(own).min(u32::from(DAY));
+-    let m = NIGHT_FLOOR + (256 - NIGHT_FLOOR) * f / u32::from(DAY);
+-    let ch = |c: u8| (u32::from(c) * m / 256) as u8;
+-    [ch(rgba[0]), ch(rgba[1]), ch(rgba[2]), rgba[3]]
+-}
+-
+-/// Shade a cell again, and the cell south of it, whose first row looks at its last.
+-fn refresh(cells: &mut HashMap<(i32, i32, i32), Box<Cell>>, id: (i32, i32, i32)) {
+-    for id in [id, (id.0, id.1, id.2 + 1)] {
+-        let Some(cell) = cells.get(&id) else {
+-            continue;
+-        };
+-        let picture = shade(cells, id, cell);
+-        let mips = build_mips(&picture);
+-        if let Some(c) = cells.get_mut(&id) {
+-            c.rgba = picture;
+-            c.mips = mips;
+-        }
+-    }
+-}
+-
+-/// The cave layer a height is in.
+-pub fn cave_layer(y: i32) -> i32 {
+-    y.div_euclid(16)
+-}
+-
+-/// The highest block a cave layer shows.
+-pub fn layer_top(layer: i32) -> i32 {
+-    layer * 16 + 15
+-}
+-
+-#[derive(Clone)]
+-struct Cell {
+-    color: [u8; 256],
+-    height: [i16; 256],
+-    depth: [u8; 256],
+-    /// The block light (0 to 15) at the top of each column, so a lit block shines at night.
+-    glow: [u8; 256],
+-    glow_mips: [u8; GLOW_MIP_BYTES],
+-    /// The height it was cut at (the live layer's: it is read again when that changes).
+-    head: i32,
+-    /// The cell as the map draws it, and smaller.
+-    rgba: [u8; PICTURE_BYTES],
+-    mips: [u8; MIP_BYTES],
+-    /// The world revision it was scanned at (`u64::MAX` when read from disk, so
+-    /// the chunk's first load scans it again).
+-    revision: u64,
+-    scanned: Instant,
+-}
+-
+-/// The region a chunk is stored in.
+-pub fn region_of(chunk: (i32, i32)) -> (i32, i32) {
+-    (chunk.0.div_euclid(REGION), chunk.1.div_euclid(REGION))
+-}
+-
+-/// The texels of one size of the cells' pictures (0: a block each, 1: 2 x 2 blocks...) over a
+-/// rectangle of the world, in one array: what the smooth image is taken from. A texel with no
+-/// alpha is one that is not explored.
+-struct Tex {
+-    span: f64,
+-    x0: i32,
+-    z0: i32,
+-    w: usize,
+-    h: usize,
+-    rgba: Vec<[u8; 4]>,
+-    glow: Vec<u8>,
+-}
+-
+-impl Tex {
+-    /// The texels of `level` that cover blocks x from `xmin` to `xmax` and z from `zmin` to `zmax`.
+-    fn window(map: &WorldMap, layer: i32, level: usize, xmin: f64, xmax: f64, zmin: f64, zmax: f64) -> Self {
+-        let span = f64::from(1u32 << level);
+-        // The texels a bilinear pick at any of these points reads.
+-        let x0 = (xmin / span - 0.5).floor() as i32;
+-        let x1 = (xmax / span - 0.5).floor() as i32 + 1;
+-        let z0 = (zmin / span - 0.5).floor() as i32;
+-        let z1 = (zmax / span - 0.5).floor() as i32 + 1;
+-        let (w, h) = ((x1 - x0 + 1) as usize, (z1 - z0 + 1) as usize);
+-        let mut rgba = vec![[0u8; 4]; w * h];
+-        let mut glow = vec![0u8; w * h];
+-        let size = 16i32 >> level;
+-        for cz in z0.div_euclid(size)..=z1.div_euclid(size) {
+-            for cx in x0.div_euclid(size)..=x1.div_euclid(size) {
+-                let Some(cell) = map.cells.get(&(layer, cx, cz)) else {
+-                    continue;
+-                };
+-                // The part of this cell that is in the rectangle.
+-                let (lx0, lx1) = ((x0 - cx * size).max(0), (x1 - cx * size).min(size - 1));
+-                let (lz0, lz1) = ((z0 - cz * size).max(0), (z1 - cz * size).min(size - 1));
+-                for lz in lz0..=lz1 {
+-                    let row = ((cz * size + lz - z0) as usize) * w + (cx * size + lx0 - x0) as usize;
+-                    let count = (lx1 - lx0 + 1) as usize;
+-                    let lzu = lz as usize;
+-                    if level == 0 {
+-                        let from = lzu * 16 + lx0 as usize;
+-                        for k in 0..count {
+-                            let at = (from + k) * 4;
+-                            rgba[row + k] = [cell.rgba[at], cell.rgba[at + 1], cell.rgba[at + 2], cell.rgba[at + 3]];
+-                        }
+-                        glow[row..row + count].copy_from_slice(&cell.glow[from..from + count]);
+-                    } else {
+-                        let side = size as usize;
+-                        let from = lzu * side + lx0 as usize;
+-                        for k in 0..count {
+-                            let at = MIP_OFFSET[level] + (from + k) * 4;
+-                            rgba[row + k] = [cell.mips[at], cell.mips[at + 1], cell.mips[at + 2], cell.mips[at + 3]];
+-                        }
+-                        let g = GLOW_MIP_OFFSET[level] + from;
+-                        glow[row..row + count].copy_from_slice(&cell.glow_mips[g..g + count]);
+-                    }
+-                }
+-            }
+-        }
+-        Self { span, x0, z0, w, h, rgba, glow }
+-    }
+-
+-    /// Bilinear: the four texels round the point (block coordinates), by how near they are; the
+-    /// ones that are not explored are left out. Its colour and block light.
+-    #[inline]
+-    fn bilinear(&self, xf: f64, zf: f64) -> Option<([f32; 3], f32)> {
+-        let (u, v) = (xf / self.span - 0.5, zf / self.span - 0.5);
+-        let (i, j) = (u.floor(), v.floor());
+-        let (fu, fv) = ((u - i) as f32, (v - j) as f32);
+-        let (i, j) = ((i as i32 - self.x0) as usize, (j as i32 - self.z0) as usize);
+-        if i + 1 >= self.w || j + 1 >= self.h {
+-            return None;
+-        }
+-        let at = j * self.w + i;
+-        let mut sum = [0.0f32; 3];
+-        let (mut glow, mut weight) = (0.0f32, 0.0f32);
+-        for (k, wt) in [
+-            (at, (1.0 - fu) * (1.0 - fv)),
+-            (at + 1, fu * (1.0 - fv)),
+-            (at + self.w, (1.0 - fu) * fv),
+-            (at + self.w + 1, fu * fv),
+-        ] {
+-            let c = self.rgba[k];
+-            if wt > 0.0 && c[3] != 0 {
+-                sum[0] += wt * f32::from(c[0]);
+-                sum[1] += wt * f32::from(c[1]);
+-                sum[2] += wt * f32::from(c[2]);
+-                glow += wt * f32::from(self.glow[k]);
+-                weight += wt;
+-            }
+-        }
+-        (weight > 0.0).then(|| ([sum[0] / weight, sum[1] / weight, sum[2] / weight], glow / weight))
+-    }
+-}
+-
+-#[derive(Default)]
+-pub struct WorldMap {
+-    /// By layer, chunk x and chunk z.
+-    cells: HashMap<(i32, i32, i32), Box<Cell>>,
+-    palette: Option<Palette>,
+-    /// Regions with cells not yet saved: layer, region x and z.
+-    dirty: HashSet<(i32, i32, i32)>,
+-    /// A cell changed since the image was composed.
+-    changed: bool,
+-    composed: Option<(i32, f64, f64, f32, usize, usize, u8, i32)>,
+-    /// Regions a writing thread could not write, to be written again; and the regions it is
+-    /// writing now.
+-    failed: Arc<Mutex<Vec<(i32, i32, i32)>>>,
+-    writing: Arc<Mutex<HashSet<(i32, i32, i32)>>>,
+-    /// Region files still to be read (the next is the last), the cells of the one being read,
+-    /// its layer, and how many cells have been read.
+-    to_load: Vec<(i64, i32, PathBuf)>,
+-    /// How many cells each layer has (counting them would go through every cell of the map).
+-    counts: HashMap<i32, usize>,
+-    reading: Option<std::vec::IntoIter<((i32, i32), Cell)>>,
+-    reading_layer: i32,
+-    read: usize,
+-    /// The composed image, RGBA.
+-    pub image: Vec<u8>,
+-}
+-
+-impl WorldMap {
+-    /// Forget everything in memory (another world or dimension).
+-    pub fn clear(&mut self) {
+-        let palette = self.palette.take();
+-        *self = Self {
+-            palette,
+-            ..Self::default()
+-        };
+-    }
+-
+-    /// Make the next `compose` draw again, whatever the view.
+-    pub fn invalidate(&mut self) {
+-        self.composed = None;
+-    }
+-
+-    /// The chunks explored in `layer`.
+-    pub fn explored_chunks(&self, layer: i32) -> usize {
+-        self.counts.get(&layer).copied().unwrap_or(0)
+-    }
+-
+-    pub fn has_unsaved(&self) -> bool {
+-        !self.dirty.is_empty()
+-    }
+-
+-    /// The map colour, height and water depth of a block column, if explored.
+-    pub fn column(&self, layer: i32, x: i32, z: i32) -> Option<(u8, i16, u8)> {
+-        let cell = self.cells.get(&(layer, x >> 4, z >> 4))?;
+-        let i = ((z & 15) * 16 + (x & 15)) as usize;
+-        Some((cell.color[i], cell.height[i], cell.depth[i]))
+-    }
+-
+-    /// The loaded chunks around `center` that `layer` has no cell for yet,
+-    /// nearest first, at most `limit`.
+-    pub fn pending(
+-        &self,
+-        world: &World,
+-        center: (i32, i32),
+-        radius: i32,
+-        layer: i32,
+-        limit: usize,
+-    ) -> Vec<(i32, i32)> {
+-        let mut out = Vec::new();
+-        for ring in 0..=radius {
+-            for (dx, dz) in ring_offsets(ring) {
+-                let key = (center.0 + dx, center.1 + dz);
+-                if world.chunks.contains_key(&key) && !self.cells.contains_key(&(layer, key.0, key.1))
+-                {
+-                    out.push(key);
+-                    if out.len() >= limit {
+-                        return out;
+-                    }
+-                }
+-            }
+-        }
+-        out
+-    }
+-
+-    /// Scan the loaded chunks around `center` (chunk coordinates), nearest first,
+-    /// the new and the changed ones, until `budget` is spent: the surface, and
+-    /// the cave layer `cave` if there is one (its id, and the highest block it
+-    /// shows). Returns how many.
+-    pub fn update(
+-        &mut self,
+-        world: &World,
+-        facts: &BlockFacts,
+-        center: (i32, i32),
+-        radius: i32,
+-        budget: Duration,
+-        cave: Option<(i32, i32)>,
+-        live: Option<(i32, i32)>,
+-    ) -> usize {
+-        let palette = self.palette.get_or_insert_with(|| Palette::new(facts));
+-        let started = Instant::now();
+-        let air = world.air.0;
+-        let mut layers = vec![(SURFACE, 0)];
+-        layers.extend(cave);
+-        // The live layer: the height of the player's head, and how far round them it reaches.
+-        let live_reach = live.map_or(-1, |l| l.1);
+-        layers.extend(live.map(|l| (LIVE, l.0)));
+-        let mut scanned = 0;
+-        for ring in 0..=radius {
+-            for (dx, dz) in ring_offsets(ring) {
+-                let key = (center.0 + dx, center.1 + dz);
+-                let Some(chunk) = world.chunks.get(&key) else {
+-                    continue;
+-                };
+-                for &(layer, top) in &layers {
+-                    if layer == LIVE && ring > live_reach {
+-                        continue;
+-                    }
+-                    let id = (layer, key.0, key.1);
+-                    let stale = match self.cells.get(&id) {
+-                        None => true,
+-                        Some(c) => {
+-                            // Read from disk: once. Changed since: only near the player.
+-                            c.revision == u64::MAX
+-                                || (ring <= REFRESH_RING
+-                                    && c.revision != world.revision
+-                                    && c.scanned.elapsed() >= RESCAN_AFTER)
+-                                || (layer == LIVE && c.head != top)
+-                        }
+-                    };
+-                    if !stale {
+-                        continue;
+-                    }
+-                    let what = if layer == SURFACE {
+-                        Layer::Surface
+-                    } else {
+-                        Layer::Below(top)
+-                    };
+-                    let tile = scan_tile(chunk, palette, air, what, world.revision);
+-                    // Block light at the top of each column: its own and the air above.
+-                    let mut glow = [0u8; 256];
+-                    for (i, g) in glow.iter_mut().enumerate() {
+-                        if tile.color[i] & !WALL == 0 {
+-                            continue;
+-                        }
+-                        let (x, z) = ((i & 15) as i32, (i >> 4) as i32);
+-                        let y = i32::from(tile.height[i]);
+-                        *g = (chunk.light(x, y, z) & 15).max(chunk.light(x, y + 1, z) & 15);
+-                    }
+-                    let different = self.cells.get(&id).is_none_or(|c| {
+-                        c.color != tile.color
+-                            || c.height != tile.height
+-                            || c.depth != tile.depth
+-                            || c.glow != glow
+-                    });
+-                    if different || (layer == LIVE && self.cells.get(&id).is_none_or(|c| c.head != top)) {
+-                        self.changed = true;
+-                        if layer != LIVE {
+-                            let region = region_of(key);
+-                            self.dirty.insert((layer, region.0, region.1));
+-                        }
+-                    }
+-                    let fresh = self.cells.insert(
+-                        id,
+-                        Box::new(Cell {
+-                            color: tile.color,
+-                            height: tile.height,
+-                            depth: tile.depth,
+-                            glow,
+-                            glow_mips: build_glow_mips(&glow),
+-                            head: top,
+-                            rgba: [0; PICTURE_BYTES],
+-                            mips: [0; MIP_BYTES],
+-                            revision: tile.revision,
+-                            scanned: tile.scanned,
+-                        }),
+-                    );
+-                    if fresh.is_none() {
+-                        *self.counts.entry(layer).or_default() += 1;
+-                    }
+-                    refresh(&mut self.cells, id);
+-                    scanned += 1;
+-                    if started.elapsed() >= budget {
+-                        return scanned;
+-                    }
+-                }
+-            }
+-        }
+-        scanned
+-    }
+-
+-    /// Draw the `w` x `h` image of `layer` around block (`cx`, `cz`), `bpp`
+-    /// blocks per pixel, north up, under a sky of `light` of `DAY`. False when nothing
+-    /// differs from the last one.
+-    /// With `yaw` (degrees, 0 facing south) the image is turned so that where that points is up.
+-    #[allow(clippy::too_many_arguments)]
+-    pub fn compose(
+-        &mut self,
+-        layer: i32,
+-        cx: f64,
+-        cz: f64,
+-        bpp: f32,
+-        w: usize,
+-        h: usize,
+-        light: u8,
+-        yaw: Option<f32>,
+-    ) -> bool {
+-        let key = (layer, cx, cz, bpp, w, h, light, yaw.map_or(i32::MIN, |y| (y * 2.0).round() as i32));
+-        if !self.changed && self.composed == Some(key) && self.image.len() == w * h * 4 {
+-            return false;
+-        }
+-        self.changed = false;
+-        self.composed = Some(key);
+-        let mut img = std::mem::take(&mut self.image);
+-        match yaw {
+-            Some(yaw) => self.render_turned(layer, cx, cz, bpp, w, h, light, yaw, &mut img),
+-            None => self.render(layer, cx, cz, bpp, w, h, light, &mut img),
+-        }
+-        self.image = img;
+-        true
+-    }
+-
+-    /// The chunks explored on the surface: the lowest and highest chunk x and z.
+-    pub fn bounds(&self) -> Option<(i32, i32, i32, i32)> {
+-        let mut keys = self.cells.keys().filter(|k| k.0 == SURFACE);
+-        let first = keys.next()?;
+-        Some(keys.fold((first.1, first.2, first.1, first.2), |b, k| {
+-            (b.0.min(k.1), b.1.min(k.2), b.2.max(k.1), b.3.max(k.2))
+-        }))
+-    }
+-
+-    /// Write the whole explored surface to `path` as a PNG, a block a pixel (or
+-    /// coarser when it would pass 4096 pixels a side). Returns its size.
+-    pub fn export_png(&self, path: &Path) -> io::Result<(usize, usize)> {
+-        let Some((x0, z0, x1, z1)) = self.bounds() else {
+-            return Err(io::Error::other("nothing explored yet"));
+-        };
+-        let blocks_w = ((x1 - x0 + 1) * 16) as usize;
+-        let blocks_h = ((z1 - z0 + 1) * 16) as usize;
+-        let scale = blocks_w.max(blocks_h).div_ceil(4096).max(1);
+-        let (w, h) = (blocks_w.div_ceil(scale), blocks_h.div_ceil(scale));
+-        let cx = f64::from(x0 * 16) + blocks_w as f64 / 2.0;
+-        let cz = f64::from(z0 * 16) + blocks_h as f64 / 2.0;
+-        let mut img = Vec::new();
+-        self.render(SURFACE, cx, cz, scale as f32, w, h, DAY, &mut img);
+-        if let Some(dir) = path.parent() {
+-            fs::create_dir_all(dir)?;
+-        }
+-        let file = io::BufWriter::new(fs::File::create(path)?);
+-        let mut encoder = png::Encoder::new(file, w as u32, h as u32);
+-        encoder.set_color(png::ColorType::Rgba);
+-        encoder.set_depth(png::BitDepth::Eight);
+-        let mut writer = encoder
+-            .write_header()
+-            .map_err(|e| io::Error::other(e.to_string()))?;
+-        writer
+-            .write_image_data(&img)
+-            .map_err(|e| io::Error::other(e.to_string()))?;
+-        Ok((w, h))
+-    }
+-
+-    /// The same turned by `yaw` degrees: the way a player faces is up (the minimap's).
+-    #[allow(clippy::too_many_arguments)]
+-    fn render_turned(
+-        &self,
+-        layer: i32,
+-        cx: f64,
+-        cz: f64,
+-        bpp: f32,
+-        w: usize,
+-        h: usize,
+-        light: u8,
+-        yaw: f32,
+-        img: &mut Vec<u8>,
+-    ) {
+-        let (sin, cos) = f64::from(yaw).to_radians().sin_cos();
+-        // Forward, in the world's x and z; right of it is (-fz, fx).
+-        self.render_smooth(layer, cx, cz, bpp, w, h, light, Some((-sin, cos)), img);
+-    }
+-
+-    /// The image with every pixel taken smoothly: bilinear in the cells' pictures, and between
+-    /// two sizes of them (the next smaller one's) by how far the map is zoomed out. Nothing
+-    /// jumps when it is zoomed or turned, and a dithered forest does not shimmer. `forward` is
+-    /// the way that is up when the map is turned (else north is).
+-    #[allow(clippy::too_many_arguments)]
+-    fn render_smooth(
+-        &self,
+-        layer: i32,
+-        cx: f64,
+-        cz: f64,
+-        bpp: f32,
+-        w: usize,
+-        h: usize,
+-        light: u8,
+-        forward: Option<(f64, f64)>,
+-        img: &mut Vec<u8>,
+-    ) {
+-        // Zoomed out: the pictures of the cells are laid on the pixels (the work is that of the
+-        // texels there are) rather than the pixels looked up in a window of texels (the work is
+-        // that of the pixels, and the window grows with the square of the zoom).
+-        if forward.is_none() && bpp >= 2.0 {
+-            let level = (bpp.log2().floor() as usize).min(4);
+-            let side = (16usize >> level) as f64;
+-            let in_view = ((w as f64 * f64::from(bpp) / 16.0 + 2.0) * (h as f64 * f64::from(bpp) / 16.0 + 2.0))
+-                .min(self.cells.len() as f64);
+-            if in_view * side
