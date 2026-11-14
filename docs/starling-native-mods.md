@@ -89,10 +89,12 @@ to `MOD_BUILD_ROOT/versions.json`, for example:
 The service's `source/` checkout must be this fork and contain that commit. Do not map a fork version to the official
 Starling commit: the returned game library must be built from the same source as the APK.
 
-For **Use GitHub (slower)**, the gateway must also point `GITHUB_BUILDS_REPO` at a fork of `starling-client/mod-builds`.
-That repository needs the same version-to-commit entry in `versions.json`, and its `scripts/prepare.sh` must fetch this
-fork as the source instead of `starling-client/starling`. The gateway accepts prerelease version names, but still
-refuses a version that has no commit in the configured build repository.
+For **Use GitHub (slower)**, set `GITHUB_BUILDS_REPO=CihuyAkz/mod-builds-extras` on the gateway. The repository must
+have `build.yml`, `base.yml`, and `versions.json` on its `main` branch. Its `scripts/prepare.sh` must fetch this fork as
+the source. A universal `"*"` entry may provide the commit for versions without an exact entry; an exact version entry
+always takes priority. The gateway accepts prerelease version names and checks the exact entry or the universal fallback
+before dispatching a build. Set `GITHUB_VERSIONS=*` if ordinary **Compile** should also use GitHub runners for every
+version; otherwise **Use GitHub (slower)** selects them explicitly.
 
 ## On GitHub's machines
 
@@ -100,7 +102,7 @@ refuses a version that has no commit in the configured build repository.
 (`via=github`). The player needs no GitHub account, and the APK holds no secret.
 
 1. The gateway keeps the request's mods under a random name and runs the `build.yml` workflow of the public
-   `starling-client/mod-builds` repository with that name, using a token that may only run that repository's workflows
+   `CihuyAkz/mod-builds-extras` repository with that name, using a token that may only run that repository's workflows
    (systemd's `LoadCredential`, `github-token`). Without the token this door is shut.
 2. The runner restores the clean cache `base.yml` made for that version, fetches the mods, and runs
    `mod_build_once.py`: the same checks and the same sandbox as the service, so a mod's code has no network and can't see
@@ -114,7 +116,7 @@ It costs nothing on a public repository, but a repository that keeps runners bus
 this has limits too (`GITHUB_PER_ADDRESS`, `GITHUB_PER_DAY`), and at most 8 runs go at once, the rest waiting in line on
 the gateway. It lives in a repository of its own so that trouble there doesn't reach this one.
 
-Each new release also needs its commit in mod-builds' `versions.json` and a run of `base.yml`.
+The universal source commit needs one successful `base.yml` run with version `*`. When the wildcard commit changes, build the base cache again.
 
 ## Where the service is
 
