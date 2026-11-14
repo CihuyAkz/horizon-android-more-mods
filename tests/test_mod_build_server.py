@@ -81,6 +81,55 @@ class VersionMap(unittest.TestCase):
             with mock.patch.object(server, "ROOT", root):
                 self.assertEqual(server.commit_of("0.8.0-dev.81"), commit)
 
+    def test_universal_fallback_resolves_development_versions(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            commit = "c" * 40
+            (root / "versions.json").write_text(
+                json.dumps({"*": commit}), encoding="utf-8"
+            )
+            with mock.patch.object(server, "ROOT", root):
+                self.assertEqual(server.commit_of("0.8.0-dev.85"), commit)
+
+    def test_exact_version_wins_over_universal_fallback(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            exact = "d" * 40
+            fallback = "e" * 40
+            (root / "versions.json").write_text(
+                json.dumps({"0.8.0-dev.85": exact, "*": fallback}), encoding="utf-8"
+            )
+            with mock.patch.object(server, "ROOT", root):
+                self.assertEqual(server.commit_of("0.8.0-dev.85"), exact)
+
+    def test_invalid_exact_commit_is_not_hidden_by_fallback(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            (root / "versions.json").write_text(
+                json.dumps({"0.8.0-dev.85": "invalid", "*": "f" * 40}), encoding="utf-8"
+            )
+            with mock.patch.object(server, "ROOT", root):
+                with self.assertRaises(server.Refused):
+                    server.commit_of("0.8.0-dev.85")
+
+    def test_invalid_universal_commit_is_rejected(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            (root / "versions.json").write_text(
+                json.dumps({"*": "invalid"}), encoding="utf-8"
+            )
+            with mock.patch.object(server, "ROOT", root):
+                with self.assertRaises(server.Refused):
+                    server.commit_of("0.8.0-dev.85")
+
+    def test_non_object_version_map_is_rejected(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            (root / "versions.json").write_text("[]", encoding="utf-8")
+            with mock.patch.object(server, "ROOT", root):
+                with self.assertRaises(server.Refused):
+                    server.commit_of("0.8.0-dev.85")
+
 
 class AskedAgain(unittest.TestCase):
     def setUp(self):

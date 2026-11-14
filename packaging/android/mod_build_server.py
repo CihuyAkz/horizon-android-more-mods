@@ -141,12 +141,21 @@ def unpack(files, work):
 
 def commit_of(version):
     try:
-        return json.loads((ROOT / "versions.json").read_text())[version]
-    except (OSError, ValueError, KeyError):
+        versions = json.loads((ROOT / "versions.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        raise Refused("Could not read MOD_BUILD_ROOT/versions.json.")
+    if not isinstance(versions, dict):
+        raise Refused("MOD_BUILD_ROOT/versions.json must be a JSON object.")
+    commit = versions.get(version)
+    if commit is None:
+        commit = versions.get("*")
+    if not isinstance(commit, str) or not re.fullmatch(r"[0-9a-f]{40}", commit):
         raise Refused(
-            f"No source commit is registered for Starling {version[:32]}. "
-            "Add this exact version and the fork's commit to MOD_BUILD_ROOT/versions.json."
+            f"No valid source commit is registered for Starling {version[:32]}. "
+            "Add this exact version or a universal '*' entry with the fork's 40-character commit "
+            "to MOD_BUILD_ROOT/versions.json."
         )
+    return commit
 
 
 def result_of(key):
