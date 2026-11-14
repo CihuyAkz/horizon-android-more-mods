@@ -201,7 +201,7 @@ public class StarlingActivity extends NativeActivity {
                     ? sharedRoot : privateRoot;
         }
         File nativeMods = new File(gameRoot, "horizon-native-mods");
-        for (String removed : new String[] {"minimap", "accurate_block_placement", "voicechat", "horizon_physics"}) {
+        for (String removed : new String[] {"minimap", "worldmap", "accurate_block_placement", "voicechat", "horizon_physics"}) {
             new File(nativeMods, removed + ".hnmod").delete();
         }
         String[] bundles;

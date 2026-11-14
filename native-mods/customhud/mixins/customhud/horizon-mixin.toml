@@ -102,7 +102,7 @@ bindings = [
 ]
 
 # Le bossbar vanilla scendono sotto l'HUD quando è in alto: si ricorda dove
-# iniziano i loro vertici e li si sposta prima di minimappa e HUD delle mod.
+# iniziano i loro vertici e li si sposta prima degli HUD delle mod.
 [[injection]]
 id = "boss-bars"
 target = "horizon_client::game::dragon::Game<'_>::draw_boss_bars"

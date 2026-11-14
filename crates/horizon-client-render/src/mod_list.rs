@@ -9,6 +9,10 @@ use std::{
     path::Path,
 };
 
+pub fn is_retired_map_mod(id: &str) -> bool {
+    matches!(id, "minimap" | "worldmap")
+}
+
 pub const FILE: &str = "horizon-mods.txt";
 /// The folder holding `.hmod` files, beside `options.txt`.
 pub const DIR: &str = "horizon-mods";
@@ -27,9 +31,8 @@ pub fn is_android_bundled(_id: &str) -> bool {
 }
 
 #[cfg(target_os = "android")]
-pub const ANDROID_BUNDLED: [&str; 20] = [
+pub const ANDROID_BUNDLED: [&str; 19] = [
     "zoom",
-    "worldmap",
     "recipes",
     "smartf3",
     "freecam_plus",
@@ -150,23 +153,15 @@ impl ModList {
                 .map(str::to_owned)
                 .collect()
         };
-        let enabled = ids("true");
+        let mut enabled = ids("true");
         let mut disabled = ids("false");
+        enabled.retain(|id| !is_retired_map_mod(id));
+        disabled.retain(|id| !is_retired_map_mod(id));
         #[cfg(target_os = "android")]
-        let enabled = {
-            let mut enabled = enabled;
-            let has_worldmap_preference = text
-                .lines()
-                .filter_map(|line| line.split_once(':'))
-                .any(|(key, _)| key.trim() == "mod.worldmap");
-            if enabled.remove("minimap") && !has_worldmap_preference {
-                enabled.insert("worldmap".to_owned());
-            }
-            disabled.remove("minimap");
+        {
             enabled.remove("horizon_physics");
             disabled.remove("horizon_physics");
-            enabled
-        };
+        }
         #[cfg(target_os = "android")]
         for id in ANDROID_BUNDLED.iter() {
             if !enabled.contains(*id) {
@@ -266,6 +261,7 @@ mod tests {
         let list = ModList::parse("");
         for id in [
             "minimap",
+            "worldmap",
             "accurate_block_placement",
             "voicechat",
             "horizon_physics",
@@ -291,17 +287,15 @@ mod tests {
         assert!(!list.disabled.contains("horizon_physics"));
     }
 
-    #[cfg(target_os = "android")]
     #[test]
-    fn previous_minimap_opt_in_migrates_to_worldmap_unless_worldmap_was_set() {
-        let migrated = ModList::parse("mod.minimap:true\n");
-        assert!(migrated.enabled.contains("worldmap"));
-        assert!(!migrated.enabled.contains("minimap"));
-        assert!(!migrated.disabled.contains("minimap"));
-
-        let explicit_off = ModList::parse("mod.minimap:true\nmod.worldmap:false\n");
-        assert!(!explicit_off.enabled.contains("worldmap"));
-        assert!(explicit_off.disabled.contains("worldmap"));
+    fn retired_map_mod_preferences_are_ignored() {
+        let list = ModList::parse(
+            "mod.minimap:true\nmod.worldmap:true\nmod.worldmap:false\n",
+        );
+        for id in ["minimap", "worldmap"] {
+            assert!(!list.enabled.contains(id));
+            assert!(!list.disabled.contains(id));
+        }
     }
 
     #[test]

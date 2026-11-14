@@ -137,7 +137,7 @@ fn draw_out(game: &mut Game<'_>, batch: &mut HudBatch, out: &hud::Hud) {
     }
 }
 
-// Dopo le bossbar e prima di minimappa e HUD delle mod: le sposta in basso
+// Dopo le bossbar e prima degli HUD delle mod: le sposta in basso
 // quando l'HUD è in alto, come `pushBossBarShift` in Java.
 pub(super) fn shift_boss_bars(game: &Game<'_>, batch: &mut HudBatch) {
     let Some(start) = hud::take_boss_bars_mark() else {

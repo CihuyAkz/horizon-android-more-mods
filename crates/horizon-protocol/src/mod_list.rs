@@ -30,7 +30,7 @@ pub enum Side {
     Both,
     /// Only the server needs it.
     Server,
-    /// Only the player's game: a HUD, keys, a minimap. Any server accepts it.
+    /// Only the player's game: a HUD and keys. Any server accepts it.
     Client,
 }
 
@@ -234,7 +234,7 @@ mod tests {
     fn only_shared_mods_are_sent() {
         let list = [
             entry("ruby", "1.0", 1, Side::Both),
-            entry("minimap", "2.0", 2, Side::Client),
+            entry("client_hud_example", "2.0", 2, Side::Client),
             entry("admin", "3.0", 3, Side::Server),
         ];
         let sent = shared(&list);
@@ -321,11 +321,11 @@ mod tests {
             entry("ruby", "1", 2, Side::Both),
         ];
         let client = [
-            entry("minimap", "3", 3, Side::Client),
+            entry("client_hud_example", "3", 3, Side::Client),
             entry("ruby", "1", 2, Side::Both),
         ];
         assert!(compare(&server, &client).is_empty());
-        assert!(compare(&[], &[entry("minimap", "3", 3, Side::Client)]).is_empty());
+        assert!(compare(&[], &[entry("client_hud_example", "3", 3, Side::Client)]).is_empty());
     }
 
     #[test]

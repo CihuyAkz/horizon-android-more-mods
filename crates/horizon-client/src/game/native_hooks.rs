@@ -863,11 +863,10 @@
 //! `native_known_recipes`, `native_place_recipe`, `native_give`): what a
 //! recipe viewer needs.
 //!
-//! Names, parameters and call sites are kept from release to release, and
-//! hook points are only ever added: each addition raises [`NATIVE_HOOKS_API`].
+//! The hook set is versioned by [`NATIVE_HOOKS_API`].
 //! A bundle that hooks only these names the API it needs (`hooks`), and the
-//! launcher builds it on any Horizon whose API is at least that one. A change
-//! that would break such a bundle is not made.
+//! launcher checks that Horizon serves at least that version. A removed hook
+//! may require updating mods that used it.
 //! Bodies have no `cfg` and no macros: horizon-mixins refuses a target with
 //! either (`tests::hook_points_stay_hookable`).
 use super::native_data_maps::NativeDataMapType;
@@ -886,7 +885,7 @@ use horizon_client::mod_api::{
 };
 use horizon_client::mod_api::{AttachmentResult, Attachments, Holder, Suggestion};
 pub(crate) use horizon_client::mod_api::{
-    NativeBlockRim, NativeColoredLight, NativeLootDrops, NativeMinimap, NativeMod,
+    NativeBlockRim, NativeColoredLight, NativeLootDrops, NativeMod,
     NativePanelEvent, NativeScreen, NativeScreenView, NativeStack, NativeZoom,
 };
 use horizon_client::{
@@ -1046,7 +1045,7 @@ pub(super) use horizon_world::level::flags;
 /// The hook points' API version. The launcher reads this line from the
 /// source it builds; keep its form.
 #[allow(dead_code)]
-pub(crate) const NATIVE_HOOKS_API: u32 = 359;
+pub(crate) const NATIVE_HOOKS_API: u32 = 360;
 
 impl GameLevel<'_> {
     /// A hopper at `pos` is about to pick up `count` of `item`. Set `cancel` to leave the dropped stack in the world. Server-side. 232.
@@ -2239,7 +2238,7 @@ impl Game<'_> {
     pub(super) fn native_level_tick_post(&mut self, dimension: &str) {
         mod_api::dispatch_level_tick_post(self, mod_api::mods(), dimension);
     }
-    /// The HUD (not drawn under F1), after the minimap: place a box with
+    /// The HUD (not drawn under F1): place a box with
     /// `corners.place` (boxes stack away from their edge) and draw it with
     /// `native_fill` and `native_text`. Skip a corner `native_corner_shown`
     /// says is taken.
@@ -2660,10 +2659,6 @@ impl Game<'_> {
     /// 84.
     pub(super) fn native_shader_params(&self, partial: f32, params: &mut [[f32; 4]; 8]) {
         mod_api::dispatch_shader_params(self, mod_api::mods(), partial, params);
-    }
-    /// The minimap a native mod shows: set `minimap` when it is none yet.
-    pub(super) fn native_minimap(&self, minimap: &mut Option<NativeMinimap>) {
-        mod_api::dispatch_minimap(self, mod_api::mods(), minimap);
     }
     /// Register namespaced NBT component types before content loads.
     pub(super) fn native_component_types(types: &mut Vec<String>) {
@@ -9534,16 +9529,6 @@ impl Game<'_> {
         let mut params = [[0.0; 4]; 8];
         self.native_shader_params(partial, &mut params);
         finite_params(params)
-    }
-    /// The minimap a native mod shows.
-    pub(super) fn native_minimap_now(&self) -> Option<NativeMinimap> {
-        let mut minimap = None;
-        self.native_minimap(&mut minimap);
-        minimap.map(|m| NativeMinimap {
-            size: finite(m.size, 16.0, 256.0),
-            blocks_per_pixel: finite(m.blocks_per_pixel, 0.5, 4.0),
-            ..m
-        })
     }
 }
 

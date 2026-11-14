@@ -159,10 +159,8 @@ pub fn map_slot_sprite(slot: usize) -> Option<&'static str> {
         std::sync::LazyLock::new(|| (0..MAP_SLOTS).map(|i| format!("horizon/map{i}")).collect());
     NAMES.get(slot).map(String::as_str)
 }
-/// The atlas slot the minimap extra draws into.
-pub const MINIMAP_SPRITE: &str = "horizon/minimap";
 /// A mod's own image (`native_mod_image`), drawn with `native_sprite`; big
-/// enough for a world map's 1024 blocks at a block a pixel.
+/// enough for a large native mod image, such as a 1024-pixel-wide texture.
 pub const MOD_IMAGE_SPRITE: &str = "horizon/modimage";
 pub const MOD_IMAGE_SIZE: u32 = 1024;
 /// Atlas slots for downloaded player skins (`skins/<sha1>`), 64x64 each.
@@ -1138,20 +1136,13 @@ impl HudAtlas {
         Ok(atlas)
     }
     /// Empty slots written at run time: map textures (game/maps.rs), the
-    /// minimap, a native mod's own image, downloaded skins, world and pack
+    /// a native mod's own image, downloaded skins, world and pack
     /// icons and the on-screen keyboard's text.
     fn slots(images: &mut Vec<PackedImage>, trim: (u32, u32), mod_image: bool) {
         for i in 0..MAP_SLOTS {
             let name = map_slot_sprite(i).unwrap_or_default();
             images.push((name.into(), 128, 128, vec![0; 128 * 128 * 4]));
         }
-        // The minimap extra's image (game/extras.rs).
-        images.push((
-            MINIMAP_SPRITE.into(),
-            crate::minimap::SIZE as u32,
-            crate::minimap::SIZE as u32,
-            vec![0; crate::minimap::SIZE * crate::minimap::SIZE * 4],
-        ));
         // A mod's own image (native `mod_image`), only when a mod is loaded.
         if mod_image {
             images.push((

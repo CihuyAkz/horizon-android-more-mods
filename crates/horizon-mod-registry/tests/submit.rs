@@ -730,7 +730,7 @@ async fn ratings() {
     assert_eq!(json["count"], 1);
     let (_, json, _) = client.send(client.get("/api/mods/zoom/rating")).await;
     assert_eq!(json, json!({"stars": 2}));
-    let (_, json, _) = client.send(client.get("/api/mods/minimap/rating")).await;
+    let (_, json, _) = client.send(client.get("/api/mods/sample_client_mod/rating")).await;
     assert_eq!(json, json!({"stars": null}));
 
     // Not one's own project, nor one that isn't published.

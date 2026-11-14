@@ -336,7 +336,6 @@ fn versions_for_a_newer_horizon_are_not_installed() {
 fn ratings_keep_only_what_is_well_formed() {
     let text = r#"{"projects": {
         "zoom": {"average": 4.25, "count": 12},
-        "minimap": {"average": 9, "count": 3},
         "keystrokes": {"average": 3, "count": 0},
         "Bad Id": {"average": 4, "count": 1},
         "fps_overlay": {"average": "5", "count": 1}

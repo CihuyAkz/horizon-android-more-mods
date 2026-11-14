@@ -8294,6 +8294,7 @@ mod tests {
             installed("manual_native"),
         ];
         for id in [
+            "worldmap",
             "minimap",
             "accurate_block_placement",
             "voicechat",
@@ -8318,7 +8319,6 @@ mod tests {
         assert_eq!(starling_extra_mod_side("carryblock"), StarlingModSide::Server);
         for id in [
             "zoom",
-            "worldmap",
             "punchy",
             "basic_hud",
             "eatinganimation",

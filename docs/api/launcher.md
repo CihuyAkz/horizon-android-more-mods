@@ -32,7 +32,7 @@ and its MCP tool.
 
 ```sh
 horizon-launcher versions --installed --json
-horizon-launcher mods search minimap --kind mod --json
+horizon-launcher mods search veinminer --kind mod --json
 horizon-launcher servers create --name "Weekend" --player Alex --json
 ```
 

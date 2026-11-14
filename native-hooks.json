@@ -637,15 +637,6 @@
       }
     },
     {
-      "name": "minimap",
-      "version": 1,
-      "target": "horizon_client::game::native_hooks::Game<'_>::native_minimap",
-      "mod_api": {
-        "contract": "replace",
-        "out": "minimap"
-      }
-    },
-    {
       "name": "mods",
       "version": 1,
       "target": "horizon_client::game::native_hooks::Game<'_>::native_mods",

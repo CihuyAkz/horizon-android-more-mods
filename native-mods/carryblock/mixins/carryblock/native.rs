@@ -1182,7 +1182,7 @@ impl Game<'_> {
         let (x, y) = if ca::hud_crosses_hotbar(hud, batch.width, width) {
             // A bottom box that would cover the hotbar, the bars over it or
             // the action bar goes up over them. How far up its corner is
-            // taken already (the minimap, boxes placed before it) is
+            // taken already (other HUD boxes placed before it) is
             // `Corners`' own: an empty box finds out, then the room left
             // under the box makes up the rest.
             let (_, probe) = corners.place(corner, width, 0.0);

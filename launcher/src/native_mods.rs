@@ -8,8 +8,8 @@
 //! Mods pinning different ones build on the newest of them, once the player agreed to try (they
 //! often still apply and compile). A mod that hooks only Horizon's native hook points
 //! (`game/native_hooks.rs`) names the version it needs instead (`hooks`): it builds on any Horizon
-//! whose hook points have that version or a later one (they are only ever added to), the player's own
-//! by default, so such mods always build together. The build compiles that revision's source, from
+//! whose hook API is at least that version, the player's own by default. A hook removed from the
+//! API can still require an older mod to be updated. The build compiles that revision's source, from
 //! GitHub, never a checkout on this computer, and installs as its own version,
 //! `native-<revision>-<key>` (the key hashes the revision, the mods' files, the tool's commit and
 //! the profile, so the same set builds once). The instance the mods are installed in plays it, and
@@ -417,6 +417,10 @@ fn logged<T>(build: impl FnOnce() -> Result<T, String>) -> Result<T, String> {
 }
 
 const MANIFEST: &str = "horizon-mixin.toml";
+
+fn retired_map_mod(id: &str) -> bool {
+    matches!(id, "minimap" | "worldmap")
+}
 /// A registry download's manifest (`.hnmod`, `horizon_mods::index::native`), beside `mixins/<id>/`.
 const NATIVE_MANIFEST: &str = horizon_mods::index::native::MANIFEST;
 /// Where an instance keeps the native mods installed from the registry, `<id>.hnmod`, each on or
@@ -438,6 +442,9 @@ pub fn installed_mods(home: &Path) -> Result<PathBuf, String> {
     for path in paths {
         let bundle = horizon_mods::index::native::Bundle::read(&path)
             .map_err(|e| format!("{}: {e}", path.display()))?;
+        if retired_map_mod(&bundle.manifest.id) {
+            continue;
+        }
         if !crate::browser::java::is_enabled(home, &bundle.manifest.id) {
             continue;
         }
@@ -580,7 +587,8 @@ pub fn bundles(folder: &Path) -> Result<Vec<Bundle>, String> {
 
 pub(crate) fn bundle_in(dir: &Path) -> Result<Option<Bundle>, String> {
     if dir.join(MANIFEST).is_file() {
-        return bundle(dir, None).map(Some);
+        let found = bundle(dir, None)?;
+        return Ok((!retired_map_mod(&found.id)).then_some(found));
     }
     let path = dir.join(NATIVE_MANIFEST);
     if !path.is_file() {
@@ -593,6 +601,9 @@ pub(crate) fn bundle_in(dir: &Path) -> Result<Option<Bundle>, String> {
     let id = field("id").ok_or_else(|| format!("{} has no id.", path.display()))?;
     if !api::valid_id(&id) {
         return Err(format!("{}: invalid mod id {id:?}", path.display()));
+    }
+    if retired_map_mod(&id) {
+        return Ok(None);
     }
     let found = bundle(&dir.join("mixins").join(&id), field("mixins"))?;
     match (&found.horizon, field("horizon")) {
@@ -2411,6 +2422,22 @@ mod tests {
     }
 
     #[test]
+    fn retired_map_mod_bundles_are_not_discovered() {
+        for id in ["minimap", "worldmap"] {
+            let at = dir(&format!("retired-{id}"));
+            write_bundle(&at, id, "fn hook() {}");
+            assert!(bundle_in(&at).unwrap().is_none());
+            let native = dir(&format!("retired-native-{id}"));
+            fs::write(
+                native.join(NATIVE_MANIFEST),
+                format!(r#"{{"schema":1,"id":"{id}"}}"#),
+            )
+            .unwrap();
+            assert!(bundle_in(&native).unwrap().is_none());
+        }
+    }
+
+    #[test]
     fn two_mods_on_one_hook_warn_in_run_order() {
         let mods = [
             bundle_of(
@@ -2842,10 +2869,10 @@ mod tests {
         assert_eq!(agreed(&same, "Horizon", get, never).unwrap(), A);
         let none = [pinned("a", None)];
         assert_eq!(agreed(&none, "Horizon", get, || Ok(B.into())).unwrap(), B);
-        let split = [pinned("veinminer", Some(A)), pinned("minimap", Some(B))];
+        let split = [pinned("veinminer", Some(A)), pinned("example_client_mod", Some(B))];
         let err = agreed(&split, "Horizon", get, never).unwrap_err();
         assert!(
-            err.contains("veinminer → aaaaaaa") && err.contains("minimap → bbbbbbb"),
+            err.contains("veinminer → aaaaaaa") && err.contains("example_client_mod → bbbbbbb"),
             "{err}"
         );
         let bad = [pinned("a", Some("nightly"))];
@@ -2919,7 +2946,7 @@ mod tests {
         assert_eq!(mismatch(&same, A), None);
         let hooked = [Bundle {
             hooks: Some(1),
-            ..pinned("minimap", Some(A), None)
+            ..pinned("example_client_mod", Some(A), None)
         }];
         assert_eq!(mismatch(&hooked, B), None, "hook mods follow the build");
     }
@@ -2979,7 +3006,7 @@ mod tests {
             _ => None,
         };
         let none = || None;
-        let zoom = [mod_("zoom", B, Some(1)), mod_("minimap", &c, Some(1))];
+        let zoom = [mod_("zoom", B, Some(1)), mod_("example_client_mod", &c, Some(1))];
         assert_eq!(
             with_hooks(&zoom, A.into(), true, none, at).unwrap(),
             A,

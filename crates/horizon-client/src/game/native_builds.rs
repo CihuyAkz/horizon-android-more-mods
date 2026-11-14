@@ -226,6 +226,10 @@ fn loads(name: &str, version: &str) -> bool {
             .map(|t| t.trim().to_owned())
     };
     folder.join(LIBRARY).is_file()
+        && on_phone(name)
+            .mods
+            .iter()
+            .all(|id| !horizon_client::mod_list::is_retired_map_mod(id))
         && read("for").as_deref() == Some(version)
         && apk_stamp().is_some_and(|stamp| read(APK) == Some(stamp))
 }
@@ -286,6 +290,7 @@ fn folder_mods_on(off: &BTreeSet<String>) -> BTreeSet<String> {
         .filter(|p| p.extension().is_some_and(|e| e == "hnmod"))
         .filter_map(|p| horizon_mods::index::native::Bundle::read(&p).ok())
         .map(|bundle| bundle.manifest.id)
+        .filter(|id| !horizon_client::mod_list::is_retired_map_mod(id))
         .filter(|id| !off.contains(id))
         .filter(|id| !horizon_client::mod_list::is_android_bundled(id))
         .collect()
@@ -451,7 +456,8 @@ fn bundles_body() -> Result<Vec<u8>, String> {
         let Ok(bundle) = horizon_mods::index::native::Bundle::read(&path) else {
             continue;
         };
-        if off.contains(&bundle.manifest.id)
+        if horizon_client::mod_list::is_retired_map_mod(&bundle.manifest.id)
+            || off.contains(&bundle.manifest.id)
             || horizon_client::mod_list::is_android_bundled(&bundle.manifest.id)
         {
             continue;

@@ -145,7 +145,7 @@ pub trait Hooks: Send + Sync {
         let _ = event;
         None
     }
-    /// The HUD (not drawn under F1), after the minimap: place a box with
+    /// The HUD (not drawn under F1): place a box with
     /// `corners.place` (boxes stack away from their edge) and draw it with
     /// `native_fill` and `native_text`. Skip a corner `native_corner_shown`
     /// says is taken.
@@ -193,14 +193,6 @@ pub trait Hooks: Send + Sync {
     ///
     /// Return `Some` to set `zoom`; the first mod returning `Some` wins.
     fn zoom(&self, host: &dyn Host, event: &mut ZoomEvent) -> Option<NativeZoom> {
-        let _ = host;
-        let _ = event;
-        None
-    }
-    /// The minimap a native mod shows: set `minimap` when it is none yet.
-    ///
-    /// Return `Some` to set `minimap`; the first mod returning `Some` wins.
-    fn minimap(&self, host: &dyn Host, event: &mut MinimapEvent) -> Option<NativeMinimap> {
         let _ = host;
         let _ = event;
         None
@@ -5031,25 +5023,6 @@ pub fn dispatch_zoom(host: &dyn Host, mods: &[Box<dyn Hooks>], zoom: &mut Option
     for mod_hook in super::entered(mods, "zoom") {
         if let Some(replacement) = mod_hook.zoom(host, &mut event) {
             *zoom = Some(replacement);
-            break;
-        }
-    }
-}
-/// What [`Hooks::minimap`] is told. Fields may be added: the struct is `#[non_exhaustive]`.
-#[non_exhaustive]
-pub struct MinimapEvent {}
-pub fn dispatch_minimap(
-    host: &dyn Host,
-    mods: &[Box<dyn Hooks>],
-    minimap: &mut Option<NativeMinimap>,
-) {
-    if minimap.is_some() {
-        return;
-    }
-    let mut event = MinimapEvent {};
-    for mod_hook in super::entered(mods, "minimap") {
-        if let Some(replacement) = mod_hook.minimap(host, &mut event) {
-            *minimap = Some(replacement);
             break;
         }
     }

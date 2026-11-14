@@ -12,8 +12,7 @@ again restores vanilla's behaviour completely.
 | Settings, parsing and saving | `crates/horizon-client-render/src/extras.rs` |
 | FPS and click counters (for native mods) | `extras.rs` (pure logic, unit tested) |
 | Dynamic lights: item glow, nearest sources | `crates/horizon-client-render/src/dynamic_light.rs` (unit tested), `game/dynamic_lights.rs`, `terrain.wgsl` and `entity.wgsl` (`dynamic_block_light`) |
-| HUD drawing (a native mod's minimap, corner stacking) | `crates/horizon-client/src/extras_hud.rs` |
-| Minimap colours, tiles and terrain scan (shared with World Map) | `crates/horizon-client-render/src/minimap.rs` |
+| HUD drawing (native mods' corner panels) | `crates/horizon-client/src/extras_hud.rs` |
 | Reconnect policy and backoff | `crates/horizon-client/src/reconnect.rs` |
 | Game glue (input hooks, per-frame update) | `crates/horizon-client/src/game/extras.rs` |
 | Mouse Tweaks-style controls, sort buttons | `crates/horizon-client/src/game/tweaks.rs` |
@@ -62,19 +61,11 @@ in Controls, and adding one would put a non-vanilla mapping into `options.txt`.
 - Off: nothing is gathered and the shaders' loop runs zero times (the count is 0), so it costs
   nothing measurable (numbers in the pull request, #814).
 
-### Moved to native mods
+### Native mods
 
-The **FPS counter**, **Keystrokes**, **Zoom** and upstream **Minimap** are official native mods (in
-horizon-rust/horizon-mods under `native/<name>/`, [mods.md](mods.md#horizons-official-mods)). In Starling Extras'
-Android bundle, the standalone Minimap bundle is replaced by **World Map** (`worldmap` 0.7.1). It adds a persistent
-explored map, cave layers, waypoints and an optional corner minimap. The game's hook points remain in
-`crates/horizon-client/src/game/native_hooks.rs`, while the World Map bundle owns its screen and controls.
-
-World Map reuses the terrain scanner, vanilla map colours, height shading, water-depth dithering and per-chunk tile
-cache in `crates/horizon-client-render/src/minimap.rs`. It stores explored regions on disk, refreshes nearby chunks,
-and draws both its full-screen map and optional corner image through the native mod image hook. The
-standalone Minimap 2.0.0 bundle is removed from the Android package; the shared renderer file is
-deliberately kept.
+The **FPS counter**, **Keystrokes** and **Zoom** are supplied as native mods.
+World Map and Minimap are not included in Starling Extras. Vanilla map items,
+map screens and map decorations remain part of the game.
 
 ### Own name tag (`ownNameTag`, default off)
 - In third person (F5, either view), the player's own name shows above its head,
@@ -243,11 +234,9 @@ Joining P1 on an external server follows separately.
   the world, like vanilla's HUD. Extras in the top left corner give way to the
   debug screen (F3), which shows the FPS anyway.
 - Corners stack: extras placed in the same corner stack downward (top corners)
-  or upward (bottom corners) in the order a mod's minimap, then mods' panels. The top
+  or upward (bottom corners) as native mods place their panels. The top
   right corner starts below the status effect icons.
 
 ## Perf budget
 
 Off: a flag check per frame per extra (no allocations, no world access).
-A mod's minimap stays under 0.3 ms of CPU
-per frame (tile budget) plus a 64 KiB texture upload when its image changes.

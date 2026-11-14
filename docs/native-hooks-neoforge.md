@@ -25,7 +25,7 @@ from vanilla 26.3's own methods, and the hooks stay Horizon's own Rust.
 
 1. **Name.** A hook with a NeoForge counterpart takes the event's name in snake case, its nested class
    included: `ServerTickEvent.Pre` → `server_tick_pre`, function `native_server_tick_pre`;
-   `PlayerInteractEvent.RightClickBlock` → `right_click_block`. A hook with no counterpart (the minimap, the
+   `PlayerInteractEvent.RightClickBlock` → `right_click_block`. A hook with no counterpart (a client-only HUD hook, for example,
    mods list, the item panel) keeps a Horizon name.
 2. **Firing point.** It fires in Horizon's port of the vanilla method where the documented event happens
    (the tick starts, a block is broken), at the point vanilla's own steps make that true. The catalog names the vanilla method, so a

@@ -42,7 +42,6 @@ pub const FUNCTIONS: [(&str, u32); 46] = [
     ("render.text-width", 0),
     ("render.frame-stats", 0),
     ("render.set-zoom", 0),
-    ("render.set-minimap", 1),
     ("players.online", 1),
     ("players.tell", 1),
     ("players.broadcast", 1),
@@ -187,11 +186,12 @@ mod tests {
     fn a_mod_needs_its_newest_function() {
         assert_eq!(needed(["log.write", "hud.set-panel"]), (0, None));
         assert_eq!(
-            needed(["log.write", "render.set-minimap", "hud.clear"]),
-            (1, Some("render.set-minimap"))
+            needed(["log.write", "hud.clear"]),
+            (1, None)
         );
+        assert_eq!(needed(["render.set-minimap"]), (0, None));
         assert_eq!(
-            needed(["render.set-minimap", "render.set-sky"]),
+            needed(["render.set-sky"]),
             (LEVEL + 1, Some("render.set-sky"))
         );
         assert_eq!(too_new(LEVEL, None), None);

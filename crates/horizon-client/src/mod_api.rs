@@ -180,18 +180,6 @@ pub struct NativeColoredLight {
     pub intensity: f32,
 }
 
-/// The minimap a native mod shows (`native_minimap`), drawn by Horizon's
-/// minimap: its corner, its side in GUI pixels, blocks per map pixel,
-/// turning with the player or north up, round or square.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct NativeMinimap {
-    pub corner: Corner,
-    pub size: f32,
-    pub blocks_per_pixel: f32,
-    pub rotate: bool,
-    pub round: bool,
-}
-
 /// A mod block's screen over its menu (`native_screen`): its size, where
 /// each of the container's slots is (`Slot.x`, `Slot.y`; none hides the
 /// slot, and so do slots past the list; the server's menu does not have a

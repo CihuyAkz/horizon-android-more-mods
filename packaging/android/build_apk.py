@@ -79,7 +79,6 @@ PREPARE_KIT = (
 )
 BUILTIN_NATIVE_MODS = (
     "zoom",
-    "worldmap",
     "recipes",
     "smartf3",
     "freecam_plus",

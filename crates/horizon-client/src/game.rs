@@ -2969,7 +2969,7 @@ struct Game<'a> {
     /// A new world's folder, until its level.dat is there to keep its content mods beside
     /// (world_content.rs).
     content_record: Option<String>,
-    /// Horizon's extras (minimap, auto-reconnect; mods' counters): `game/extras.rs`.
+    /// Horizon's extras (auto-reconnect; mods' counters): `game/extras.rs`.
     extras: extras::ExtrasState,
     /// Horizon mods (`game/mods.rs`), none running unless turned on.
     mods: mods::ModsState,

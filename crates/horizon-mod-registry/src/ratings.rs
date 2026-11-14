@@ -101,7 +101,7 @@ mod tests {
         r.rate("zoom", 1, 5, 10).unwrap();
         r.rate("zoom", 2, 2, 10).unwrap();
         r.rate("zoom", 1, 4, 11).unwrap();
-        r.rate("minimap", 1, 3, 11).unwrap();
+        r.rate("sample_client_mod", 1, 3, 11).unwrap();
         assert_eq!(r.mine("zoom", 1).unwrap(), Some(4));
         assert_eq!(r.mine("zoom", 3).unwrap(), None);
         let all = r.summaries().unwrap();
@@ -113,7 +113,7 @@ mod tests {
             }
         );
         assert_eq!(
-            all["minimap"],
+            all["sample_client_mod"],
             Summary {
                 average: 3.0,
                 count: 1

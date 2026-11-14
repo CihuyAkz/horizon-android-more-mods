@@ -1,4 +1,4 @@
-//! Horizon's optional extras (minimap, lighting, inventory tools): their
+//! Horizon's optional extras (lighting, inventory tools): their
 //! settings, kept in `horizon-extras.txt` next to `options.txt` so that file
 //! stays exactly vanilla's, and the logic behind them. Every extra is off by
 //! default; see `docs/extras.md`. Horizon's own switches outside the Extras page
@@ -8,10 +8,6 @@ use std::{collections::VecDeque, fs, path::Path};
 pub const FILE: &str = "horizon-extras.txt";
 /// The name the options screen uses while the sort key waits for a key.
 pub const SORT_KEY: &str = "horizon.sort";
-
-/// The minimap's sizes in GUI pixels, and its zooms in blocks per pixel.
-pub const MINIMAP_SIZES: [(u8, &str); 3] = [(64, "Small"), (96, "Medium"), (128, "Large")];
-pub const MINIMAP_ZOOMS: [f32; 4] = [0.5, 1.0, 2.0, 4.0];
 
 /// A screen corner for an overlay.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -85,15 +81,6 @@ pub struct Extras {
     /// The official mods once installed for the extras they replace, by mod
     /// id (`movedToMods`).
     pub moved: Vec<String>,
-    pub minimap: bool,
-    pub minimap_corner: Corner,
-    /// Side in GUI pixels (`MINIMAP_SIZES`).
-    pub minimap_size: u8,
-    pub minimap_round: bool,
-    /// Blocks per pixel (`MINIMAP_ZOOMS`).
-    pub minimap_zoom: f32,
-    /// Turn with the player (forward up) instead of north up.
-    pub minimap_rotate: bool,
     /// Retry lost multiplayer connections (`reconnect`).
     pub auto_reconnect: bool,
     /// Positional sounds leave a few static sound channels free for UI sounds
@@ -168,12 +155,6 @@ impl Default for Extras {
             keystrokes_corner: Corner::TopLeft,
             keystrokes_cps: true,
             moved: Vec::new(),
-            minimap: false,
-            minimap_corner: Corner::TopRight,
-            minimap_size: 96,
-            minimap_round: false,
-            minimap_zoom: 1.0,
-            minimap_rotate: false,
             auto_reconnect: false,
             ui_sound_reserve: false,
             own_name_tag: false,
@@ -249,20 +230,6 @@ impl Extras {
                         .map(str::to_owned)
                         .collect()
                 }
-                "minimap" => e.minimap = flag(e.minimap),
-                "minimapCorner" => e.minimap_corner = Corner::parse(value, e.minimap_corner),
-                "minimapSize" => {
-                    if let Some(&(v, _)) = MINIMAP_SIZES.iter().find(|s| s.0.to_string() == value) {
-                        e.minimap_size = v;
-                    }
-                }
-                "minimapShape" => e.minimap_round = value == "round",
-                "minimapZoom" => {
-                    if let Some(&z) = MINIMAP_ZOOMS.iter().find(|z| z.to_string() == value) {
-                        e.minimap_zoom = z;
-                    }
-                }
-                "minimapRotate" => e.minimap_rotate = flag(e.minimap_rotate),
                 "autoReconnect" => e.auto_reconnect = flag(e.auto_reconnect),
                 "uiSoundReserve" => e.ui_sound_reserve = flag(e.ui_sound_reserve),
                 "ownNameTag" => e.own_name_tag = flag(e.own_name_tag),
@@ -300,7 +267,7 @@ impl Extras {
     }
     pub fn serialize(&self) -> String {
         format!(
-            "fullbright:{}\ndynamicLights:{}\nzoom:{}\nzoomKey:{}\nzoomLevel:{}\nzoomSmooth:{}\nzoomSensitivity:{}\nfps:{}\nfpsCorner:{}\nfpsLows:{}\nkeystrokes:{}\nkeystrokesCorner:{}\nkeystrokesCps:{}\nmovedToMods:{}\nminimap:{}\nminimapCorner:{}\nminimapSize:{}\nminimapShape:{}\nminimapZoom:{}\nminimapRotate:{}\nautoReconnect:{}\nuiSoundReserve:{}\nownNameTag:{}\nhideBlockParticles:{}\nmouseTweaks:{}\nmouseTweaksWheel:{}\nsort:{}\nsortKey:{}\nchatAnimation:{}\nchatIndicator:{}\n{}:{}\nagentControl:{}\nreproKeys:{}\ndiscordPresence:{}\nsplitscreen:{}\nsplitscreenTwo:{}\nsplitscreenThree:{}\nsplitscreenNames:{}\nwheelCyclesSettings:{}\nmusicOff:{}\nmusicPage:{}\ncosmeticsMine:{}\ncosmeticsOthers:{}\n",
+            "fullbright:{}\ndynamicLights:{}\nzoom:{}\nzoomKey:{}\nzoomLevel:{}\nzoomSmooth:{}\nzoomSensitivity:{}\nfps:{}\nfpsCorner:{}\nfpsLows:{}\nkeystrokes:{}\nkeystrokesCorner:{}\nkeystrokesCps:{}\nmovedToMods:{}\nautoReconnect:{}\nuiSoundReserve:{}\nownNameTag:{}\nhideBlockParticles:{}\nmouseTweaks:{}\nmouseTweaksWheel:{}\nsort:{}\nsortKey:{}\nchatAnimation:{}\nchatIndicator:{}\n{}:{}\nagentControl:{}\nreproKeys:{}\ndiscordPresence:{}\nsplitscreen:{}\nsplitscreenTwo:{}\nsplitscreenThree:{}\nsplitscreenNames:{}\nwheelCyclesSettings:{}\nmusicOff:{}\nmusicPage:{}\ncosmeticsMine:{}\ncosmeticsOthers:{}\n",
             bool_text(self.fullbright),
             bool_text(self.dynamic_lights),
             bool_text(self.zoom),
@@ -315,16 +282,6 @@ impl Extras {
             self.keystrokes_corner.name(),
             bool_text(self.keystrokes_cps),
             self.moved.join(","),
-            bool_text(self.minimap),
-            self.minimap_corner.name(),
-            self.minimap_size,
-            if self.minimap_round {
-                "round"
-            } else {
-                "square"
-            },
-            self.minimap_zoom,
-            bool_text(self.minimap_rotate),
             bool_text(self.auto_reconnect),
             bool_text(self.ui_sound_reserve),
             bool_text(self.own_name_tag),
@@ -803,7 +760,7 @@ mod tests {
     fn everything_is_off_by_default_and_round_trips() {
         let d = Extras::default();
         assert!(!d.fullbright && !d.dynamic_lights);
-        assert!(!d.zoom && !d.fps && !d.keystrokes && !d.minimap && !d.auto_reconnect);
+        assert!(!d.zoom && !d.fps && !d.keystrokes && !d.auto_reconnect);
         assert!(!d.mouse_tweaks && !d.sort && !d.own_name_tag && !d.ui_sound_reserve);
         assert!(!d.hide_block_particles);
         assert!(!d.music_page && d.music_off.is_empty());
@@ -823,12 +780,6 @@ mod tests {
         e.keystrokes = true;
         e.keystrokes_cps = false;
         e.moved = vec!["fps_overlay".into(), "keystrokes".into()];
-        e.minimap = true;
-        e.minimap_size = 128;
-        e.minimap_round = true;
-        e.minimap_zoom = 0.5;
-        e.minimap_rotate = true;
-        e.minimap_corner = Corner::BottomLeft;
         e.auto_reconnect = true;
         Item::OwnNameTag.cycle(&mut e, false);
         assert_eq!(Item::OwnNameTag.switch(&e), Some(true));
@@ -949,11 +900,7 @@ mod tests {
         let mut e = Extras::default();
         Item::Sort.cycle(&mut e, true);
         assert_eq!(Item::Sort.value(&e), "On");
-        // The minimap's old keys still parse, for the move to its mod.
-        assert_eq!(
-            Extras::parse("minimapSize:7\nminimapZoom:3").minimap_zoom,
-            1.0
-        );
+        assert_eq!(Extras::parse("minimap:true\nminimapSize:7\nminimapZoom:3"), Extras::default());
         for item in rows().into_iter().flatten() {
             assert!(!item.caption().is_empty() && !item.description().is_empty());
         }

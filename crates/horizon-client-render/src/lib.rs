@@ -60,7 +60,6 @@ pub mod lod;
 pub mod logging;
 pub mod menu_blur;
 pub mod mesher;
-pub mod minimap;
 pub mod mipmap;
 pub mod mod_list;
 pub mod model_library;

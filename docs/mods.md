@@ -84,7 +84,7 @@ A server that has content mods on also checks them one by one (`horizon_protocol
 `horizon:mod_list`): in the configuration phase it sends the id, version and SHA-256 of each `.hmod` with
 `side = "both"`, the client answers with its own, and a client that differs is refused with the mods named: missing,
 not on this server, or another version or file. Only `side = "both"` mods are compared and sent: a `client` mod (a
-HUD, a minimap) never blocks a join and is never told to a server, and a `server` mod stays private to it. A manifest
+HUD) never blocks a join and is never told to a server, and a `server` mod stays private to it. A manifest
 with no `side` line is `client`, so a content mod meant for both halves must say `side = "both"`, or this check
 ignores it. A mod run from a folder (`--dev-mod`) has no file hash and matches by version. Native mods are not in the
 list yet: their manifest has no side.
@@ -483,12 +483,8 @@ Horizon's own mods are native. They live in
 | FPS Counter | `native/fps-overlay` | Extras > FPS counter |
 | Keystrokes | `native/keystrokes` | Extras > Keystrokes |
 | Zoom | `native/zoom` | Extras > Zoom |
-| Minimap | `native/minimap` | Extras > Minimap |
 | Recipes | `native/recipes` | The Recipes mod (item panel and recipe pages, on hook points version 2) |
 | Coordinates HUD | `native/coords-hud` | A small example mod (position and facing, `/where`, `/coords`) |
 
-The game keeps the parts that must be fast, such as drawing the minimap's map, and a native mod picks the options
-([extras.md](extras.md)). In Starling Extras' Android bundle, the standalone Minimap bundle is replaced by World Map
-(`worldmap` 0.7.1): the explored world map, cave layers, waypoints and an optional corner minimap. Its terrain scanner
-and map-colour code still live in `crates/horizon-client-render/src/minimap.rs`. Far View is not a mod any more: its
+World Map and Minimap are not included in Starling Extras. Vanilla map items and screens remain supported. Far View is not a mod any more: its
 distance and detail are Graphics > LOD Distance and Far Detail ([graphics.md](graphics.md)).

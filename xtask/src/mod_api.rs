@@ -1160,7 +1160,6 @@ mod tests {
         pub(super) struct MusicLayer;
         pub(super) struct NativeBlockRim;
         pub(super) struct NativeColoredLight;
-        pub(super) struct NativeMinimap;
         pub(super) struct NativeMod;
         pub(super) struct NativePanelEvent;
         pub(super) struct NativeScreen;

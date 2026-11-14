@@ -26,7 +26,7 @@ clippy-android, fmt, test, raw CMD). On the VM: `~/sync4`, `~/sync4-target`, `~/
 
 ## What fell
 - Wasm mods and their API: horizon-mod-sdk, starling-mod-sdk, starling-mod-cli, mods/official
-  (far-view, fps-overlay, keystrokes, minimap, recipes, zoom) and the SDK examples.
+  (far-view, fps-overlay, keystrokes, recipes, zoom) and the SDK examples.
 - Create: own block states (`states`, `own-states.json`) and so placement orientation and belt
   funnels (`belt_funnel_for`); `fuel` on items; the support and occlusion part of `properties.shape`.
   The local .hmod data has to move to `state_properties` and `components`.

@@ -53,6 +53,10 @@ final class NativeMods {
         if (!library.isFile() || version == null || !version.equals(read(new File(build, "for")))) {
             return null;
         }
+        if (containsRetiredMapMod(build)) {
+            setAside(dir, "This build includes a retired map mod, so Starling started without it. Compile a new build to continue using native mods.");
+            return null;
+        }
         // Every test build of a version has the same versionName and versionCode: a build made
         // under another install has another commit's code, and the game says it is out of date.
         String stamp = stamp(context);
@@ -73,6 +77,26 @@ final class NativeMods {
         }
         write(starts, Integer.toString(count + 1));
         return library;
+    }
+
+    private static boolean containsRetiredMapMod(File build) {
+        String text = read(new File(build, "build.json"));
+        if (text == null) {
+            return false;
+        }
+        try {
+            JSONArray mods = new JSONObject(text).optJSONArray("mods");
+            for (int i = 0; mods != null && i < mods.length(); i++) {
+                JSONObject mod = mods.optJSONObject(i);
+                String id = mod == null ? "" : mod.optString("id");
+                if ("minimap".equals(id) || "worldmap".equals(id)) {
+                    return true;
+                }
+            }
+        } catch (JSONException e) {
+            return false;
+        }
+        return false;
     }
 
     /**

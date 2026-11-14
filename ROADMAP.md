@@ -508,11 +508,11 @@ A native port (a horizon-mixins bundle, docs/native-mods.md) of [https://github.
 
 #### Native versions of popular client mods
 
-Built-in versions of the client mods players ask for: block info on hover, a world map, inventory tweaks and schematic overlays.
+Built-in versions of the client mods players ask for: block info on hover, inventory tweaks and schematic overlays.
 
 <details><summary>Technical</summary>
 
-Done: a mod list and menu, minimap, zoom, keystrokes, an FPS counter and a recipe viewer, as native mods (horizon-mods/native/). Asked for: an angled world map that shows hills, overhangs and caves, inventory tweaks (drag and scroll to move items), block info tooltips and schematic overlays.
+Done: a mod list and menu, zoom, keystrokes, an FPS counter and a recipe viewer, as native mods (horizon-mods/native/). Asked for: inventory tweaks (drag and scroll to move items), block info tooltips and schematic overlays.
 
 More: [docs/extras.md](docs/extras.md) · [docs/native-mods.md](docs/native-mods.md)
 
