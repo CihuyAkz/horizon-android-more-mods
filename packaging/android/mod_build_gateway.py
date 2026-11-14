@@ -6,14 +6,14 @@ once it has had nothing to do for a while. Finished libraries and known failures
 them again doesn't wake it. Behind Caddy, which holds the HTTPS. The machine's own identity may only start,
 stop and read that one VM. Python's standard library only.
 
-A player may ask for GitHub's machines instead (`via=github`): slower, with no machine of ours awake. The
-gateway keeps the request's mods for the runner to fetch, runs the configured build repository's workflow, and
-brings the library here when it ends, so it is served as any other.
+All native-mod compilation uses GitHub Actions (`via=github`) through this gateway.
+The gateway keeps each request's mods for the runner to fetch, dispatches the configured build repository's
+workflow, and returns the resulting library to the game.
 
     BUILD_BACKEND          http://host:8787
     BUILD_VM               the VM's Azure resource id; empty once there is none, and then only the
                            versions GitHub builds are compiled
-    GITHUB_VERSIONS        versions always built on GitHub's machines, Compile or Use GitHub alike
+    GITHUB_VERSIONS        versions routed to GitHub Actions without a separate UI choice
                            (comma-separated; * means every version)
     GATEWAY_PORT           default 8788
     STATE_DIRECTORY        where results stay (systemd's StateDirectory); without it nothing stays

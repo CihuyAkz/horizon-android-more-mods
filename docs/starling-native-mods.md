@@ -8,7 +8,7 @@ service does it and the phone swaps in the result:
 1. **The mod.** The player opens an `.hnmod` with Starling (`import.rs`), which puts it in `horizon-native-mods/`.
 2. **Compile.** The top of the Mods page says which game runs (the APK's own, or a build with which mods, compiled
    when), what the next start runs, and whether the native mods turned on are the ones in it; when they are not, it has
-   Compile and Use GitHub (slower) (`game/native_builds.rs`). After a warning, the game sends the folder's mods that
+   a single **Compile with GitHub** action (`game/native_builds.rs`). After a warning, the game sends the folder's mods that
    are on, without the assets and data only the game reads, to the service, and the player can fish or mine while it
    waits (`game/setup/fishing.rs`, `game/build_mining.rs`). Turning every native mod off makes the next start play the
    APK's own game; turning on the set of a build still on the phone chooses it again.
@@ -73,7 +73,7 @@ Each new release needs `versions.json` updated and the clean cache rebuilt on it
 
 The hosted Starling build service only compiles versions listed in its own `versions.json`. A fork's Dev APK uses a
 version such as `0.8.0-dev.81`; the official service does not have that version or the fork's source commit. Retrying
-or choosing **Use GitHub (slower)** cannot make the official service compile a fork it does not know.
+or choosing **Compile with GitHub** cannot make the official service compile a fork it does not know.
 
 For this fork, `BUILD_SERVER_URL` points at this repository's `starling` branch, so its
 `packaging/android/build-server.txt` controls the published service address. Set that file to the HTTPS address of a
@@ -89,17 +89,17 @@ to `MOD_BUILD_ROOT/versions.json`, for example:
 The service's `source/` checkout must be this fork and contain that commit. Do not map a fork version to the official
 Starling commit: the returned game library must be built from the same source as the APK.
 
-For **Use GitHub (slower)**, set `GITHUB_BUILDS_REPO=CihuyAkz/mod-builds-extras` on the gateway. The repository must
+For **Compile with GitHub**, set `GITHUB_BUILDS_REPO=CihuyAkz/mod-builds-extras` on the gateway. The repository must
 have `build.yml`, `base.yml`, and `versions.json` on its `main` branch. Its `scripts/prepare.sh` must fetch this fork as
 the source. A universal `"*"` entry may provide the commit for versions without an exact entry; an exact version entry
 always takes priority. The gateway accepts prerelease version names and checks the exact entry or the universal fallback
-before dispatching a build. Set `GITHUB_VERSIONS=*` if ordinary **Compile** should also use GitHub runners for every
-version; otherwise **Use GitHub (slower)** selects them explicitly.
+before dispatching a build. This app always sends compile requests with `via=github`, so `GITHUB_VERSIONS=*` is not
+required for the app's Compile action.
 
 ## On GitHub's machines
 
-**Use GitHub (slower)** on the Compile card asks the gateway for GitHub's runners instead of the build machine
-(`via=github`). The player needs no GitHub account, and the APK holds no secret.
+**Compile with GitHub** on the Compile card asks the gateway for GitHub Actions runners (`via=github`). The player
+needs no GitHub account, and the APK holds no secret.
 
 1. The gateway keeps the request's mods under a random name and runs the `build.yml` workflow of the public
    `CihuyAkz/mod-builds-extras` repository with that name, using a token that may only run that repository's workflows

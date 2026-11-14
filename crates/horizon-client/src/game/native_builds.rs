@@ -32,16 +32,15 @@ const CUSTOM_SERVER: &str = "build-server";
 const PUBLISHED_SERVER: &str = "published-build-server";
 /// In the folder of a build from the player's own server: which one.
 const CAME_FROM: &str = "server";
-/// The button that compiles on GitHub's machines (`Act::CompileOnGithub`).
-const USE_GITHUB: &str = "Use GitHub (slower)";
+/// The only compile action: send the build to GitHub Actions through the configured gateway.
+const COMPILE_WITH_GITHUB: &str = "Compile with GitHub";
 /// What the service takes in one request (`MAX_BODY`).
 const LARGEST_REQUEST: usize = 32 << 20;
 /// A build's folder here starts with this, and a new one takes the place of the last.
 const COMPILED: &str = "compiled-";
 /// The service's waits: between looks at the job, and how long it may go on at all.
 const POLL: Duration = Duration::from_secs(2);
-const LONGEST: Duration = Duration::from_secs(40 * 60);
-/// GitHub's machines have fewer cores, and there may be a line for them.
+/// Maximum time allowed for a GitHub Actions build, including queueing.
 const LONGEST_ON_GITHUB: Duration = Duration::from_secs(90 * 60);
 const WAKING: Duration = Duration::from_secs(5 * 60);
 /// Tries in a row that brought nothing before a look or a download gives up.
@@ -106,8 +105,6 @@ pub(super) struct NativeBuilds {
     digging: bool,
     /// What failed last was a compile: Try again compiles, and doesn't show the published builds.
     compile_failed: bool,
-    /// The last compile asked for GitHub's machines: Try again asks for them too.
-    on_github: bool,
 }
 
 #[derive(Clone, PartialEq)]
@@ -118,8 +115,6 @@ enum Act {
     Retry,
     Close,
     Compile,
-    /// The same on GitHub's machines, through Starling's service: slower, with limits of its own.
-    CompileOnGithub,
     /// Under a build: from the water to the rock and back.
     Switch,
     /// The activity's dialog that chooses another build server.
@@ -575,9 +570,9 @@ fn fetch_library(
     Ok(())
 }
 
-/// This version's game compiled with the folder's mods on the build service, or on GitHub's machines
-/// through it, downloaded and chosen for the next start: the folder's name.
-fn compile(version: &str, github: bool, shared: &Mutex<Shared>) -> Result<String, String> {
+/// This version's game compiled with the folder's mods through GitHub Actions, downloaded and
+/// chosen for the next start: the folder's name.
+fn compile(version: &str, shared: &Mutex<Shared>) -> Result<String, String> {
     if !SERVICE_SUPPORTED {
         return Err(unsupported());
     }
@@ -595,16 +590,11 @@ fn compile(version: &str, github: bool, shared: &Mutex<Shared>) -> Result<String
         .timeout_connect(Duration::from_secs(20))
         .timeout_read(Duration::from_secs(40))
         .build();
-    say(if github {
-        "Sending the mod to GitHub...".into()
-    } else {
-        "Sending the mod to the build server...".into()
-    });
+    say("Sending the mod to GitHub Actions...".into());
     let body = bundles_body()?;
-    let via = if github { "&via=github" } else { "" };
-    let longest = if github { LONGEST_ON_GITHUB } else { LONGEST };
+    let via = "&via=github";
     let started = Instant::now();
-    // The machine that builds sleeps until it is asked: the gateway says so while it wakes.
+    // All requests use the gateway's GitHub Actions queue.
     let job = loop {
         let answer: serde_json::Value = agent
             .post(&format!("{server}/v1/build?version={version}{via}"))
@@ -627,7 +617,7 @@ fn compile(version: &str, github: bool, shared: &Mutex<Shared>) -> Result<String
     }
     let mut quiet = 0;
     let finished = loop {
-        if started.elapsed() > longest {
+        if started.elapsed() > LONGEST_ON_GITHUB {
             return Err("The build took too long. Try again later.".into());
         }
         std::thread::sleep(POLL);
@@ -654,9 +644,10 @@ fn compile(version: &str, github: bool, shared: &Mutex<Shared>) -> Result<String
             Some("starting") => say("Waking the build server up: about a minute...".into()),
             Some("queued") => {
                 let ahead = status["ahead"].as_u64().unwrap_or(0);
-                say(match (github, ahead) {
-                    (true, 0) => "Waiting for a machine on GitHub...".to_owned(),
-                    _ => format!("In line: {ahead} before yours"),
+                say(if ahead == 0 {
+                    "Waiting for a GitHub Actions runner...".to_owned()
+                } else {
+                    format!("GitHub Actions queue: {ahead} before yours")
                 });
             }
             Some("building") => {
@@ -881,7 +872,7 @@ impl Game<'_> {
     /// A button of the Mods page's game with native mods.
     pub(super) fn native_game_act(&mut self, act: NativeGameAct) {
         match act {
-            NativeGameAct::Compile | NativeGameAct::CompileOnGithub => {
+            NativeGameAct::Compile => {
                 let wanted: Vec<String> = folder_mods_on(&self.settings.mods.disabled)
                     .into_iter()
                     .collect();
@@ -892,7 +883,6 @@ impl Game<'_> {
                     .unwrap_or_else(PoisonError::into_inner)
                     .compiling;
                 // The warning first: the button pressed is its first.
-                card.on_github = act == NativeGameAct::CompileOnGithub;
                 card.stage = Some(if compiling {
                     Stage::Compiling
                 } else {
@@ -1117,28 +1107,10 @@ impl Game<'_> {
             }
             Stage::Failed(e) => {
                 acts.push(("Try again".into(), Act::Retry));
-                if self.native_builds.compile_failed && custom_host.is_none() {
-                    acts.push((USE_GITHUB.into(), Act::CompileOnGithub));
-                }
                 ("Native mods".to_owned(), e.clone())
             }
             Stage::Warn(id) => {
-                let github = custom_host
-                    .is_none()
-                    .then(|| (USE_GITHUB.to_owned(), Act::CompileOnGithub));
-                let compile = ("Compile".to_owned(), Act::Compile);
-                // Use GitHub pressed on the Mods page: it comes first.
-                match github {
-                    Some(github) if self.native_builds.on_github => {
-                        acts.push(github);
-                        acts.push(compile);
-                    }
-                    github => {
-                        acts.push(compile);
-                        acts.extend(github);
-                    }
-                }
-                acts.push(("Build server...".into(), Act::Server));
+                acts.push((COMPILE_WITH_GITHUB.into(), Act::Compile));
                 danger = custom_host.map(|host| {
                     format!(
                         "{host} is not Starling's server. The game it sends back runs with full \
@@ -1146,24 +1118,18 @@ impl Game<'_> {
                          responsibility for it."
                     )
                 });
-                let on_github = if custom_host.is_none() {
-                    " Use GitHub compiles on GitHub's machines instead: it takes longer, and its \
-                     log is public."
-                } else {
-                    ""
-                };
-                let server = custom_host.map_or_else(
-                    || "Starling's build server".to_owned(),
-                    |host| format!("the build server at {host}"),
+                let gateway = custom_host.map_or_else(
+                    || "the configured build gateway".to_owned(),
+                    |host| format!("the gateway at {host}"),
                 );
                 (
                     format!("Compile {id}?"),
                     format!(
                         "A native mod runs with the game's full access: it can do anything the \
-                         game can on this phone, so only compile mods you trust. It is sent to \
-                         {server}, which compiles the game with your native mods in a few \
-                         minutes; then the game restarts with them. If it closes before it shows, \
-                         Starling starts without it the time after.{on_github}"
+                         game can on this phone, so only compile mods you trust. It is sent through \
+                         {gateway} to GitHub Actions, which compiles the game with your native mods. \
+                         The build log is public. Then the game restarts with them. If it closes \
+                         before it shows, Starling starts without it the time after."
                     ),
                 )
             }
@@ -1375,13 +1341,7 @@ impl Game<'_> {
             return;
         };
         let act = match act {
-            Act::Retry if self.native_builds.compile_failed => {
-                if self.native_builds.on_github {
-                    Act::CompileOnGithub
-                } else {
-                    Act::Compile
-                }
-            }
+            Act::Retry if self.native_builds.compile_failed => Act::Compile,
             other => other,
         };
         match act {
@@ -1419,10 +1379,8 @@ impl Game<'_> {
             Act::Server => {
                 crate::android::ask_build_server(custom_server().as_deref().unwrap_or(""));
             }
-            act @ (Act::Compile | Act::CompileOnGithub) => {
-                let github = act == Act::CompileOnGithub;
+            Act::Compile => {
                 let card = &mut self.native_builds;
-                card.on_github = github;
                 card.stage = Some(Stage::Compiling);
                 let shared = card.shared.clone();
                 {
@@ -1437,7 +1395,7 @@ impl Game<'_> {
                 let _ = std::thread::Builder::new()
                     .name("native mod compile".into())
                     .spawn(move || {
-                        let result = compile(&version, github, &shared);
+                        let result = compile(&version, &shared);
                         if let Err(e) = &result {
                             log::warn!("Horizon: the native mods did not compile: {e}");
                         }

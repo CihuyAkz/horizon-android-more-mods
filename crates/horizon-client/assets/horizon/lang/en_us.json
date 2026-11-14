@@ -612,7 +612,7 @@
   "starling.mods.native.restart_hint": "You need to restart the game to apply this change.",
   "starling.mods.native.compiling": "Compiling your native mods...",
   "starling.mods.native.not_compiled": "Not compiled",
-  "starling.mods.native.compile": "Compile",
+  "starling.mods.native.compile": "Compile with GitHub",
   "starling.mods.native.differs": "The native mods turned on are not the ones in that build: compile again to apply.",
   "starling.mods.native.next_apk": "Next start: without native mods.",
   "starling.mods.native.play_without": "Play without native mods",
@@ -623,10 +623,9 @@
   "starling.mods.native.now_build": "Now: Starling %s with %s, compiled %s.",
   "starling.mods.native.hours_ago": "%s h ago",
   "starling.mods.native.now_apk": "Now: Starling %s from the APK, without native mods.",
-  "starling.mods.native.use_github": "Use GitHub (slower)",
   "starling.mods.native.show_compile": "See the build",
   "starling.mods.native.days_ago": "%s days ago",
   "starling.mods.native.next_build": "Next start: with %s, compiled %s.",
   "horizon.mods.not_built_tip": "Installed, not built into this game: build the game with it in the launcher (Settings > Native mods), then play the instance that build is in.",
-  "starling.mods.native.not_built_tip": "Installed, not in this game yet: Compile builds the game with it on Starling's build server."
+  "starling.mods.native.not_built_tip": "Installed, not in this game yet: Compile with GitHub builds the game with this mod included."
 }

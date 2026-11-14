@@ -54,7 +54,7 @@ pub const ANDROID_BUNDLED: [&str; 20] = [
 pub const NOT_BUILT: &str = "Installed, not built into this game: build the game with it in the launcher (Settings > Native mods), then play the instance that build is in.";
 #[cfg(target_os = "android")]
 pub const NOT_BUILT: &str =
-    "Installed, not in this game yet: Compile builds the game with it on Starling's build server.";
+    "Installed, not in this game yet: Compile with GitHub builds the game with this mod included.";
 /// [`NOT_BUILT`] in the player's language, as the Mods page's tooltip says it.
 #[cfg(not(target_os = "android"))]
 pub const NOT_BUILT_TIP: &str = "horizon.mods.not_built_tip";
@@ -89,9 +89,8 @@ pub struct NativeGame {
 /// A button of [`NativeGame`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum NativeGameAct {
-    /// The mods turned on, compiled on the build server, or on GitHub's machines through it.
+    /// The mods turned on, compiled on GitHub Actions through the configured gateway.
     Compile,
-    CompileOnGithub,
     /// The compile under way, shown again.
     ShowCompile,
     Restart,

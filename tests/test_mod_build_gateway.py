@@ -675,7 +675,7 @@ class OnGitHub(unittest.TestCase):
         self.gateway.github_round()
         self.assertEqual(len(self.github.dispatched), 1)
         self.assertEqual(self.finished_run(data["job"])["state"], "done")
-        # Use GitHub asks for the same build, and the machine never woke.
+        # The GitHub request reuses the same build, and the build VM never wakes.
         self.assertEqual(self.ask()[1]["job"], data["job"])
         self.assertEqual(len(self.github.dispatched), 1)
         self.assertEqual(self.fake.asked, 0)

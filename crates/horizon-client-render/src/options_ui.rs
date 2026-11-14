@@ -8680,8 +8680,7 @@ mod tests {
         s.mods.native_game = Some(NativeGame {
             lines: vec![(now.into(), false), (old.into(), true)],
             buttons: vec![
-                ("Compile".into(), NativeGameAct::Compile),
-                ("Use GitHub (slower)".into(), NativeGameAct::CompileOnGithub),
+                ("Compile with GitHub".into(), NativeGameAct::Compile),
                 (
                     "Play without native mods".into(),
                     NativeGameAct::PlayWithout,
@@ -8731,9 +8730,8 @@ mod tests {
         };
         // Two to a row; the one left over takes the row.
         assert_eq!(shown(NativeGameAct::Compile).w, 150.0);
-        assert_eq!(shown(NativeGameAct::CompileOnGithub).w, 150.0);
         let without = shown(NativeGameAct::PlayWithout);
-        assert_eq!(without.w, 310.0);
+        assert_eq!(without.w, 150.0);
         let (x, y) = (without.x + 1.0, without.y + 1.0);
         let events = ui.click(&mut s, &atlas, x, y, size, [480, 400], false, false);
         assert_eq!(
