@@ -78,6 +78,8 @@ GITHUB_API = os.environ.get("GITHUB_API", "https://api.github.com")
 GITHUB_REPO = os.environ.get("GITHUB_BUILDS_REPO", "CihuyAkz/mod-builds-extras")
 GITHUB_WORKFLOW = os.environ.get("GITHUB_BUILDS_WORKFLOW", "build.yml")
 GITHUB_BUILDS_REF = os.environ.get("GITHUB_BUILDS_REF", "main")
+GITHUB_SOURCE_REPO = os.environ.get("GITHUB_SOURCE_REPO", "CihuyAkz/starling-extras")
+GITHUB_TOOLS_REF = os.environ.get("GITHUB_TOOLS_REF", "")
 PUBLIC_URL = os.environ.get("GATEWAY_PUBLIC_URL", "")
 # Runs at once: the rest wait here, where their place in line can be told. A free organization runs
 # 20 jobs at once in all, its other repositories' CI included.
@@ -751,6 +753,8 @@ def github_round():
                         "ask": entry["ask"],
                         "version": entry["version"],
                         "gateway": PUBLIC_URL,
+                        "source": GITHUB_SOURCE_REPO,
+                        "tools": GITHUB_TOOLS_REF,
                     },
                 },
             )
@@ -925,6 +929,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
     def do_GET(self):
         path = urllib.parse.urlparse(self.path).path
+        if path == "/healthz":
+            return self.answer(200, {"ok": True})
         parts = path.strip("/").split("/")
         if parts[:2] == ["v1", "github"] and len(parts) == 3:
             return self.serve_mods(parts[2])

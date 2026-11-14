@@ -491,6 +491,12 @@ class OnGitHub(unittest.TestCase):
         self.gateway.github_round()
         return self.poll(job)
 
+    def test_health_check_does_not_contact_the_build_backend(self):
+        status, body = self.call("GET", "/healthz")
+        self.assertEqual(status, 200)
+        self.assertEqual(json.loads(body), {"ok": True})
+        self.assertEqual(self.fake.asked, 0)
+
     def test_without_the_token_the_door_is_shut_and_the_machine_stays_out_of_it(self):
         (Path(self.env["CREDENTIALS_DIRECTORY"]) / "github-token").unlink()
         status, data = self.ask()
@@ -579,6 +585,8 @@ class OnGitHub(unittest.TestCase):
         inputs = self.github.dispatched[0]
         self.assertEqual(inputs["version"], "0.8.0")
         self.assertEqual(inputs["gateway"], "https://gateway.example")
+        self.assertEqual(inputs["source"], "CihuyAkz/starling-extras")
+        self.assertEqual(inputs["tools"], "")
         # The runner fetches the mods by a name it was given.
         self.assertEqual(self.call("GET", f"/v1/github/{inputs['ask']}")[1], b"mods")
         self.assertEqual(self.call("GET", "/v1/github/" + "0" * 32)[0], 404)

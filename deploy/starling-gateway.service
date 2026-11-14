@@ -1,0 +1,29 @@
+[Unit]
+Description=CihuyAkz Starling Native Build Gateway
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=starling-gateway
+Group=starling-gateway
+WorkingDirectory=/opt/starling-gateway
+EnvironmentFile=/etc/starling-gateway/gateway.env
+StateDirectory=starling-gateway
+StateDirectoryMode=0750
+LoadCredential=github-token:/etc/starling-gateway/github-token
+ExecStart=/usr/bin/python3 /opt/starling-gateway/packaging/android/mod_build_gateway.py
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/starling-gateway
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+
+[Install]
+WantedBy=multi-user.target
