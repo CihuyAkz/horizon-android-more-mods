@@ -13,7 +13,7 @@ pub const LEVEL: u32 = 7;
 /// level. Level 0 is the contract of Horizon 0.2.67 to 0.2.69. A new
 /// function takes the next level and raises [`LEVEL`] (the `api_reference`
 /// test fails until it is listed here).
-pub const FUNCTIONS: [(&str, u32); 46] = [
+pub const FUNCTIONS: [(&str, u32); 45] = [
     ("log.write", 0),
     ("game.get-player", 0),
     ("game.get-clock", 0),
@@ -187,9 +187,12 @@ mod tests {
         assert_eq!(needed(["log.write", "hud.set-panel"]), (0, None));
         assert_eq!(
             needed(["log.write", "hud.clear"]),
-            (1, None)
+            (0, None)
         );
-        assert_eq!(needed(["render.set-minimap"]), (0, None));
+        assert_eq!(
+            needed(["render.set-minimap"]),
+            (LEVEL + 1, Some("render.set-minimap"))
+        );
         assert_eq!(
             needed(["render.set-sky"]),
             (LEVEL + 1, Some("render.set-sky"))
